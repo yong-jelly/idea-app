@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 기본 스타일 */
+@layer base {
+  * {
+    @apply border-surface-200;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply min-h-screen bg-white text-surface-900 antialiased;
+    font-family: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  .dark body {
+    @apply bg-surface-950 text-surface-100;
+  }
+
+  .dark * {
+    @apply border-surface-800;
+  }
+
+  /* 부드러운 텍스트 렌더링 */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight text-surface-900;
+  }
+
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    @apply text-surface-50;
+  }
+}
+
+/* 스크롤바 스타일 */
+::-webkit-scrollbar {
+  @apply w-1.5;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-surface-300/70;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-surface-400;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-surface-700/70;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  @apply bg-surface-600;
+}
+
+/* 포커스 스타일 */
+*:focus-visible {
+  @apply outline-none ring-2 ring-primary-500/40 ring-offset-2 ring-offset-surface-50;
+}
+
+.dark *:focus-visible {
+  @apply ring-primary-400/40 ring-offset-surface-950;
+}
+
+/* 선택 영역 스타일 */
+::selection {
+  @apply bg-primary-100 text-primary-900;
+}
+
+.dark ::selection {
+  @apply bg-primary-900/50 text-primary-100;
+}
