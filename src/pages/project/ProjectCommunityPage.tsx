@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { Link, useParams, useNavigate } from "react-router";
 import {
   Megaphone,
   MessageSquareText,
@@ -30,8 +31,14 @@ import {
   ChevronUp,
   Reply,
   X,
+  Milestone as MilestoneIcon,
+  Edit,
+  Trash2,
+  Archive,
+  RotateCcw,
+  AlertCircle,
 } from "lucide-react";
-import { Button, Avatar, Badge, Textarea, Progress, Card, CardContent, CardHeader, CardTitle } from "@/shared/ui";
+import { Button, Avatar, Badge, Textarea, Progress, Card, CardContent, CardHeader, CardTitle, Input } from "@/shared/ui";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
 import { useProjectStore, CATEGORY_INFO, type Milestone, type Reward } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
@@ -317,37 +324,56 @@ const dummyFeedback: UserFeedback[] = [
   },
 ];
 
-const dummyMilestones: (Milestone & { progress: number })[] = [
+const dummyMilestones: Milestone[] = [
   {
     id: "m1",
     projectId: "1",
-    title: "MVP 출시",
-    description: "핵심 기능을 포함한 최소 기능 제품 출시",
-    targetDate: "2024-10-01",
-    deliverables: ["코어 기능 구현", "기본 UI 디자인", "사용자 인증"],
-    isCompleted: true,
-    completedAt: "2024-09-28",
-    progress: 100,
+    title: "v1.0 - MVP 출시",
+    description: "핵심 기능을 포함한 최소 기능 제품 출시. 사용자 인증, 기본 CRUD, UI 디자인 완성.",
+    dueDate: "2024-10-01",
+    status: "closed",
+    openIssuesCount: 0,
+    closedIssuesCount: 12,
+    createdAt: "2024-08-01T00:00:00Z",
+    updatedAt: "2024-09-28T00:00:00Z",
+    closedAt: "2024-09-28T00:00:00Z",
   },
   {
     id: "m2",
     projectId: "1",
-    title: "베타 테스트",
-    description: "1000명의 베타 테스터와 함께 제품 검증",
-    targetDate: "2024-12-01",
-    deliverables: ["베타 테스터 모집", "피드백 시스템 구축", "버그 수정"],
-    isCompleted: false,
-    progress: 75,
+    title: "v1.5 - 베타 테스트",
+    description: "1000명의 베타 테스터와 함께 제품 검증. 피드백 시스템 구축 및 버그 수정.",
+    dueDate: "2024-12-15",
+    status: "open",
+    openIssuesCount: 3,
+    closedIssuesCount: 9,
+    createdAt: "2024-09-01T00:00:00Z",
+    updatedAt: "2024-12-01T00:00:00Z",
   },
   {
     id: "m3",
     projectId: "1",
-    title: "정식 출시",
-    description: "모든 기능이 완성된 정식 버전 출시",
-    targetDate: "2025-03-01",
-    deliverables: ["전체 기능 완성", "성능 최적화", "마케팅 캠페인"],
-    isCompleted: false,
-    progress: 30,
+    title: "v2.0 - 정식 출시",
+    description: "모든 기능이 완성된 정식 버전 출시. AI 기능 추가, 성능 최적화, 다국어 지원.",
+    dueDate: "2025-03-01",
+    status: "open",
+    openIssuesCount: 8,
+    closedIssuesCount: 2,
+    createdAt: "2024-10-01T00:00:00Z",
+    updatedAt: "2024-11-15T00:00:00Z",
+  },
+  {
+    id: "m4",
+    projectId: "1",
+    title: "v0.9 - 프로토타입",
+    description: "초기 프로토타입 버전. 컨셉 검증 및 초기 사용자 피드백 수집.",
+    dueDate: "2024-07-15",
+    status: "closed",
+    openIssuesCount: 0,
+    closedIssuesCount: 8,
+    createdAt: "2024-06-01T00:00:00Z",
+    updatedAt: "2024-07-10T00:00:00Z",
+    closedAt: "2024-07-10T00:00:00Z",
   },
 ];
 
@@ -769,6 +795,421 @@ function DevPostCard({ post }: DevPostCardProps) {
   );
 }
 
+// 마일스톤 탭 컴포넌트 - 테이블 기반 모던 UI
+interface MilestonesTabProps {
+  milestones: Milestone[];
+}
+
+function MilestonesTab({ milestones: initialMilestones }: MilestonesTabProps) {
+  const [milestones, setMilestones] = useState(initialMilestones);
+  const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    dueDate: "",
+  });
+
+  const sortedMilestones = [...milestones].sort((a, b) => {
+    if (a.status === "open" && b.status === "closed") return -1;
+    if (a.status === "closed" && b.status === "open") return 1;
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
+
+  const filteredMilestones = filter === "all" 
+    ? sortedMilestones 
+    : sortedMilestones.filter((m) => m.status === filter);
+  
+  const openCount = milestones.filter((m) => m.status === "open").length;
+  const closedCount = milestones.filter((m) => m.status === "closed").length;
+
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    if (!isModalOpen) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsModalOpen(false);
+      }
+    };
+    
+    document.addEventListener("keydown", handleEscape);
+    document.body.style.overflow = "hidden";
+    
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "";
+    };
+  }, [isModalOpen]);
+
+  const handleOpenModal = (milestone?: Milestone) => {
+    if (milestone) {
+      setEditingMilestone(milestone);
+      setFormData({
+        title: milestone.title,
+        description: milestone.description,
+        dueDate: milestone.dueDate || "",
+      });
+    } else {
+      setEditingMilestone(null);
+      setFormData({ title: "", description: "", dueDate: "" });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!formData.title.trim()) return;
+
+    if (editingMilestone) {
+      setMilestones((prev) =>
+        prev.map((m) =>
+          m.id === editingMilestone.id
+            ? { ...m, ...formData, updatedAt: new Date().toISOString() }
+            : m
+        )
+      );
+    } else {
+      const newMilestone: Milestone = {
+        id: `m${Date.now()}`,
+        projectId: "1",
+        title: formData.title,
+        description: formData.description,
+        dueDate: formData.dueDate || undefined,
+        status: "open",
+        openIssuesCount: 0,
+        closedIssuesCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setMilestones((prev) => [newMilestone, ...prev]);
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleToggleStatus = (id: string) => {
+    setMilestones((prev) =>
+      prev.map((m) =>
+        m.id === id
+          ? {
+              ...m,
+              status: m.status === "open" ? "closed" : "open",
+              closedAt: m.status === "open" ? new Date().toISOString() : undefined,
+              updatedAt: new Date().toISOString(),
+            }
+          : m
+      )
+    );
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("정말 이 목표를 삭제하시겠습니까?")) {
+      setMilestones((prev) => prev.filter((m) => m.id !== id));
+    }
+  };
+
+  const getProgress = (m: Milestone) => {
+    const total = m.openIssuesCount + m.closedIssuesCount;
+    return total > 0 ? Math.round((m.closedIssuesCount / total) * 100) : 0;
+  };
+
+  const getDueLabel = (dueDate?: string, status?: string) => {
+    if (!dueDate) return null;
+    if (status === "closed") return null;
+    const due = new Date(dueDate);
+    const now = new Date();
+    const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return { label: `${Math.abs(diffDays)}일 지남`, isOverdue: true };
+    if (diffDays === 0) return { label: "오늘", isOverdue: false };
+    return { label: `D-${diffDays}`, isOverdue: false };
+  };
+
+  return (
+    <div>
+      {/* Header - 다른 탭들과 동일한 스타일 */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex gap-2">
+          {[
+            { id: "all" as const, label: "전체" },
+            { id: "open" as const, label: "진행 중" },
+            { id: "closed" as const, label: "완료" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setFilter(tab.id)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                filter === tab.id
+                  ? "bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                  : "text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <Button onClick={() => handleOpenModal()} size="sm">
+          <Plus className="h-4 w-4 mr-1" />
+          새 목표
+        </Button>
+      </div>
+
+      {/* Milestones List */}
+      {filteredMilestones.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Target className="h-10 w-10 mx-auto mb-3 text-surface-300 dark:text-surface-600" />
+            <p className="text-surface-500 dark:text-surface-400">
+              {filter === "all" ? "아직 목표가 없습니다" : filter === "open" ? "진행 중인 목표가 없습니다" : "완료된 목표가 없습니다"}
+            </p>
+            {(filter === "all" || filter === "open") && (
+              <Button onClick={() => handleOpenModal()} variant="outline" size="sm" className="mt-4">
+                <Plus className="h-4 w-4 mr-1" />
+                첫 목표 추가
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {filteredMilestones.map((milestone) => {
+            const progress = getProgress(milestone);
+            const dueLabel = getDueLabel(milestone.dueDate, milestone.status);
+            const total = milestone.openIssuesCount + milestone.closedIssuesCount;
+
+            return (
+              <Card 
+                key={milestone.id}
+                className="hover:bg-surface-50/50 dark:hover:bg-surface-800/30 transition-colors cursor-pointer"
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    {/* Progress Circle */}
+                    <div
+                      onClick={() => handleToggleStatus(milestone.id)}
+                      className={cn(
+                        "flex flex-col items-center justify-center min-w-[50px] py-2 rounded-lg transition-colors cursor-pointer",
+                        milestone.status === "closed"
+                          ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          : "bg-surface-100 text-surface-500 hover:bg-primary-50 hover:text-primary-600 dark:bg-surface-800 dark:hover:bg-primary-900/20"
+                      )}
+                    >
+                      {milestone.status === "closed" ? (
+                        <CheckCircle2 className="h-5 w-5" />
+                      ) : (
+                        <span className="text-sm font-bold">{progress}%</span>
+                      )}
+                      <span className="text-[10px] mt-0.5">
+                        {milestone.status === "closed" ? "완료" : "진행률"}
+                      </span>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className={cn(
+                          "font-semibold text-surface-900 dark:text-surface-50",
+                          milestone.status === "closed" && "line-through opacity-60"
+                        )}>
+                          {milestone.title}
+                        </h3>
+                        {milestone.status === "closed" && (
+                          <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-[10px]">
+                            완료됨
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {milestone.description && (
+                        <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-1 mb-2">
+                          {milestone.description}
+                        </p>
+                      )}
+
+                      {/* Stats Row */}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surface-500">
+                        {/* Progress Bar */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 h-1.5 rounded-full bg-surface-200 dark:bg-surface-700 overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all",
+                                milestone.status === "closed" 
+                                  ? "bg-emerald-500" 
+                                  : "bg-primary-500"
+                              )}
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Task Count */}
+                        <span className="flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                          {milestone.closedIssuesCount}개 완료
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3 text-surface-400" />
+                          {milestone.openIssuesCount}개 남음
+                        </span>
+                        
+                        {/* Due Date */}
+                        {milestone.dueDate && (
+                          <span className={cn(
+                            "flex items-center gap-1",
+                            dueLabel?.isOverdue ? "text-rose-500" : ""
+                          )}>
+                            <Calendar className="h-3 w-3" />
+                            {new Date(milestone.dueDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                            {dueLabel && milestone.status === "open" && (
+                              <span className={dueLabel.isOverdue ? "text-rose-500" : "text-surface-400"}>
+                                ({dueLabel.label})
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenModal(milestone);
+                        }}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(milestone.id);
+                        }}
+                        className="h-8 w-8 p-0 text-surface-400 hover:text-rose-500"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant={milestone.status === "open" ? "primary" : "outline"}
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleStatus(milestone.id);
+                        }}
+                        className="h-8 text-xs ml-1"
+                      >
+                        {milestone.status === "open" ? "완료" : "재개"}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Create/Edit Modal - ProfileEditModal 패턴 */}
+      {isModalOpen && createPortal(
+        <div className="fixed inset-0 z-50">
+          {/* 배경 오버레이 */}
+          <div
+            className="hidden md:block fixed inset-0 bg-surface-950/40 backdrop-blur-[2px]"
+            onClick={() => setIsModalOpen(false)}
+          />
+
+          {/* 모달 컨테이너 */}
+          <div className="fixed inset-0 md:flex md:items-center md:justify-center md:p-4">
+            <div className="h-full w-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-md md:rounded-xl bg-white dark:bg-surface-900 md:border md:border-surface-200 md:dark:border-surface-800 md:shadow-xl flex flex-col overflow-hidden">
+              
+              {/* 헤더 */}
+              <header className="shrink-0 h-14 flex items-center justify-between px-4 border-b border-surface-100 dark:border-surface-800 bg-white dark:bg-surface-900">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+                  >
+                    <ChevronLeft className="h-5 w-5 text-surface-600 dark:text-surface-400" />
+                  </button>
+                  <h1 className="text-lg font-bold text-surface-900 dark:text-surface-50">
+                    {editingMilestone ? "목표 편집" : "새 목표"}
+                  </h1>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={handleSave} 
+                  disabled={!formData.title.trim()}
+                  className="rounded-full"
+                >
+                  {editingMilestone ? "저장" : "추가"}
+                </Button>
+              </header>
+
+              {/* 콘텐츠 */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-4 md:p-6 space-y-6">
+                  {/* 목표 이름 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                      목표 이름 <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      value={formData.title}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                      placeholder="예: v2.0 출시, 1000명 사용자 달성"
+                      maxLength={50}
+                    />
+                    <p className="text-xs text-surface-500 text-right">
+                      {formData.title.length}/50
+                    </p>
+                  </div>
+
+                  {/* 기한 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                      목표 기한
+                    </label>
+                    <Input
+                      type="date"
+                      value={formData.dueDate}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, dueDate: e.target.value }))}
+                    />
+                  </div>
+
+                  {/* 설명 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                      설명
+                    </label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                      placeholder="이 목표에 대해 간단히 설명해주세요"
+                      maxLength={200}
+                      rows={3}
+                    />
+                    <p className="text-xs text-surface-500 text-right">
+                      {formData.description.length}/200
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 // 개발사 피드 탭 컴포넌트
 function DevFeedTab() {
   return (
@@ -781,11 +1222,30 @@ function DevFeedTab() {
 }
 
 export function ProjectCommunityPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, tab } = useParams<{ id: string; tab?: string }>();
+  const navigate = useNavigate();
   const { projects } = useProjectStore();
   const { user } = useUserStore();
-  const [activeTab, setActiveTab] = useState<TabType>("devfeed");
+  
+  const validTabs: TabType[] = ["devfeed", "feedback", "rewards", "milestones", "changelog"];
+  const initialTab = tab && validTabs.includes(tab as TabType) ? (tab as TabType) : "devfeed";
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [feedbackFilter, setFeedbackFilter] = useState<"all" | "bug" | "feature" | "improvement">("all");
+
+  // URL 변경 시 탭 동기화
+  useEffect(() => {
+    if (tab && validTabs.includes(tab as TabType)) {
+      setActiveTab(tab as TabType);
+    } else if (!tab) {
+      setActiveTab("devfeed");
+    }
+  }, [tab]);
+
+  // 탭 변경 핸들러
+  const handleTabChange = (newTab: TabType) => {
+    setActiveTab(newTab);
+    navigate(`/project/${id}/community/${newTab}`, { replace: true });
+  };
 
   const project = projects[0]; // 임시로 첫 번째 프로젝트 사용
   const categoryInfo = project ? CATEGORY_INFO[project.category] : null;
@@ -799,7 +1259,7 @@ export function ProjectCommunityPage() {
   }
 
   const tabs = [
-    { id: "devfeed" as TabType, label: "개발사 피드", icon: Megaphone },
+    { id: "devfeed" as TabType, label: "공지", icon: Megaphone },
     { id: "feedback" as TabType, label: "피드백", icon: MessageSquareText },
     { id: "rewards" as TabType, label: "리워드", icon: Gift },
     { id: "milestones" as TabType, label: "마일스톤", icon: Target },
@@ -842,7 +1302,7 @@ export function ProjectCommunityPage() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={cn(
                     "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative whitespace-nowrap",
                     activeTab === tab.id
@@ -1032,83 +1492,9 @@ export function ProjectCommunityPage() {
             </div>
           )}
 
-          {/* 마일스톤 */}
+          {/* 마일스톤 - GitHub 스타일 */}
           {activeTab === "milestones" && (
-            <div className="space-y-6">
-              {dummyMilestones.map((milestone, index) => (
-                <Card key={milestone.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      {/* Status Icon */}
-                      <div className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                        milestone.isCompleted
-                          ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-                          : milestone.progress > 0
-                          ? "bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-                          : "bg-surface-100 text-surface-400 dark:bg-surface-800"
-                      )}>
-                        {milestone.isCompleted ? (
-                          <CheckCircle2 className="h-5 w-5" />
-                        ) : (
-                          <Target className="h-5 w-5" />
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-surface-900 dark:text-surface-50">
-                            {milestone.title}
-                          </h3>
-                          {milestone.isCompleted && (
-                            <Badge variant="success">완료</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-surface-600 dark:text-surface-400 mb-3">
-                          {milestone.description}
-                        </p>
-
-                        {/* Progress */}
-                        {!milestone.isCompleted && (
-                          <div className="mb-3">
-                            <div className="flex justify-between text-xs text-surface-500 mb-1">
-                              <span>진행률</span>
-                              <span>{milestone.progress}%</span>
-                            </div>
-                            <Progress value={milestone.progress} size="md" />
-                          </div>
-                        )}
-
-                        {/* Deliverables */}
-                        <div className="space-y-1">
-                          {milestone.deliverables.map((item, i) => (
-                            <div key={i} className="flex items-center gap-2 text-sm">
-                              <CheckCircle2 className={cn(
-                                "h-4 w-4",
-                                milestone.isCompleted || (milestone.progress >= ((i + 1) / milestone.deliverables.length) * 100)
-                                  ? "text-emerald-500"
-                                  : "text-surface-300 dark:text-surface-600"
-                              )} />
-                              <span className="text-surface-600 dark:text-surface-400">{item}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Date */}
-                        <div className="mt-3 flex items-center gap-1 text-xs text-surface-500">
-                          <Calendar className="h-3 w-3" />
-                          {milestone.isCompleted
-                            ? `${milestone.completedAt} 완료`
-                            : `목표: ${milestone.targetDate}`
-                          }
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <MilestonesTab milestones={dummyMilestones} />
           )}
 
           {/* 변경사항 */}

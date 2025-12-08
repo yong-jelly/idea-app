@@ -30,15 +30,20 @@ export interface Project {
   createdAt: string;
 }
 
+export type MilestoneStatus = "open" | "closed";
+
 export interface Milestone {
   id: string;
   projectId: string;
   title: string;
   description: string;
-  targetDate: string;
-  deliverables: string[];
-  isCompleted: boolean;
-  completedAt?: string;
+  dueDate?: string;
+  status: MilestoneStatus;
+  openIssuesCount: number;
+  closedIssuesCount: number;
+  createdAt: string;
+  updatedAt: string;
+  closedAt?: string;
 }
 
 export interface Reward {
