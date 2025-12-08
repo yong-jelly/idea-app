@@ -333,7 +333,7 @@ export function ProjectDetailPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <div className="mx-auto max-w-5xl px-4 py-6">
         <div className="flex gap-8">
           {/* Main Content */}
           <main className="flex-1 min-w-0">

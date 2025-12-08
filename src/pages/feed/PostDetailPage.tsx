@@ -304,11 +304,11 @@ export function PostDetailPage() {
 
   if (!post) {
     return (
-      <div className="mx-auto flex max-w-5xl">
-        <div className="hidden lg:block w-[275px] shrink-0 px-3">
+      <div className="mx-auto flex max-w-5xl items-start">
+        <div className="hidden lg:block w-[275px] shrink-0 px-3 self-stretch">
           <LeftSidebar />
         </div>
-        <main className="min-w-0 flex-1 bg-white dark:bg-surface-950 border-x border-surface-200 dark:border-surface-800">
+        <main className="min-w-0 flex-1 min-h-[calc(100vh-3.5rem)] bg-white dark:bg-surface-950 border-x border-surface-200 dark:border-surface-800">
           <div className="p-8 text-center">
             <p className="text-surface-500">포스트를 찾을 수 없습니다.</p>
             <Button variant="outline" className="mt-4" onClick={() => navigate("/")}>
@@ -325,16 +325,16 @@ export function PostDetailPage() {
   const TypeIcon = typeConfig?.icon;
 
   return (
-    <div className="mx-auto flex max-w-5xl">
+    <div className="mx-auto flex max-w-5xl items-start">
       {/* Left Sidebar */}
-      <div className="hidden lg:block w-[275px] shrink-0 px-3">
+      <div className="hidden lg:block w-[275px] shrink-0 px-3 self-stretch">
         <LeftSidebar />
       </div>
 
       {/* Main Content */}
-      <main className="min-w-0 flex-1 bg-white dark:bg-surface-950 border-x border-surface-200 dark:border-surface-800">
+      <main className="min-w-0 flex-1 min-h-[calc(100vh-3.5rem)] bg-white dark:bg-surface-950 border-x border-surface-200 dark:border-surface-800">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-white/95 dark:bg-surface-950/95 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
+        <div className="sticky top-14 z-10 bg-white/80 dark:bg-surface-950/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
           <div className="h-[53px] flex items-center gap-4 px-4">
             <Button 
               variant="ghost" 
@@ -522,6 +522,14 @@ export function PostDetailPage() {
               )}
             </div>
           )}
+
+          {/* 등록 날짜 */}
+          <div className="py-3 text-sm text-surface-500 dark:text-surface-400">
+            {formatDateTime(post.createdAt)}
+          </div>
+
+          {/* 구분선 */}
+          <div className="border-t border-surface-100 dark:border-surface-800" />
 
           {/* 인터랙션 버튼 - 일반 피드와 동일한 스타일 */}
           <div className="flex items-center gap-1 -ml-2 pt-2 border-b border-surface-100 dark:border-surface-800 pb-3">
@@ -1031,4 +1039,20 @@ function getRelativeTime(dateString: string): string {
   if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}일`;
   
   return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+}
+
+function formatDateTime(dateString: string): string {
+  const date = new Date(dateString);
+  
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  
+  const period = hours < 12 ? "오전" : "오후";
+  const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+  
+  return `${year}년 ${month}월 ${day}일 ${period} ${displayHours}시 ${minutes}분`;
 }

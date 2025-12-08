@@ -242,7 +242,6 @@ export interface InteractionButtonsProps {
   interactions: ExtendedInteractions;
   onLike?: () => void;
   onComment?: () => void;
-  onRepost?: () => void;
   onBookmark?: () => void;
 }
 
@@ -250,7 +249,6 @@ export function InteractionButtons({
   interactions,
   onLike,
   onComment,
-  onRepost,
   onBookmark,
 }: InteractionButtonsProps) {
   return (
@@ -262,20 +260,6 @@ export function InteractionButtons({
       >
         <CommentIcon className="h-[18px] w-[18px]" />
         <span className="text-[13px] tabular-nums">{formatNumber(interactions.commentsCount)}</span>
-      </button>
-
-      {/* 리포스트 */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onRepost?.(); }}
-        className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all",
-          interactions.isReposted
-            ? "text-emerald-600 dark:text-emerald-400"
-            : "text-surface-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-        )}
-      >
-        <RepostIcon className="h-[18px] w-[18px]" />
-        <span className="text-[13px] tabular-nums">{formatNumber(interactions.repostsCount)}</span>
       </button>
 
       {/* 좋아요 */}

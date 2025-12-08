@@ -16,7 +16,7 @@ export function ExplorePage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-5xl">
         {/* Featured Section */}
         {featuredProjects.length > 0 && (
           <section>

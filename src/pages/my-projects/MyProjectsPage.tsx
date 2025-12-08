@@ -13,14 +13,14 @@ export function MyProjectsPage() {
   const myProjects = projects.slice(0, 2);
 
   return (
-    <div className="mx-auto flex max-w-5xl">
+    <div className="mx-auto flex max-w-5xl items-start">
       {/* Left Sidebar - Desktop Only */}
-      <div className="hidden lg:block w-[275px] shrink-0 px-3">
+      <div className="hidden lg:block w-[275px] shrink-0 px-3 self-stretch">
         <LeftSidebar />
       </div>
 
       {/* Main Content */}
-      <main className="min-w-0 flex-1 bg-white dark:bg-surface-950 border-x border-surface-200 dark:border-surface-800">
+      <main className="min-w-0 flex-1 min-h-[calc(100vh-3.5rem)] bg-white dark:bg-surface-950 border-x border-surface-200 dark:border-surface-800">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white/95 dark:bg-surface-950/95 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
           <div className="h-[53px] flex items-center justify-between px-4">

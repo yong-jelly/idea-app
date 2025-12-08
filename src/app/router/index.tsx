@@ -1,4 +1,10 @@
-import { createBrowserRouter, RouterProvider, Outlet } from "react-router";
+import { useEffect } from "react";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Outlet,
+  useLocation,
+} from "react-router";
 import { Header } from "@/widgets";
 import {
   FeedPage,
@@ -14,9 +20,20 @@ import {
   BookmarksPage,
 } from "@/pages";
 
+function ScrollToTop() {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname, location.search]);
+
+  return null;
+}
+
 function RootLayout() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900">
+      <ScrollToTop />
       <Header />
       <Outlet />
     </div>

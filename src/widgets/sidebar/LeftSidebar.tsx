@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Home, Compass, Folder, PlusCircle, Bookmark, Settings, Pencil } from "lucide-react";
+import { Home, Folder, PlusCircle, Bookmark, Settings, Pencil, User } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button, Avatar } from "@/shared/ui";
 import { useUserStore } from "@/entities/user";
 import { PostComposerModal } from "@/features/feed";
 
 const navigation = [
-  { name: "구독 피드", href: "/", icon: Home },
-  { name: "탐색", href: "/explore", icon: Compass },
-  { name: "내 프로젝트", href: "/my-projects", icon: Folder },
+  { name: "홈", href: "/", icon: Home },
+  { name: "프로젝트", href: "/my-projects", icon: Folder },
   { name: "북마크", href: "/bookmarks", icon: Bookmark },
 ];
 
@@ -42,6 +41,22 @@ export function LeftSidebar() {
               </Link>
             );
           })}
+
+          {/* 프로필 메뉴 */}
+          {isAuthenticated && user && (
+            <Link
+              to={`/profile/${user.username}`}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                location.pathname.startsWith("/profile")
+                  ? "bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300"
+                  : "text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800/50"
+              )}
+            >
+              <User className={cn("h-[18px] w-[18px]", location.pathname.startsWith("/profile") ? "text-primary-600 dark:text-primary-400" : "text-surface-400 dark:text-surface-500")} />
+              프로필
+            </Link>
+          )}
         </nav>
 
         {/* Action Buttons */}
