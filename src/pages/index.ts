@@ -1,6 +1,6 @@
 export { FeedPage, PostDetailPage } from "./feed";
 export { ExplorePage } from "./explore";
-export { CreateProjectPage, SupportPage, FeatureRequestsPage, ProjectDetailPage, ProjectCommunityPage, MilestoneDetailPage } from "./project";
+export { CreateProjectPage, SupportPage, FeatureRequestsPage, ProjectDetailPage, ProjectCommunityPage, MilestoneDetailPage, FeedbackDetailPage } from "./project";
 export { ProfilePage } from "./profile";
 export { MyProjectsPage } from "./my-projects";
 export { BookmarksPage } from "./bookmarks";

@@ -4,4 +4,5 @@ export { FeatureRequestsPage } from "./FeatureRequestsPage";
 export { ProjectDetailPage } from "./ProjectDetailPage";
 export { ProjectCommunityPage } from "./ProjectCommunityPage";
 export { MilestoneDetailPage } from "./MilestoneDetailPage";
+export { FeedbackDetailPage } from "./FeedbackDetailPage";
 

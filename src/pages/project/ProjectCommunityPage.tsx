@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link, useParams, useNavigate } from "react-router";
 import {
@@ -37,6 +37,7 @@ import {
   Archive,
   RotateCcw,
   AlertCircle,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button, Avatar, Badge, Textarea, Progress, Card, CardContent, CardHeader, CardTitle, Input } from "@/shared/ui";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
@@ -85,6 +86,7 @@ interface UserFeedback {
   type: "bug" | "feature" | "improvement" | "question";
   title: string;
   content: string;
+  images?: string[];
   author: {
     id: string;
     username: string;
@@ -294,7 +296,11 @@ const dummyFeedback: UserFeedback[] = [
     id: "fb2",
     type: "bug",
     title: "Safari에서 이미지 로딩 오류",
-    content: "Safari 브라우저에서 이미지가 간헐적으로 로딩되지 않는 문제가 있습니다.",
+    content: "Safari 브라우저에서 이미지가 간헐적으로 로딩되지 않는 문제가 있습니다. 아래 스크린샷을 참고해주세요.",
+    images: [
+      "https://placehold.co/400x300/f8d7da/721c24?text=Safari+Error",
+      "https://placehold.co/400x300/d4edda/155724?text=Expected",
+    ],
     author: {
       id: "u4",
       username: "mac_user",
@@ -1247,6 +1253,468 @@ function MilestonesTab({ milestones: initialMilestones, projectId }: MilestonesT
   );
 }
 
+// 피드백 탭 컴포넌트
+interface FeedbackTabProps {
+  feedbacks: UserFeedback[];
+  projectId: string;
+}
+
+function FeedbackTab({ feedbacks: initialFeedbacks, projectId }: FeedbackTabProps) {
+  const navigate = useNavigate();
+  const { user } = useUserStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [feedbacks, setFeedbacks] = useState(initialFeedbacks);
+  const [filter, setFilter] = useState<"all" | "bug" | "feature" | "improvement">("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingFeedback, setEditingFeedback] = useState<UserFeedback | null>(null);
+  const [formData, setFormData] = useState({
+    type: "feature" as "bug" | "feature" | "improvement" | "question",
+    title: "",
+    content: "",
+    images: [] as string[],
+  });
+
+  const filteredFeedbacks = filter === "all" 
+    ? feedbacks 
+    : feedbacks.filter((fb) => fb.type === filter);
+
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    if (!isModalOpen) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsModalOpen(false);
+      }
+    };
+    
+    document.addEventListener("keydown", handleEscape);
+    document.body.style.overflow = "hidden";
+    
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "";
+    };
+  }, [isModalOpen]);
+
+  const handleOpenModal = (feedback?: UserFeedback) => {
+    if (feedback) {
+      setEditingFeedback(feedback);
+      setFormData({
+        type: feedback.type,
+        title: feedback.title,
+        content: feedback.content,
+        images: feedback.images || [],
+      });
+    } else {
+      setEditingFeedback(null);
+      setFormData({ type: "feature", title: "", content: "", images: [] });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!formData.title.trim() || !formData.content.trim()) return;
+
+    if (editingFeedback) {
+      // 수정
+      setFeedbacks((prev) =>
+        prev.map((fb) =>
+          fb.id === editingFeedback.id
+            ? { ...fb, type: formData.type, title: formData.title, content: formData.content, images: formData.images.length > 0 ? formData.images : undefined }
+            : fb
+        )
+      );
+    } else {
+      // 새 피드백 추가
+      const newFeedback: UserFeedback = {
+        id: `fb${Date.now()}`,
+        type: formData.type,
+        title: formData.title,
+        content: formData.content,
+        images: formData.images.length > 0 ? formData.images : undefined,
+        author: {
+          id: user?.id || "current",
+          username: user?.username || "guest",
+          displayName: user?.displayName || "게스트",
+        },
+        status: "open",
+        votesCount: 0,
+        isVoted: false,
+        commentsCount: 0,
+        createdAt: new Date().toISOString(),
+      };
+      setFeedbacks((prev) => [newFeedback, ...prev]);
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleDelete = (feedbackId: string) => {
+    if (confirm("정말 이 피드백을 삭제하시겠습니까?")) {
+      setFeedbacks((prev) => prev.filter((fb) => fb.id !== feedbackId));
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    const remainingSlots = 3 - formData.images.length;
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    
+    filesToProcess.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setFormData((prev) => ({
+            ...prev,
+            images: [...prev.images, event.target!.result as string].slice(0, 3),
+          }));
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleVote = (feedbackId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFeedbacks((prev) =>
+      prev.map((fb) =>
+        fb.id === feedbackId
+          ? { ...fb, isVoted: !fb.isVoted, votesCount: fb.isVoted ? fb.votesCount - 1 : fb.votesCount + 1 }
+          : fb
+      )
+    );
+  };
+
+  return (
+    <div>
+      {/* Filter & Actions */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex gap-2">
+          {(["all", "feature", "bug", "improvement"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                filter === f
+                  ? "bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                  : "text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+              )}
+            >
+              {f === "all" ? "전체" : FEEDBACK_TYPE_INFO[f].label}
+            </button>
+          ))}
+        </div>
+        <Button size="sm" onClick={() => handleOpenModal()}>
+          <Plus className="h-4 w-4 mr-1" />
+          피드백 작성
+        </Button>
+      </div>
+
+      {/* Feedback List */}
+      {filteredFeedbacks.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <MessageSquareText className="h-10 w-10 mx-auto mb-3 text-surface-300 dark:text-surface-600" />
+            <p className="text-surface-500 dark:text-surface-400">
+              {filter === "all" ? "아직 피드백이 없습니다" : `${FEEDBACK_TYPE_INFO[filter].label} 피드백이 없습니다`}
+            </p>
+            <Button onClick={() => handleOpenModal()} variant="outline" size="sm" className="mt-4">
+              <Plus className="h-4 w-4 mr-1" />
+              첫 피드백 작성
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {filteredFeedbacks.map((feedback) => {
+            const typeInfo = FEEDBACK_TYPE_INFO[feedback.type];
+            const statusInfo = FEEDBACK_STATUS_INFO[feedback.status];
+            const TypeIcon = typeInfo.icon;
+            const isOwner = feedback.author.id === user?.id || feedback.author.id === "current";
+
+            return (
+              <Card 
+                key={feedback.id} 
+                className="hover:bg-surface-50/50 dark:hover:bg-surface-800/30 transition-colors cursor-pointer group"
+                onClick={() => navigate(`/project/${projectId}/community/feedback/${feedback.id}`)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    {/* Vote */}
+                    <button
+                      onClick={(e) => handleVote(feedback.id, e)}
+                      className={cn(
+                        "flex flex-col items-center justify-center min-w-[50px] py-2 rounded-lg transition-colors",
+                        feedback.isVoted
+                          ? "bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
+                          : "bg-surface-100 text-surface-500 hover:bg-primary-50 hover:text-primary-600 dark:bg-surface-800 dark:hover:bg-primary-900/20"
+                      )}
+                    >
+                      <ThumbsUp className={cn("h-4 w-4", feedback.isVoted && "fill-current")} />
+                      <span className="text-sm font-semibold mt-0.5">{formatNumber(feedback.votesCount)}</span>
+                    </button>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={cn("flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium", typeInfo.color)}>
+                          <TypeIcon className="h-3 w-3" />
+                          {typeInfo.label}
+                        </span>
+                        <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
+                        {feedback.images && feedback.images.length > 0 && (
+                          <span className="flex items-center gap-0.5 text-xs text-surface-400">
+                            <ImageIcon className="h-3 w-3" />
+                            {feedback.images.length}
+                          </span>
+                        )}
+                        <div className="ml-auto flex items-center gap-1">
+                          {isOwner && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenModal(feedback);
+                                }}
+                                className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-surface-200 dark:hover:bg-surface-700 transition-all"
+                              >
+                                <Edit className="h-3.5 w-3.5 text-surface-500" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(feedback.id);
+                                }}
+                                className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-all"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                              </button>
+                            </>
+                          )}
+                          <ChevronRight className="h-4 w-4 text-surface-400" />
+                        </div>
+                      </div>
+                      <h3 className="font-semibold text-surface-900 dark:text-surface-50 mb-1">
+                        {feedback.title}
+                      </h3>
+                      <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-2">
+                        {feedback.content}
+                      </p>
+                      <div className="mt-2 flex items-center gap-3 text-xs text-surface-500">
+                        <span>@{feedback.author.username}</span>
+                        <span>{formatRelativeTime(feedback.createdAt)}</span>
+                        <span className="flex items-center gap-1">
+                          <MessageCircle className="h-3 w-3" />
+                          {feedback.commentsCount}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Create/Edit Modal */}
+      {isModalOpen && createPortal(
+        <div className="fixed inset-0 z-50">
+          {/* 배경 오버레이 */}
+          <div
+            className="hidden md:block fixed inset-0 bg-surface-950/40 backdrop-blur-[2px]"
+            onClick={() => setIsModalOpen(false)}
+          />
+
+          {/* 모달 컨테이너 */}
+          <div className="fixed inset-0 md:flex md:items-center md:justify-center md:p-4">
+            <div className="h-full w-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-lg md:rounded-xl bg-white dark:bg-surface-900 md:border md:border-surface-200 md:dark:border-surface-800 md:shadow-xl flex flex-col overflow-hidden">
+              
+              {/* 헤더 */}
+              <header className="shrink-0 h-14 flex items-center justify-between px-4 border-b border-surface-100 dark:border-surface-800 bg-white dark:bg-surface-900">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+                  >
+                    <ChevronLeft className="h-5 w-5 text-surface-600 dark:text-surface-400" />
+                  </button>
+                  <h1 className="text-lg font-bold text-surface-900 dark:text-surface-50">
+                    {editingFeedback ? "피드백 수정" : "피드백 작성"}
+                  </h1>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={handleSave} 
+                  disabled={!formData.title.trim() || !formData.content.trim()}
+                  className="rounded-full"
+                >
+                  {editingFeedback ? "저장" : "작성"}
+                </Button>
+              </header>
+
+              {/* 콘텐츠 */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-4 md:p-6 space-y-6">
+                  {/* 피드백 타입 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                      타입 <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {(["feature", "bug", "improvement"] as const).map((type) => {
+                        const info = FEEDBACK_TYPE_INFO[type];
+                        const Icon = info.icon;
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, type }))}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-colors",
+                              formData.type === type
+                                ? cn(info.color, info.color.includes("rose") ? "border-rose-300 dark:border-rose-700" : info.color.includes("amber") ? "border-amber-300 dark:border-amber-700" : "border-primary-300 dark:border-primary-700")
+                                : "border-transparent bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700"
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                            {info.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 제목 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                      제목 <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      value={formData.title}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                      placeholder="피드백 제목을 입력하세요"
+                      maxLength={100}
+                    />
+                    <p className="text-xs text-surface-500 text-right">
+                      {formData.title.length}/100
+                    </p>
+                  </div>
+
+                  {/* 내용 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                      내용 <span className="text-red-500">*</span>
+                    </label>
+                    <Textarea
+                      value={formData.content}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, content: e.target.value }))}
+                      placeholder="피드백 내용을 자세히 작성해주세요. 버그의 경우 재현 방법, 기능 요청의 경우 사용 시나리오를 포함해주세요."
+                      maxLength={2000}
+                      rows={6}
+                    />
+                    <p className="text-xs text-surface-500 text-right">
+                      {formData.content.length}/2000
+                    </p>
+                  </div>
+
+                  {/* 이미지 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                      이미지 (최대 3개)
+                    </label>
+                    
+                    {/* 이미지 미리보기 */}
+                    {formData.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {formData.images.map((img, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={img}
+                              alt={`첨부 이미지 ${index + 1}`}
+                              className="h-24 w-24 rounded-lg object-cover border border-surface-200 dark:border-surface-700"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-surface-900 text-white flex items-center justify-center hover:bg-rose-500 transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {formData.images.length < 3 && (
+                      <>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={handleImageUpload}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-surface-200 dark:border-surface-700 rounded-lg text-surface-500 hover:border-primary-300 hover:text-primary-500 dark:hover:border-primary-700 transition-colors"
+                        >
+                          <ImageIcon className="h-5 w-5" />
+                          <span className="text-sm">이미지 추가 ({formData.images.length}/3)</span>
+                        </button>
+                      </>
+                    )}
+                    <p className="text-xs text-surface-400">
+                      스크린샷이나 관련 이미지를 첨부하면 더 명확하게 전달할 수 있습니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 푸터 - 삭제 버튼 (수정 모드에서만) */}
+              {editingFeedback && (
+                <footer className="shrink-0 px-4 py-3 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-900">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      handleDelete(editingFeedback.id);
+                      setIsModalOpen(false);
+                    }}
+                    className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    피드백 삭제
+                  </Button>
+                </footer>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 // 개발사 피드 탭 컴포넌트
 function DevFeedTab() {
   return (
@@ -1367,88 +1835,7 @@ export function ProjectCommunityPage() {
 
           {/* 피드백 */}
           {activeTab === "feedback" && (
-            <div>
-              {/* Filter */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex gap-2">
-                  {(["all", "feature", "bug", "improvement"] as const).map((filter) => (
-                    <button
-                      key={filter}
-                      onClick={() => setFeedbackFilter(filter)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                        feedbackFilter === filter
-                          ? "bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
-                          : "text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
-                      )}
-                    >
-                      {filter === "all" ? "전체" : FEEDBACK_TYPE_INFO[filter].label}
-                    </button>
-                  ))}
-                </div>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  피드백 작성
-                </Button>
-              </div>
-
-              {/* Feedback List */}
-              <div className="space-y-3">
-                {dummyFeedback
-                  .filter((fb) => feedbackFilter === "all" || fb.type === feedbackFilter)
-                  .map((feedback) => {
-                    const typeInfo = FEEDBACK_TYPE_INFO[feedback.type];
-                    const statusInfo = FEEDBACK_STATUS_INFO[feedback.status];
-                    const TypeIcon = typeInfo.icon;
-
-                    return (
-                      <Card key={feedback.id} className="hover:bg-surface-50/50 dark:hover:bg-surface-800/30 transition-colors cursor-pointer">
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-4">
-                            {/* Vote */}
-                            <button
-                              className={cn(
-                                "flex flex-col items-center justify-center min-w-[50px] py-2 rounded-lg transition-colors",
-                                feedback.isVoted
-                                  ? "bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-                                  : "bg-surface-100 text-surface-500 hover:bg-primary-50 hover:text-primary-600 dark:bg-surface-800 dark:hover:bg-primary-900/20"
-                              )}
-                            >
-                              <ThumbsUp className={cn("h-4 w-4", feedback.isVoted && "fill-current")} />
-                              <span className="text-sm font-semibold mt-0.5">{formatNumber(feedback.votesCount)}</span>
-                            </button>
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className={cn("flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium", typeInfo.color)}>
-                                  <TypeIcon className="h-3 w-3" />
-                                  {typeInfo.label}
-                                </span>
-                                <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
-                              </div>
-                              <h3 className="font-semibold text-surface-900 dark:text-surface-50 mb-1">
-                                {feedback.title}
-                              </h3>
-                              <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-2">
-                                {feedback.content}
-                              </p>
-                              <div className="mt-2 flex items-center gap-3 text-xs text-surface-500">
-                                <span>@{feedback.author.username}</span>
-                                <span>{formatRelativeTime(feedback.createdAt)}</span>
-                                <span className="flex items-center gap-1">
-                                  <MessageCircle className="h-3 w-3" />
-                                  {feedback.commentsCount}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-              </div>
-            </div>
+            <FeedbackTab feedbacks={dummyFeedback} projectId={id || "1"} />
           )}
 
           {/* 리워드 */}
