@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 import { Button, Avatar, Badge, Textarea, Progress, Card, CardContent, CardHeader, CardTitle, Input } from "@/shared/ui";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
-import { useProjectStore, CATEGORY_INFO, type Milestone, type Reward } from "@/entities/project";
+import { useProjectStore, CATEGORY_INFO, type Milestone, type MilestoneTask, type Reward } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 
 // 타입 정의
@@ -333,7 +333,14 @@ const dummyMilestones: Milestone[] = [
     dueDate: "2024-10-01",
     status: "closed",
     openIssuesCount: 0,
-    closedIssuesCount: 12,
+    closedIssuesCount: 5,
+    tasks: [
+      { id: "t1-1", milestoneId: "m1", title: "사용자 인증 시스템 구현", status: "done", createdAt: "2024-08-01T00:00:00Z", completedAt: "2024-08-15T00:00:00Z" },
+      { id: "t1-2", milestoneId: "m1", title: "기본 CRUD API 개발", status: "done", createdAt: "2024-08-01T00:00:00Z", completedAt: "2024-08-20T00:00:00Z" },
+      { id: "t1-3", milestoneId: "m1", title: "메인 UI 디자인", status: "done", createdAt: "2024-08-05T00:00:00Z", completedAt: "2024-09-01T00:00:00Z" },
+      { id: "t1-4", milestoneId: "m1", title: "반응형 레이아웃 적용", status: "done", createdAt: "2024-08-10T00:00:00Z", completedAt: "2024-09-10T00:00:00Z" },
+      { id: "t1-5", milestoneId: "m1", title: "배포 환경 설정", status: "done", createdAt: "2024-09-15T00:00:00Z", completedAt: "2024-09-28T00:00:00Z" },
+    ],
     createdAt: "2024-08-01T00:00:00Z",
     updatedAt: "2024-09-28T00:00:00Z",
     closedAt: "2024-09-28T00:00:00Z",
@@ -346,7 +353,16 @@ const dummyMilestones: Milestone[] = [
     dueDate: "2024-12-15",
     status: "open",
     openIssuesCount: 3,
-    closedIssuesCount: 9,
+    closedIssuesCount: 4,
+    tasks: [
+      { id: "t2-1", milestoneId: "m2", title: "베타 테스터 모집 페이지", status: "done", createdAt: "2024-09-01T00:00:00Z", completedAt: "2024-09-15T00:00:00Z" },
+      { id: "t2-2", milestoneId: "m2", title: "피드백 수집 시스템 구축", status: "done", createdAt: "2024-09-10T00:00:00Z", completedAt: "2024-10-01T00:00:00Z" },
+      { id: "t2-3", milestoneId: "m2", title: "버그 리포트 기능", status: "done", createdAt: "2024-09-20T00:00:00Z", completedAt: "2024-10-15T00:00:00Z" },
+      { id: "t2-4", milestoneId: "m2", title: "성능 모니터링 대시보드", status: "done", createdAt: "2024-10-01T00:00:00Z", completedAt: "2024-11-01T00:00:00Z" },
+      { id: "t2-5", milestoneId: "m2", title: "주요 버그 수정 (5건)", status: "todo", createdAt: "2024-11-01T00:00:00Z" },
+      { id: "t2-6", milestoneId: "m2", title: "사용자 피드백 반영", status: "todo", createdAt: "2024-11-15T00:00:00Z" },
+      { id: "t2-7", milestoneId: "m2", title: "베타 종료 보고서 작성", status: "todo", createdAt: "2024-12-01T00:00:00Z" },
+    ],
     createdAt: "2024-09-01T00:00:00Z",
     updatedAt: "2024-12-01T00:00:00Z",
   },
@@ -357,8 +373,16 @@ const dummyMilestones: Milestone[] = [
     description: "모든 기능이 완성된 정식 버전 출시. AI 기능 추가, 성능 최적화, 다국어 지원.",
     dueDate: "2025-03-01",
     status: "open",
-    openIssuesCount: 8,
-    closedIssuesCount: 2,
+    openIssuesCount: 5,
+    closedIssuesCount: 1,
+    tasks: [
+      { id: "t3-1", milestoneId: "m3", title: "AI 추천 시스템 설계", status: "done", createdAt: "2024-10-01T00:00:00Z", completedAt: "2024-11-01T00:00:00Z" },
+      { id: "t3-2", milestoneId: "m3", title: "AI 모델 학습 및 배포", status: "todo", createdAt: "2024-11-01T00:00:00Z" },
+      { id: "t3-3", milestoneId: "m3", title: "다국어 지원 (영어, 일본어)", status: "todo", createdAt: "2024-11-15T00:00:00Z" },
+      { id: "t3-4", milestoneId: "m3", title: "성능 최적화 (로딩 50% 감소)", status: "todo", createdAt: "2024-12-01T00:00:00Z" },
+      { id: "t3-5", milestoneId: "m3", title: "마케팅 랜딩 페이지", status: "todo", createdAt: "2024-12-15T00:00:00Z" },
+      { id: "t3-6", milestoneId: "m3", title: "프로덕션 배포 및 모니터링", status: "todo", createdAt: "2025-01-01T00:00:00Z" },
+    ],
     createdAt: "2024-10-01T00:00:00Z",
     updatedAt: "2024-11-15T00:00:00Z",
   },
@@ -370,7 +394,12 @@ const dummyMilestones: Milestone[] = [
     dueDate: "2024-07-15",
     status: "closed",
     openIssuesCount: 0,
-    closedIssuesCount: 8,
+    closedIssuesCount: 3,
+    tasks: [
+      { id: "t4-1", milestoneId: "m4", title: "와이어프레임 제작", status: "done", createdAt: "2024-06-01T00:00:00Z", completedAt: "2024-06-15T00:00:00Z" },
+      { id: "t4-2", milestoneId: "m4", title: "프로토타입 개발", status: "done", createdAt: "2024-06-15T00:00:00Z", completedAt: "2024-07-01T00:00:00Z" },
+      { id: "t4-3", milestoneId: "m4", title: "초기 사용자 인터뷰 (10명)", status: "done", createdAt: "2024-07-01T00:00:00Z", completedAt: "2024-07-10T00:00:00Z" },
+    ],
     createdAt: "2024-06-01T00:00:00Z",
     updatedAt: "2024-07-10T00:00:00Z",
     closedAt: "2024-07-10T00:00:00Z",
@@ -798,9 +827,11 @@ function DevPostCard({ post }: DevPostCardProps) {
 // 마일스톤 탭 컴포넌트 - 테이블 기반 모던 UI
 interface MilestonesTabProps {
   milestones: Milestone[];
+  projectId: string;
 }
 
-function MilestonesTab({ milestones: initialMilestones }: MilestonesTabProps) {
+function MilestonesTab({ milestones: initialMilestones, projectId }: MilestonesTabProps) {
+  const navigate = useNavigate();
   const [milestones, setMilestones] = useState(initialMilestones);
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -908,6 +939,7 @@ function MilestonesTab({ milestones: initialMilestones }: MilestonesTabProps) {
     }
   };
 
+
   const getProgress = (m: Milestone) => {
     const total = m.openIssuesCount + m.closedIssuesCount;
     return total > 0 ? Math.round((m.closedIssuesCount / total) * 100) : 0;
@@ -976,139 +1008,144 @@ function MilestonesTab({ milestones: initialMilestones }: MilestonesTabProps) {
           {filteredMilestones.map((milestone) => {
             const progress = getProgress(milestone);
             const dueLabel = getDueLabel(milestone.dueDate, milestone.status);
-            const total = milestone.openIssuesCount + milestone.closedIssuesCount;
 
             return (
               <Card 
                 key={milestone.id}
-                className="hover:bg-surface-50/50 dark:hover:bg-surface-800/30 transition-colors cursor-pointer"
+                className="transition-colors"
               >
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    {/* Progress Circle */}
-                    <div
-                      onClick={() => handleToggleStatus(milestone.id)}
-                      className={cn(
-                        "flex flex-col items-center justify-center min-w-[50px] py-2 rounded-lg transition-colors cursor-pointer",
-                        milestone.status === "closed"
-                          ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-                          : "bg-surface-100 text-surface-500 hover:bg-primary-50 hover:text-primary-600 dark:bg-surface-800 dark:hover:bg-primary-900/20"
-                      )}
-                    >
-                      {milestone.status === "closed" ? (
-                        <CheckCircle2 className="h-5 w-5" />
-                      ) : (
-                        <span className="text-sm font-bold">{progress}%</span>
-                      )}
-                      <span className="text-[10px] mt-0.5">
-                        {milestone.status === "closed" ? "완료" : "진행률"}
-                      </span>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className={cn(
-                          "font-semibold text-surface-900 dark:text-surface-50",
-                          milestone.status === "closed" && "line-through opacity-60"
-                        )}>
-                          {milestone.title}
-                        </h3>
-                        {milestone.status === "closed" && (
-                          <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-[10px]">
-                            완료됨
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      {milestone.description && (
-                        <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-1 mb-2">
-                          {milestone.description}
-                        </p>
-                      )}
-
-                      {/* Stats Row */}
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surface-500">
-                        {/* Progress Bar */}
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 h-1.5 rounded-full bg-surface-200 dark:bg-surface-700 overflow-hidden">
-                            <div
-                              className={cn(
-                                "h-full rounded-full transition-all",
-                                milestone.status === "closed" 
-                                  ? "bg-emerald-500" 
-                                  : "bg-primary-500"
-                              )}
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                        </div>
-                        
-                        {/* Task Count */}
-                        <span className="flex items-center gap-1">
-                          <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                          {milestone.closedIssuesCount}개 완료
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3 text-surface-400" />
-                          {milestone.openIssuesCount}개 남음
-                        </span>
-                        
-                        {/* Due Date */}
-                        {milestone.dueDate && (
-                          <span className={cn(
-                            "flex items-center gap-1",
-                            dueLabel?.isOverdue ? "text-rose-500" : ""
-                          )}>
-                            <Calendar className="h-3 w-3" />
-                            {new Date(milestone.dueDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
-                            {dueLabel && milestone.status === "open" && (
-                              <span className={dueLabel.isOverdue ? "text-rose-500" : "text-surface-400"}>
-                                ({dueLabel.label})
-                              </span>
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenModal(milestone);
-                        }}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(milestone.id);
-                        }}
-                        className="h-8 w-8 p-0 text-surface-400 hover:text-rose-500"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant={milestone.status === "open" ? "primary" : "outline"}
-                        size="sm"
+                <CardContent className="p-0">
+                  {/* Header - 클릭하면 상세 페이지로 이동 */}
+                                  <div 
+                                    className="p-4 cursor-pointer hover:bg-surface-50/50 dark:hover:bg-surface-800/30 transition-colors"
+                                    onClick={() => navigate(`/project/${projectId}/community/milestones/${milestone.id}`)}
+                                  >
+                    <div className="flex items-start gap-4">
+                      {/* Progress Circle */}
+                      <div
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleStatus(milestone.id);
                         }}
-                        className="h-8 text-xs ml-1"
+                        className={cn(
+                          "flex flex-col items-center justify-center min-w-[50px] py-2 rounded-lg transition-colors cursor-pointer",
+                          milestone.status === "closed"
+                            ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                            : "bg-surface-100 text-surface-500 hover:bg-primary-50 hover:text-primary-600 dark:bg-surface-800 dark:hover:bg-primary-900/20"
+                        )}
                       >
-                        {milestone.status === "open" ? "완료" : "재개"}
-                      </Button>
+                        {milestone.status === "closed" ? (
+                          <CheckCircle2 className="h-5 w-5" />
+                        ) : (
+                          <span className="text-sm font-bold">{progress}%</span>
+                        )}
+                        <span className="text-[10px] mt-0.5">
+                          {milestone.status === "closed" ? "완료" : "진행률"}
+                        </span>
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className={cn(
+                            "font-semibold text-surface-900 dark:text-surface-50",
+                            milestone.status === "closed" && "line-through opacity-60"
+                          )}>
+                            {milestone.title}
+                          </h3>
+                          {milestone.status === "closed" && (
+                            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-[10px]">
+                              완료됨
+                            </Badge>
+                          )}
+                          <ChevronRight className="h-4 w-4 text-surface-400" />
+                        </div>
+                        
+                        {milestone.description && (
+                          <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-1 mb-2">
+                            {milestone.description}
+                          </p>
+                        )}
+
+                        {/* Stats Row */}
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surface-500">
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-1.5 rounded-full bg-surface-200 dark:bg-surface-700 overflow-hidden">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full transition-all",
+                                  milestone.status === "closed" 
+                                    ? "bg-emerald-500" 
+                                    : "bg-primary-500"
+                                )}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          </div>
+                          <span className="flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            {milestone.closedIssuesCount}개 완료
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-surface-400" />
+                            {milestone.openIssuesCount}개 남음
+                          </span>
+                          {milestone.dueDate && (
+                            <span className={cn(
+                              "flex items-center gap-1",
+                              dueLabel?.isOverdue ? "text-rose-500" : ""
+                            )}>
+                              <Calendar className="h-3 w-3" />
+                              {new Date(milestone.dueDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                              {dueLabel && milestone.status === "open" && (
+                                <span className={dueLabel.isOverdue ? "text-rose-500" : "text-surface-400"}>
+                                  ({dueLabel.label})
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenModal(milestone);
+                          }}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(milestone.id);
+                          }}
+                          className="h-8 w-8 p-0 text-surface-400 hover:text-rose-500"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant={milestone.status === "open" ? "primary" : "outline"}
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleStatus(milestone.id);
+                          }}
+                          className="h-8 text-xs ml-1"
+                        >
+                          {milestone.status === "open" ? "완료" : "재개"}
+                        </Button>
+                      </div>
                     </div>
                   </div>
+
                 </CardContent>
               </Card>
             );
@@ -1494,7 +1531,7 @@ export function ProjectCommunityPage() {
 
           {/* 마일스톤 - GitHub 스타일 */}
           {activeTab === "milestones" && (
-            <MilestonesTab milestones={dummyMilestones} />
+            <MilestonesTab milestones={dummyMilestones} projectId={id || "1"} />
           )}
 
           {/* 변경사항 */}

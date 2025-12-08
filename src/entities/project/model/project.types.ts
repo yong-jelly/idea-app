@@ -31,6 +31,18 @@ export interface Project {
 }
 
 export type MilestoneStatus = "open" | "closed";
+export type TaskStatus = "todo" | "done";
+
+export interface MilestoneTask {
+  id: string;
+  milestoneId: string;
+  title: string;
+  description?: string;
+  dueDate?: string;
+  status: TaskStatus;
+  createdAt: string;
+  completedAt?: string;
+}
 
 export interface Milestone {
   id: string;
@@ -41,6 +53,7 @@ export interface Milestone {
   status: MilestoneStatus;
   openIssuesCount: number;
   closedIssuesCount: number;
+  tasks?: MilestoneTask[];
   createdAt: string;
   updatedAt: string;
   closedAt?: string;

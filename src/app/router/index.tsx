@@ -15,6 +15,7 @@ import {
   FeatureRequestsPage,
   ProjectDetailPage,
   ProjectCommunityPage,
+  MilestoneDetailPage,
   ProfilePage,
   MyProjectsPage,
   BookmarksPage,
@@ -76,6 +77,10 @@ const router = createBrowserRouter([
       {
         path: "project/:id/community/:tab",
         element: <ProjectCommunityPage />,
+      },
+      {
+        path: "project/:id/community/milestones/:milestoneId",
+        element: <MilestoneDetailPage />,
       },
       {
         path: "project/:id/support",
