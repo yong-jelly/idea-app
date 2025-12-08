@@ -15,6 +15,9 @@ export interface Project {
   thumbnail?: string;
   repositoryUrl?: string;
   demoUrl?: string;
+  androidStoreUrl?: string;
+  iosStoreUrl?: string;
+  macStoreUrl?: string;
   currentFunding: number;
   targetFunding: number;
   backersCount: number;
@@ -23,6 +26,7 @@ export interface Project {
   daysLeft: number;
   status: ProjectStatus;
   featured: boolean;
+  isLiked?: boolean;
   createdAt: string;
 }
 

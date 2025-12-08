@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import {
-  ChevronUp,
   ExternalLink,
   Share2,
   Bookmark,
   MessageSquare,
   Users,
-  Calendar,
   Github,
   Globe,
   Heart,
@@ -17,15 +15,13 @@ import {
   ChevronRight,
   Send,
   Reply,
-  Trophy,
   Megaphone,
   Info,
 } from "lucide-react";
 import { Button, Avatar, Badge, Textarea } from "@/shared/ui";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
-import { useProjectStore, CATEGORY_INFO } from "@/entities/project";
+import { useProjectStore, CATEGORY_INFO, UpvoteCard } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
-import { usePostStore } from "@/entities/post";
 
 // 댓글 타입 정의
 interface ProjectComment {
@@ -367,21 +363,87 @@ export function ProjectDetailPage() {
                   </div>
                 </div>
 
-                {/* Meta */}
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                  <span className="text-surface-500 dark:text-surface-400">
-                    {formatNumber(project.backersCount)} followers
-                  </span>
-                  {project.demoUrl && (
+                {/* Links */}
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  {project.repositoryUrl ? (
+                    <a
+                      href={project.repositoryUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-full bg-surface-100 px-2 py-1 text-xs text-surface-600 transition-colors hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-400 dark:hover:bg-surface-700"
+                    >
+                      <Github className="h-3 w-3" />
+                      저장소
+                    </a>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-surface-50 px-2 py-1 text-xs text-surface-300 dark:bg-surface-900 dark:text-surface-600 cursor-not-allowed">
+                      <Github className="h-3 w-3" />
+                      저장소
+                    </span>
+                  )}
+                  {project.demoUrl ? (
                     <a
                       href={project.demoUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                      className="inline-flex items-center gap-1 rounded-full bg-surface-100 px-2 py-1 text-xs text-surface-600 transition-colors hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-400 dark:hover:bg-surface-700"
                     >
-                      <Globe className="h-4 w-4" />
-                      웹사이트 방문
+                      <Globe className="h-3 w-3" />
+                      웹사이트
                     </a>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-surface-50 px-2 py-1 text-xs text-surface-300 dark:bg-surface-900 dark:text-surface-600 cursor-not-allowed">
+                      <Globe className="h-3 w-3" />
+                      웹사이트
+                    </span>
+                  )}
+                  {project.androidStoreUrl ? (
+                    <a
+                      href={project.androidStoreUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs text-green-700 transition-colors hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50"
+                    >
+                      <Play className="h-3 w-3 fill-current" />
+                      Google Play
+                    </a>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-surface-50 px-2 py-1 text-xs text-surface-300 dark:bg-surface-900 dark:text-surface-600 cursor-not-allowed">
+                      <Play className="h-3 w-3" />
+                      Google Play
+                    </span>
+                  )}
+                  {project.iosStoreUrl ? (
+                    <a
+                      href={project.iosStoreUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
+                    >
+                      <span className="text-[10px]">🍎</span>
+                      App Store
+                    </a>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-surface-50 px-2 py-1 text-xs text-surface-300 dark:bg-surface-900 dark:text-surface-600 cursor-not-allowed grayscale">
+                      <span className="text-[10px]">🍎</span>
+                      App Store
+                    </span>
+                  )}
+                  {project.macStoreUrl ? (
+                    <a
+                      href={project.macStoreUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-full bg-surface-100 px-2 py-1 text-xs text-surface-600 transition-colors hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-400 dark:hover:bg-surface-700"
+                    >
+                      <span className="text-[10px]">💻</span>
+                      Mac
+                    </a>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-surface-50 px-2 py-1 text-xs text-surface-300 dark:bg-surface-900 dark:text-surface-600 cursor-not-allowed grayscale">
+                      <span className="text-[10px]">💻</span>
+                      Mac
+                    </span>
                   )}
                 </div>
               </div>
@@ -419,9 +481,9 @@ export function ProjectDetailPage() {
             <div className="border-b border-surface-200 dark:border-surface-800 mb-6">
               <nav className="flex items-center gap-6">
                 {[
-                  { id: "overview", label: "Overview" },
-                  { id: "reviews", label: "Reviews" },
-                  { id: "team", label: "Team" },
+                  { id: "overview", label: "개요" },
+                  { id: "reviews", label: "리뷰" },
+                  { id: "team", label: "팀" },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -507,12 +569,12 @@ export function ProjectDetailPage() {
                   </div>
                 </div>
 
-                {/* Launch Team */}
-                <div className="mb-8 p-4 rounded-xl bg-surface-50 dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-800">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Users className="h-5 w-5 text-surface-500" />
-                    <h3 className="font-semibold text-surface-900 dark:text-surface-50">
-                      Launch Team
+                {/* 팀 */}
+                <div className="mb-8 p-4 rounded-lg bg-surface-50/50 dark:bg-surface-900/50 ring-1 ring-surface-100 dark:ring-surface-800/50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users className="h-4 w-4 text-surface-400" />
+                    <h3 className="text-sm font-medium text-surface-600 dark:text-surface-400">
+                      팀
                     </h3>
                   </div>
                   <div className="flex flex-wrap gap-3">
@@ -635,32 +697,13 @@ export function ProjectDetailPage() {
           {/* Sidebar */}
           <aside className="hidden lg:block w-80 shrink-0">
             <div className="sticky top-20 space-y-4">
-              {/* Upvote Card - Enhanced */}
-              <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg">
-                <div className="p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <div className="text-primary-100 text-sm font-medium">Today's Rank</div>
-                      <div className="text-4xl font-bold">#{id || 1}</div>
-                    </div>
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                      <Trophy className="h-7 w-7" />
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => toggleProjectLike(project.id)}
-                    className={cn(
-                      "w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-lg transition-all",
-                      project.isLiked
-                        ? "bg-white text-primary-600"
-                        : "bg-white/20 hover:bg-white/30 backdrop-blur-sm"
-                    )}
-                  >
-                    <ChevronUp className={cn("h-6 w-6", project.isLiked && "text-primary-500")} />
-                    {project.isLiked ? "Upvoted" : "Upvote"} • {formatNumber(project.likesCount)}
-                  </button>
-                </div>
-              </div>
+              {/* Upvote Card */}
+              <UpvoteCard
+                rank={Number(id) || 1}
+                upvoteCount={project.likesCount}
+                isUpvoted={project.isLiked}
+                onUpvote={() => toggleProjectLike(project.id)}
+              />
 
               {/* Quick Stats */}
               <div className="grid grid-cols-3 gap-2">
@@ -668,19 +711,19 @@ export function ProjectDetailPage() {
                   <div className="text-lg font-bold text-surface-900 dark:text-surface-50">
                     {formatNumber(project.backersCount)}
                   </div>
-                  <div className="text-[11px] text-surface-500">Supporters</div>
+                  <div className="text-[11px] text-surface-500">서포터</div>
                 </div>
                 <div className="p-3 rounded-xl bg-surface-50 dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-800 text-center">
                   <div className="text-lg font-bold text-surface-900 dark:text-surface-50">
                     {formatNumber(project.commentsCount)}
                   </div>
-                  <div className="text-[11px] text-surface-500">Comments</div>
+                  <div className="text-[11px] text-surface-500">댓글</div>
                 </div>
                 <div className="p-3 rounded-xl bg-surface-50 dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-800 text-center">
-                  <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                    Active
+                  <div className="text-lg font-bold text-surface-900 dark:text-surface-50">
+                    {formatNumber(project.likesCount)}
                   </div>
-                  <div className="text-[11px] text-surface-500">Status</div>
+                  <div className="text-[11px] text-surface-500">저장됨</div>
                 </div>
               </div>
 
@@ -702,10 +745,6 @@ export function ProjectDetailPage() {
                   <div className="flex items-center gap-2">
                     <Megaphone className="h-4 w-4 text-primary-500" />
                     <span className="font-semibold text-sm text-surface-900 dark:text-surface-50">커뮤니티</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">활발함</span>
                   </div>
                 </div>
                 <div className="divide-y divide-surface-100 dark:divide-surface-800">
