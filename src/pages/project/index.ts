@@ -5,4 +5,5 @@ export { ProjectDetailPage } from "./ProjectDetailPage";
 export { ProjectCommunityPage } from "./ProjectCommunityPage";
 export { MilestoneDetailPage } from "./MilestoneDetailPage";
 export { FeedbackDetailPage } from "./FeedbackDetailPage";
+export { RewardManagePage } from "./RewardManagePage";
 
