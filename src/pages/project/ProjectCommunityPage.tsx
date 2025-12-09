@@ -2194,113 +2194,120 @@ function RewardsTab({ rewards, pointRules, topSupporters, claimedRewards, projec
             </span>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* 마일스톤 스타일 리스트 */}
+          <div className="space-y-3">
             {rewards.filter(r => r.isActive).map((reward) => {
               const typeInfo = REWARD_TYPE_INFO[reward.type];
-              const TypeIcon = typeInfo?.icon || Trophy;
               const isUnlimited = reward.quantity === -1;
               const remaining = isUnlimited ? Infinity : reward.quantity - reward.claimedCount;
-              const progress = isUnlimited ? 0 : (reward.claimedCount / reward.quantity) * 100;
+              const progress = isUnlimited ? 100 : Math.round((reward.claimedCount / reward.quantity) * 100);
               const canClaim = userPoints >= reward.pointsRequired && remaining > 0;
-              const isAlmostGone = !isUnlimited && remaining <= 5 && remaining > 0;
               const isSoldOut = remaining === 0;
-              const isExpiringSoon = reward.expiresAt && new Date(reward.expiresAt) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
               return (
                 <Card 
                   key={reward.id} 
                   className={cn(
-                    "group transition-all hover:shadow-md",
-                    isSoldOut && "opacity-60"
+                    "transition-colors",
+                    isSoldOut && "opacity-50"
                   )}
                 >
-                  <CardContent className="p-4">
-                    {/* 헤더 */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-xl",
-                          typeInfo?.color,
-                          "bg-current/10"
-                        )}>
-                          <TypeIcon className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {typeInfo?.label}
-                          </Badge>
-                          {reward.platform && (
-                            <Badge variant="outline" className="text-[10px] ml-1">
-                              {reward.platform.toUpperCase()}
-                            </Badge>
+                  <CardContent className="p-0">
+                    <div 
+                      className="p-4 cursor-pointer hover:bg-surface-50/50 dark:hover:bg-surface-800/30 transition-colors"
+                      onClick={() => !isSoldOut && handleClaimReward(reward)}
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* 포인트 표시 (마일스톤의 진행률 원처럼) */}
+                        <div
+                          className={cn(
+                            "flex flex-col items-center justify-center min-w-[50px] py-2 rounded-lg transition-colors",
+                            canClaim
+                              ? "bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
+                              : isSoldOut
+                                ? "bg-surface-100 text-surface-400 dark:bg-surface-800"
+                                : "bg-surface-100 text-surface-500 dark:bg-surface-800"
                           )}
+                        >
+                          <span className="text-sm font-bold">{formatNumber(reward.pointsRequired)}</span>
+                          <span className="text-[10px]">P</span>
+                        </div>
+
+                        {/* 내용 */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold text-surface-900 dark:text-surface-50">
+                              {reward.title}
+                            </h4>
+                            <Badge variant="secondary" className="text-[10px]">
+                              {typeInfo?.label}
+                            </Badge>
+                            {reward.platform && (
+                              <span className="text-[10px] text-surface-400">
+                                {reward.platform.toUpperCase()}
+                              </span>
+                            )}
+                            {isSoldOut && (
+                              <Badge className="bg-surface-200 text-surface-500 dark:bg-surface-700 dark:text-surface-400 text-[10px]">
+                                품절
+                              </Badge>
+                            )}
+                            <ChevronRight className="h-4 w-4 text-surface-400 ml-auto shrink-0" />
+                          </div>
+                          
+                          <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-1 mb-2">
+                            {reward.description}
+                          </p>
+
+                          {/* 하단 정보 */}
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surface-500">
+                            {/* 수량 진행률 */}
+                            {!isUnlimited && (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-16 h-1.5 rounded-full bg-surface-200 dark:bg-surface-700 overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full bg-surface-400 dark:bg-surface-500 transition-all"
+                                      style={{ width: `${progress}%` }}
+                                    />
+                                  </div>
+                                </div>
+                                <span>
+                                  {remaining}개 남음
+                                </span>
+                              </>
+                            )}
+                            {isUnlimited && (
+                              <span className="text-surface-400">무제한</span>
+                            )}
+                            {reward.expiresAt && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {new Date(reward.expiresAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}까지
+                              </span>
+                            )}
+                            <span className="text-surface-400">
+                              {formatNumber(reward.claimedCount)}명 교환
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 액션 버튼 */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant={canClaim ? "primary" : "outline"}
+                            size="sm"
+                            disabled={!canClaim}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleClaimReward(reward);
+                            }}
+                            className="h-8 text-xs"
+                          >
+                            {isSoldOut ? "품절" : canClaim ? "교환" : "부족"}
+                          </Button>
                         </div>
                       </div>
-                      {isAlmostGone && (
-                        <Badge className="bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 text-[10px] animate-pulse">
-                          품절 임박
-                        </Badge>
-                      )}
-                      {isExpiringSoon && !isSoldOut && (
-                        <Badge className="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 text-[10px]">
-                          기간 한정
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* 내용 */}
-                    <h4 className="font-semibold text-surface-900 dark:text-surface-50 mb-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                      {reward.title}
-                    </h4>
-                    <p className="text-sm text-surface-500 dark:text-surface-400 mb-3 line-clamp-2">
-                      {reward.description}
-                    </p>
-
-                    {/* 수량 표시 */}
-                    {!isUnlimited && (
-                      <div className="mb-3">
-                        <div className="flex justify-between text-xs text-surface-500 mb-1">
-                          <span>남은 수량</span>
-                          <span className={cn(isAlmostGone && "text-rose-500 font-medium")}>
-                            {remaining} / {reward.quantity}
-                          </span>
-                        </div>
-                        <Progress value={progress} size="sm" />
-                      </div>
-                    )}
-
-                    {isUnlimited && (
-                      <div className="mb-3">
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                          <Check className="h-3 w-3" /> 무제한
-                        </span>
-                      </div>
-                    )}
-
-                    {/* 만료일 */}
-                    {reward.expiresAt && (
-                      <div className="mb-3 text-xs text-surface-500 flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {new Date(reward.expiresAt).toLocaleDateString('ko-KR')}까지
-                      </div>
-                    )}
-
-                    {/* 액션 */}
-                    <div className="flex items-center justify-between pt-2 border-t border-surface-100 dark:border-surface-800">
-                      <span className={cn(
-                        "font-bold",
-                        canClaim ? "text-primary-600 dark:text-primary-400" : "text-surface-400"
-                      )}>
-                        {formatNumber(reward.pointsRequired)} P
-                      </span>
-                      <Button
-                        size="sm"
-                        disabled={!canClaim}
-                        variant={canClaim ? "primary" : "outline"}
-                        onClick={() => handleClaimReward(reward)}
-                      >
-                        {isSoldOut ? "품절" : canClaim ? "교환하기" : "포인트 부족"}
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>

@@ -338,3 +338,4 @@ export function BetaAccessModal({ open, onOpenChange, reward, userPoints, onAppl
   );
 }
 
+
