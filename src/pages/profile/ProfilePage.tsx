@@ -1,9 +1,9 @@
 import { useParams, useNavigate, Link } from "react-router";
-import { Calendar, Link as LinkIcon, Github, Twitter, Settings, UserPlus, FileText, Folder, Heart, ArrowLeft } from "lucide-react";
+import { Calendar, Link as LinkIcon, Github, Twitter, Settings, UserPlus, FileText, Folder, Heart, ArrowLeft, Award } from "lucide-react";
 import { useState } from "react";
 import { Button, Avatar, Badge } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
-import { useUserStore, type User } from "@/entities/user";
+import { useUserStore, type User, type Badge as UserBadge, BadgeDisplay, BadgeGrid, BADGE_INFO } from "@/entities/user";
 import { usePostStore } from "@/entities/post";
 import { ProjectListItem, useProjectStore } from "@/entities/project";
 import { ProfileEditModal } from "./ProfileEditModal";
@@ -21,6 +21,16 @@ import type {
   ExtendedInteractions,
 } from "@/entities/feed";
 
+// 더미 배지 데이터
+const dummyBadges: UserBadge[] = [
+  { id: "b1", type: "early_supporter", name: "얼리 서포터", description: "프로젝트 초기에 서포트", icon: "🌟", rarity: "rare", earnedAt: "2024-02-01T00:00:00Z", projectTitle: "Indie App" },
+  { id: "b2", type: "bug_hunter", name: "버그 헌터", description: "10개 이상의 버그 발견", icon: "🐛", rarity: "epic", earnedAt: "2024-05-15T00:00:00Z" },
+  { id: "b3", type: "streak_7", name: "7일 연속", description: "7일 연속 출석", icon: "🔥", rarity: "common", earnedAt: "2024-06-01T00:00:00Z", projectTitle: "Dev Tools" },
+  { id: "b4", type: "beta_tester", name: "베타 테스터", description: "베타 테스트 참여", icon: "🧪", rarity: "rare", earnedAt: "2024-07-10T00:00:00Z", projectTitle: "Indie App" },
+  { id: "b5", type: "top_contributor", name: "탑 기여자", description: "상위 기여자로 선정", icon: "🏆", rarity: "legendary", earnedAt: "2024-08-20T00:00:00Z", projectTitle: "Open Source Kit" },
+  { id: "b6", type: "first_feedback", name: "첫 피드백", description: "첫 번째 피드백 작성", icon: "✨", rarity: "common", earnedAt: "2024-01-20T00:00:00Z" },
+];
+
 // 데모용 프로필 데이터
 const demoProfiles: Record<string, User> = {
   indie_dev: {
@@ -34,9 +44,10 @@ const demoProfiles: Record<string, User> = {
     twitter: "indie_dev",
     points: 1250,
     level: "gold",
-    followersCount: 156,
-    followingCount: 89,
+    subscribedProjectsCount: 12,
+    supportedProjectsCount: 8,
     projectsCount: 5,
+    badges: dummyBadges,
     createdAt: "2024-01-15T00:00:00Z",
   },
   frontend_lee: {
@@ -50,9 +61,10 @@ const demoProfiles: Record<string, User> = {
     twitter: undefined,
     points: 890,
     level: "silver",
-    followersCount: 89,
-    followingCount: 45,
+    subscribedProjectsCount: 5,
+    supportedProjectsCount: 3,
     projectsCount: 3,
+    badges: dummyBadges.slice(0, 3),
     createdAt: "2024-03-01T00:00:00Z",
   },
 };
@@ -108,7 +120,7 @@ function convertToFeedPost(post: ReturnType<typeof usePostStore>["posts"][0]) {
   }
 }
 
-type TabType = "posts" | "projects" | "likes";
+type TabType = "posts" | "projects" | "likes" | "badges";
 
 export function ProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -162,10 +174,13 @@ export function ProfilePage() {
     }
   };
 
+  const userBadges = profile.badges || [];
+
   const profileNavItems = [
     { id: "posts" as TabType, label: "포스트", icon: FileText, count: userPosts.length },
     { id: "projects" as TabType, label: "프로젝트", icon: Folder, count: userProjects.length },
     { id: "likes" as TabType, label: "좋아요", icon: Heart, count: likedPosts.length },
+    { id: "badges" as TabType, label: "배지", icon: Award, count: userBadges.length },
   ];
 
   return (
@@ -208,15 +223,27 @@ export function ProfilePage() {
               </div>
             </div>
 
+            {/* Badges Preview */}
+            {userBadges.length > 0 && (
+              <div className="mb-3">
+                <BadgeDisplay 
+                  badges={userBadges} 
+                  maxDisplay={5} 
+                  size="sm"
+                  onViewAll={() => setActiveTab("badges")}
+                />
+              </div>
+            )}
+
             {/* Stats */}
             <div className="flex items-center gap-3 text-sm mb-3">
               <span>
-                <strong className="text-surface-900 dark:text-surface-50">{profile.followingCount}</strong>
-                <span className="text-surface-500 ml-1 text-xs">팔로잉</span>
+                <strong className="text-surface-900 dark:text-surface-50">{profile.subscribedProjectsCount || 0}</strong>
+                <span className="text-surface-500 ml-1 text-xs">구독</span>
               </span>
               <span>
-                <strong className="text-surface-900 dark:text-surface-50">{profile.followersCount}</strong>
-                <span className="text-surface-500 ml-1 text-xs">팔로워</span>
+                <strong className="text-surface-900 dark:text-surface-50">{profile.supportedProjectsCount || 0}</strong>
+                <span className="text-surface-500 ml-1 text-xs">서포트</span>
               </span>
             </div>
 
@@ -461,6 +488,16 @@ export function ProfilePage() {
                 <p className="text-surface-500 text-sm">좋아요한 포스트가 없습니다</p>
               </div>
             )}
+          </div>
+
+          {/* 배지 탭 */}
+          <div className={activeTab === "badges" ? "block" : "hidden"}>
+            <div className="p-4">
+              <h3 className="font-semibold text-surface-900 dark:text-surface-50 mb-4">
+                획득한 배지 ({userBadges.length})
+              </h3>
+              <BadgeGrid badges={userBadges} emptyMessage="아직 획득한 배지가 없습니다" />
+            </div>
           </div>
         </div>
       </main>

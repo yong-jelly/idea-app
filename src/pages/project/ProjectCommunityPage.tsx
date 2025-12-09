@@ -41,6 +41,18 @@ import {
   Github,
   Download,
   Link2,
+  Smartphone,
+  Monitor,
+  Globe,
+  Star,
+  Crown,
+  Medal,
+  Copy,
+  Check,
+  Settings,
+  Users,
+  Ticket,
+  Zap,
 } from "lucide-react";
 import { Button, Avatar, Badge, Textarea, Progress, Card, CardContent, CardHeader, CardTitle, Input } from "@/shared/ui";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
@@ -459,32 +471,142 @@ const dummyRewards: Reward[] = [
   {
     id: "r1",
     projectId: "1",
-    title: "얼리버드 서포터",
-    description: "프로젝트 초기 지원자를 위한 특별 보상",
+    title: "얼리버드 서포터 쿠폰",
+    description: "프로젝트 초기 지원자를 위한 20% 할인 쿠폰",
     pointsRequired: 100,
     quantity: 500,
     claimedCount: 342,
-    type: "digital",
+    type: "redeem_code",
+    codePrefix: "EARLY2024",
+    isActive: true,
+    createdAt: "2024-01-01T00:00:00Z",
   },
   {
     id: "r2",
+    projectId: "1",
+    title: "iOS 베타 테스트 참여권",
+    description: "TestFlight를 통해 앱을 미리 체험해보세요",
+    pointsRequired: 300,
+    quantity: 50,
+    claimedCount: 23,
+    type: "beta_access",
+    platform: "ios",
+    accessUrl: "https://testflight.apple.com/join/xxxxx",
+    isActive: true,
+    createdAt: "2024-06-01T00:00:00Z",
+  },
+  {
+    id: "r3",
     projectId: "1",
     title: "프리미엄 1개월 이용권",
     description: "프리미엄 기능을 1개월간 무료로 이용",
     pointsRequired: 500,
     quantity: 100,
     claimedCount: 78,
-    type: "access",
+    type: "redeem_code",
+    codePrefix: "PREMIUM",
+    expiresAt: "2025-03-31T23:59:59Z",
+    isActive: true,
+    createdAt: "2024-03-01T00:00:00Z",
   },
   {
-    id: "r3",
+    id: "r4",
+    projectId: "1",
+    title: "Android 베타 테스트",
+    description: "Play Store 내부 테스트 프로그램 참여",
+    pointsRequired: 300,
+    quantity: -1, // 무제한
+    claimedCount: 156,
+    type: "beta_access",
+    platform: "android",
+    accessUrl: "https://play.google.com/apps/testing/xxxxx",
+    isActive: true,
+    createdAt: "2024-06-15T00:00:00Z",
+  },
+  {
+    id: "r5",
     projectId: "1",
     title: "한정판 굿즈 세트",
     description: "스티커, 티셔츠, 머그컵 등 굿즈 세트",
     pointsRequired: 2000,
     quantity: 50,
-    claimedCount: 12,
+    claimedCount: 48,
     type: "physical",
+    isActive: true,
+    createdAt: "2024-02-01T00:00:00Z",
+  },
+  {
+    id: "r6",
+    projectId: "1",
+    title: "디지털 아트워크 팩",
+    description: "프로젝트 컨셉 아트 & 배경화면 모음",
+    pointsRequired: 150,
+    quantity: -1,
+    claimedCount: 89,
+    type: "digital",
+    isActive: true,
+    createdAt: "2024-04-01T00:00:00Z",
+  },
+];
+
+// 포인트 규칙 더미 데이터
+import { type PointRule, POINT_ACTIVITY_INFO } from "@/entities/project";
+
+const dummyPointRules: PointRule[] = [
+  { id: "pr1", projectId: "1", activityType: "daily_checkin", points: 10, maxPerDay: 1, description: "매일 출석체크", isActive: true },
+  { id: "pr2", projectId: "1", activityType: "weekly_streak", points: 50, description: "7일 연속 출석 보너스", isActive: true },
+  { id: "pr3", projectId: "1", activityType: "feedback_submit", points: 30, maxPerDay: 3, description: "피드백 제출", isActive: true },
+  { id: "pr4", projectId: "1", activityType: "feedback_accepted", points: 100, description: "피드백 채택 시 추가 보너스", isActive: true },
+  { id: "pr5", projectId: "1", activityType: "bug_report", points: 50, maxPerDay: 5, description: "버그 신고", isActive: true },
+  { id: "pr6", projectId: "1", activityType: "feature_vote", points: 5, maxPerDay: 10, description: "기능 투표", isActive: true },
+  { id: "pr7", projectId: "1", activityType: "comment", points: 5, maxPerDay: 10, description: "댓글 작성", isActive: true },
+  { id: "pr8", projectId: "1", activityType: "share", points: 20, maxPerDay: 3, description: "SNS 공유", isActive: true },
+];
+
+// 서포터 순위 더미 데이터
+interface TopSupporter {
+  rank: number;
+  user: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatar?: string;
+  };
+  points: number;
+  feedbackCount: number;
+  joinedAt: string;
+}
+
+const dummyTopSupporters: TopSupporter[] = [
+  { rank: 1, user: { id: "u1", username: "power_user", displayName: "파워유저" }, points: 2850, feedbackCount: 45, joinedAt: "2024-01-15" },
+  { rank: 2, user: { id: "u2", username: "bug_master", displayName: "버그마스터" }, points: 2340, feedbackCount: 38, joinedAt: "2024-02-01" },
+  { rank: 3, user: { id: "u3", username: "feedback_king", displayName: "피드백킹" }, points: 1890, feedbackCount: 52, joinedAt: "2024-01-20" },
+  { rank: 4, user: { id: "u4", username: "early_bird", displayName: "얼리버드" }, points: 1650, feedbackCount: 28, joinedAt: "2024-01-10" },
+  { rank: 5, user: { id: "u5", username: "active_dev", displayName: "활발한개발자" }, points: 1420, feedbackCount: 22, joinedAt: "2024-03-05" },
+];
+
+// 교환 내역 더미 데이터
+interface ClaimedRewardHistory {
+  id: string;
+  reward: Reward;
+  code?: string;
+  claimedAt: string;
+  isUsed: boolean;
+}
+
+const dummyClaimedRewards: ClaimedRewardHistory[] = [
+  {
+    id: "cr1",
+    reward: dummyRewards[0],
+    code: "EARLY2024-ABC123",
+    claimedAt: "2024-11-15T10:30:00Z",
+    isUsed: false,
+  },
+  {
+    id: "cr2",
+    reward: dummyRewards[5],
+    claimedAt: "2024-10-20T14:20:00Z",
+    isUsed: true,
   },
 ];
 
@@ -1914,6 +2036,613 @@ function FeedbackTab({ feedbacks: initialFeedbacks, projectId }: FeedbackTabProp
   );
 }
 
+// 리워드 탭 컴포넌트
+interface RewardsTabProps {
+  rewards: Reward[];
+  pointRules: PointRule[];
+  topSupporters: TopSupporter[];
+  claimedRewards: ClaimedRewardHistory[];
+  projectId: string;
+  isOwner?: boolean;
+}
+
+// 리워드 타입 정보
+const REWARD_TYPE_INFO: Record<string, { label: string; icon: typeof Trophy; color: string }> = {
+  redeem_code: { label: "리딤코드", icon: Ticket, color: "text-emerald-500" },
+  beta_access: { label: "베타 액세스", icon: Zap, color: "text-violet-500" },
+  digital: { label: "디지털", icon: Download, color: "text-blue-500" },
+  physical: { label: "실물", icon: Gift, color: "text-amber-500" },
+};
+
+// 플랫폼 아이콘
+const PLATFORM_ICONS: Record<string, typeof Smartphone> = {
+  ios: Smartphone,
+  android: Smartphone,
+  desktop: Monitor,
+  web: Globe,
+};
+
+function RewardsTab({ rewards, pointRules, topSupporters, claimedRewards, projectId, isOwner }: RewardsTabProps) {
+  const { user } = useUserStore();
+  const [activeSection, setActiveSection] = useState<"rewards" | "earn" | "history" | "leaderboard">("rewards");
+  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
+  const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const userPoints = user?.points || 0;
+  const userLevel = user?.level || "bronze";
+
+  // 레벨 정보
+  const LEVEL_INFO = {
+    bronze: { label: "브론즈", color: "text-amber-700", bgColor: "bg-amber-100 dark:bg-amber-900/30", nextLevel: "silver", pointsRequired: 500 },
+    silver: { label: "실버", color: "text-surface-500", bgColor: "bg-surface-200 dark:bg-surface-700", nextLevel: "gold", pointsRequired: 1500 },
+    gold: { label: "골드", color: "text-yellow-500", bgColor: "bg-yellow-100 dark:bg-yellow-900/30", nextLevel: "platinum", pointsRequired: 5000 },
+    platinum: { label: "플래티넘", color: "text-cyan-500", bgColor: "bg-cyan-100 dark:bg-cyan-900/30", nextLevel: null, pointsRequired: null },
+  };
+
+  const currentLevelInfo = LEVEL_INFO[userLevel];
+  const progressToNextLevel = currentLevelInfo.pointsRequired 
+    ? Math.min((userPoints / currentLevelInfo.pointsRequired) * 100, 100)
+    : 100;
+
+  const handleClaimReward = (reward: Reward) => {
+    setSelectedReward(reward);
+    setIsClaimModalOpen(true);
+  };
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const sections = [
+    { id: "rewards" as const, label: "리워드", icon: Gift },
+    { id: "earn" as const, label: "포인트 적립", icon: Coins },
+    { id: "history" as const, label: "교환 내역", icon: Ticket },
+    { id: "leaderboard" as const, label: "서포터 순위", icon: Trophy },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* 포인트 현황 카드 */}
+      <Card className="bg-gradient-to-br from-primary-50 via-violet-50 to-primary-100 dark:from-primary-950/50 dark:via-violet-950/30 dark:to-primary-900/30 border-primary-200 dark:border-primary-800 overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary-200/30 dark:bg-primary-700/20 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-violet-200/30 dark:bg-violet-700/20 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <CardContent className="p-5 relative">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-violet-500 text-white shadow-lg">
+                <Coins className="h-8 w-8" />
+              </div>
+              <div>
+                <p className="text-sm text-primary-600 dark:text-primary-400 mb-0.5">내 포인트</p>
+                <p className="text-3xl font-bold text-primary-700 dark:text-primary-300">
+                  {formatNumber(userPoints)} <span className="text-lg font-medium">P</span>
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex-1 max-w-xs">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className={cn("text-sm font-semibold", currentLevelInfo.color)}>
+                    {currentLevelInfo.label}
+                  </span>
+                  {currentLevelInfo.nextLevel && (
+                    <>
+                      <ChevronRight className="h-3 w-3 text-surface-400" />
+                      <span className="text-sm text-surface-500">
+                        {LEVEL_INFO[currentLevelInfo.nextLevel as keyof typeof LEVEL_INFO].label}
+                      </span>
+                    </>
+                  )}
+                </div>
+                {currentLevelInfo.pointsRequired && (
+                  <span className="text-xs text-surface-500">
+                    {formatNumber(userPoints)} / {formatNumber(currentLevelInfo.pointsRequired)}
+                  </span>
+                )}
+              </div>
+              <Progress value={progressToNextLevel} className="h-2" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 섹션 탭 */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {sections.map((section) => {
+          const Icon = section.icon;
+          return (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
+                activeSection === section.id
+                  ? "bg-primary-500 text-white shadow-md"
+                  : "bg-surface-100 text-surface-600 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-400 dark:hover:bg-surface-700"
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {section.label}
+            </button>
+          );
+        })}
+        
+        {isOwner && (
+          <Link
+            to={`/project/${projectId}/community/rewards/manage`}
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-surface-900 text-white hover:bg-surface-800 dark:bg-surface-100 dark:text-surface-900 dark:hover:bg-surface-200 transition-all whitespace-nowrap ml-auto"
+          >
+            <Settings className="h-4 w-4" />
+            관리
+          </Link>
+        )}
+      </div>
+
+      {/* 리워드 목록 */}
+      {activeSection === "rewards" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-surface-900 dark:text-surface-50">
+              교환 가능한 리워드
+            </h3>
+            <span className="text-sm text-surface-500">
+              총 {rewards.filter(r => r.isActive).length}개
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {rewards.filter(r => r.isActive).map((reward) => {
+              const typeInfo = REWARD_TYPE_INFO[reward.type];
+              const TypeIcon = typeInfo?.icon || Trophy;
+              const isUnlimited = reward.quantity === -1;
+              const remaining = isUnlimited ? Infinity : reward.quantity - reward.claimedCount;
+              const progress = isUnlimited ? 0 : (reward.claimedCount / reward.quantity) * 100;
+              const canClaim = userPoints >= reward.pointsRequired && remaining > 0;
+              const isAlmostGone = !isUnlimited && remaining <= 5 && remaining > 0;
+              const isSoldOut = remaining === 0;
+              const isExpiringSoon = reward.expiresAt && new Date(reward.expiresAt) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+              return (
+                <Card 
+                  key={reward.id} 
+                  className={cn(
+                    "group transition-all hover:shadow-md",
+                    isSoldOut && "opacity-60"
+                  )}
+                >
+                  <CardContent className="p-4">
+                    {/* 헤더 */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-xl",
+                          typeInfo?.color,
+                          "bg-current/10"
+                        )}>
+                          <TypeIcon className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <Badge variant="secondary" className="text-[10px]">
+                            {typeInfo?.label}
+                          </Badge>
+                          {reward.platform && (
+                            <Badge variant="outline" className="text-[10px] ml-1">
+                              {reward.platform.toUpperCase()}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      {isAlmostGone && (
+                        <Badge className="bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 text-[10px] animate-pulse">
+                          품절 임박
+                        </Badge>
+                      )}
+                      {isExpiringSoon && !isSoldOut && (
+                        <Badge className="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 text-[10px]">
+                          기간 한정
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* 내용 */}
+                    <h4 className="font-semibold text-surface-900 dark:text-surface-50 mb-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                      {reward.title}
+                    </h4>
+                    <p className="text-sm text-surface-500 dark:text-surface-400 mb-3 line-clamp-2">
+                      {reward.description}
+                    </p>
+
+                    {/* 수량 표시 */}
+                    {!isUnlimited && (
+                      <div className="mb-3">
+                        <div className="flex justify-between text-xs text-surface-500 mb-1">
+                          <span>남은 수량</span>
+                          <span className={cn(isAlmostGone && "text-rose-500 font-medium")}>
+                            {remaining} / {reward.quantity}
+                          </span>
+                        </div>
+                        <Progress value={progress} size="sm" />
+                      </div>
+                    )}
+
+                    {isUnlimited && (
+                      <div className="mb-3">
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <Check className="h-3 w-3" /> 무제한
+                        </span>
+                      </div>
+                    )}
+
+                    {/* 만료일 */}
+                    {reward.expiresAt && (
+                      <div className="mb-3 text-xs text-surface-500 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {new Date(reward.expiresAt).toLocaleDateString('ko-KR')}까지
+                      </div>
+                    )}
+
+                    {/* 액션 */}
+                    <div className="flex items-center justify-between pt-2 border-t border-surface-100 dark:border-surface-800">
+                      <span className={cn(
+                        "font-bold",
+                        canClaim ? "text-primary-600 dark:text-primary-400" : "text-surface-400"
+                      )}>
+                        {formatNumber(reward.pointsRequired)} P
+                      </span>
+                      <Button
+                        size="sm"
+                        disabled={!canClaim}
+                        variant={canClaim ? "primary" : "outline"}
+                        onClick={() => handleClaimReward(reward)}
+                      >
+                        {isSoldOut ? "품절" : canClaim ? "교환하기" : "포인트 부족"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 포인트 적립 방법 */}
+      {activeSection === "earn" && (
+        <div className="space-y-4">
+          <h3 className="font-semibold text-surface-900 dark:text-surface-50">
+            포인트 적립 방법
+          </h3>
+          
+          <div className="grid gap-3 md:grid-cols-2">
+            {pointRules.filter(r => r.isActive).map((rule) => {
+              const activityInfo = POINT_ACTIVITY_INFO[rule.activityType];
+              return (
+                <Card key={rule.id} className="hover:shadow-sm transition-shadow">
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-100 dark:bg-surface-800 text-2xl shrink-0">
+                      {activityInfo?.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="font-medium text-surface-900 dark:text-surface-50">
+                          {activityInfo?.label}
+                        </h4>
+                        <span className="font-bold text-primary-600 dark:text-primary-400 shrink-0">
+                          +{rule.points} P
+                        </span>
+                      </div>
+                      <p className="text-sm text-surface-500 dark:text-surface-400 truncate">
+                        {rule.description}
+                      </p>
+                      {rule.maxPerDay && (
+                        <p className="text-xs text-surface-400 mt-0.5">
+                          일일 최대 {rule.maxPerDay}회
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* 출석 체크 버튼 */}
+          <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border-emerald-200 dark:border-emerald-800">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500 text-white text-xl">
+                    📅
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-emerald-700 dark:text-emerald-300">
+                      오늘의 출석체크
+                    </h4>
+                    <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">
+                      매일 출석하고 포인트를 받으세요
+                    </p>
+                  </div>
+                </div>
+                <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                  <Check className="h-4 w-4 mr-1" />
+                  출석하기
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* 교환 내역 */}
+      {activeSection === "history" && (
+        <div className="space-y-4">
+          <h3 className="font-semibold text-surface-900 dark:text-surface-50">
+            내 교환 내역
+          </h3>
+
+          {claimedRewards.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Ticket className="h-12 w-12 mx-auto text-surface-300 dark:text-surface-600 mb-3" />
+                <p className="text-surface-500 dark:text-surface-400">
+                  아직 교환한 리워드가 없습니다
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => setActiveSection("rewards")}
+                >
+                  리워드 둘러보기
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {claimedRewards.map((claimed) => {
+                const typeInfo = REWARD_TYPE_INFO[claimed.reward.type];
+                return (
+                  <Card key={claimed.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "flex h-10 w-10 items-center justify-center rounded-xl",
+                            claimed.isUsed ? "bg-surface-100 dark:bg-surface-800" : "bg-primary-100 dark:bg-primary-900/30"
+                          )}>
+                            {typeInfo?.icon && <typeInfo.icon className={cn("h-5 w-5", claimed.isUsed ? "text-surface-400" : typeInfo.color)} />}
+                          </div>
+                          <div>
+                            <h4 className={cn(
+                              "font-medium",
+                              claimed.isUsed ? "text-surface-500" : "text-surface-900 dark:text-surface-50"
+                            )}>
+                              {claimed.reward.title}
+                            </h4>
+                            <p className="text-xs text-surface-500">
+                              {formatRelativeTime(claimed.claimedAt)}에 교환
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {claimed.code && (
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-100 dark:bg-surface-800">
+                              <code className="text-sm font-mono text-surface-700 dark:text-surface-300">
+                                {claimed.code}
+                              </code>
+                              <button
+                                onClick={() => handleCopyCode(claimed.code!)}
+                                className="text-surface-400 hover:text-surface-600 dark:hover:text-surface-300"
+                              >
+                                {copiedCode === claimed.code ? (
+                                  <Check className="h-4 w-4 text-emerald-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
+                          )}
+                          <Badge variant={claimed.isUsed ? "secondary" : "default"}>
+                            {claimed.isUsed ? "사용완료" : "미사용"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 서포터 순위 */}
+      {activeSection === "leaderboard" && (
+        <div className="space-y-4">
+          <h3 className="font-semibold text-surface-900 dark:text-surface-50">
+            이번 달 서포터 순위
+          </h3>
+
+          <div className="space-y-2">
+            {topSupporters.map((supporter) => {
+              const isTop3 = supporter.rank <= 3;
+              const rankColors = {
+                1: "text-amber-500",
+                2: "text-surface-400",
+                3: "text-amber-700",
+              };
+              const rankIcons = {
+                1: Crown,
+                2: Medal,
+                3: Medal,
+              };
+              const RankIcon = rankIcons[supporter.rank as keyof typeof rankIcons];
+              
+              return (
+                <Card 
+                  key={supporter.user.id}
+                  className={cn(
+                    isTop3 && "ring-1",
+                    supporter.rank === 1 && "ring-amber-300 dark:ring-amber-700 bg-gradient-to-r from-amber-50/50 to-transparent dark:from-amber-950/20",
+                    supporter.rank === 2 && "ring-surface-300 dark:ring-surface-600",
+                    supporter.rank === 3 && "ring-amber-200 dark:ring-amber-800"
+                  )}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      {/* 순위 */}
+                      <div className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm",
+                        isTop3 ? rankColors[supporter.rank as keyof typeof rankColors] : "text-surface-400",
+                        isTop3 && "bg-current/10"
+                      )}>
+                        {RankIcon ? <RankIcon className="h-5 w-5" /> : supporter.rank}
+                      </div>
+                      
+                      {/* 유저 정보 */}
+                      <Avatar
+                        src={supporter.user.avatar}
+                        fallback={supporter.user.displayName}
+                        size="sm"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <Link 
+                          to={`/profile/${supporter.user.username}`}
+                          className="font-medium text-surface-900 dark:text-surface-50 hover:text-primary-600 dark:hover:text-primary-400"
+                        >
+                          {supporter.user.displayName}
+                        </Link>
+                        <p className="text-xs text-surface-500">
+                          피드백 {supporter.feedbackCount}개
+                        </p>
+                      </div>
+                      
+                      {/* 포인트 */}
+                      <div className="text-right">
+                        <p className={cn(
+                          "font-bold",
+                          isTop3 ? "text-primary-600 dark:text-primary-400" : "text-surface-600 dark:text-surface-400"
+                        )}>
+                          {formatNumber(supporter.points)} P
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 리워드 교환 모달 */}
+      {isClaimModalOpen && selectedReward && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-surface-950/40 backdrop-blur-[2px]"
+            onClick={() => setIsClaimModalOpen(false)}
+          />
+          <div className="relative z-50 w-full max-w-md rounded-xl bg-white p-5 shadow-xl dark:bg-surface-900 border border-surface-200 dark:border-surface-800">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-50">
+                  리워드 교환
+                </h3>
+                <p className="text-sm text-surface-500 dark:text-surface-400">
+                  포인트를 사용하여 리워드를 교환합니다
+                </p>
+              </div>
+              <button
+                onClick={() => setIsClaimModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800"
+              >
+                <X className="h-5 w-5 text-surface-400" />
+              </button>
+            </div>
+
+            <Card className="mb-4">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  {REWARD_TYPE_INFO[selectedReward.type]?.icon && (
+                    <div className={cn(
+                      "flex h-12 w-12 items-center justify-center rounded-xl",
+                      REWARD_TYPE_INFO[selectedReward.type].color,
+                      "bg-current/10"
+                    )}>
+                      {(() => {
+                        const Icon = REWARD_TYPE_INFO[selectedReward.type].icon;
+                        return <Icon className="h-6 w-6" />;
+                      })()}
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="font-semibold text-surface-900 dark:text-surface-50">
+                      {selectedReward.title}
+                    </h4>
+                    <Badge variant="secondary" className="text-[10px] mt-1">
+                      {REWARD_TYPE_INFO[selectedReward.type]?.label}
+                    </Badge>
+                  </div>
+                </div>
+                <p className="text-sm text-surface-500 dark:text-surface-400 mb-3">
+                  {selectedReward.description}
+                </p>
+                
+                {selectedReward.type === "beta_access" && selectedReward.platform && (
+                  <div className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400 p-2 rounded-lg bg-surface-50 dark:bg-surface-800">
+                    {PLATFORM_ICONS[selectedReward.platform] && (
+                      (() => {
+                        const PlatformIcon = PLATFORM_ICONS[selectedReward.platform!];
+                        return <PlatformIcon className="h-4 w-4" />;
+                      })()
+                    )}
+                    <span>{selectedReward.platform.toUpperCase()} 플랫폼</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="flex items-center justify-between p-3 rounded-lg bg-surface-50 dark:bg-surface-800 mb-4">
+              <span className="text-surface-600 dark:text-surface-400">필요 포인트</span>
+              <span className="font-bold text-primary-600 dark:text-primary-400">
+                {formatNumber(selectedReward.pointsRequired)} P
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-lg bg-primary-50 dark:bg-primary-950/30 mb-4">
+              <span className="text-primary-700 dark:text-primary-300">교환 후 잔여 포인트</span>
+              <span className="font-bold text-primary-700 dark:text-primary-300">
+                {formatNumber(userPoints - selectedReward.pointsRequired)} P
+              </span>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setIsClaimModalOpen(false)}
+              >
+                취소
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={userPoints < selectedReward.pointsRequired}
+              >
+                교환하기
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 // 변경사항 탭 컴포넌트
 interface ChangelogTabProps {
   changelogs: ChangelogEntry[];
@@ -3145,80 +3874,14 @@ export function ProjectCommunityPage() {
 
           {/* 리워드 */}
           {activeTab === "rewards" && (
-            <div>
-              {/* User Points */}
-              <Card className="mb-6 bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-950/50 dark:to-primary-900/30 border-primary-200 dark:border-primary-800">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-500 text-white">
-                        <Coins className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-primary-600 dark:text-primary-400">내 포인트</p>
-                        <p className="text-2xl font-bold text-primary-700 dark:text-primary-300">
-                          {formatNumber(user?.points || 0)} P
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      포인트 적립 방법
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Rewards Grid */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {dummyRewards.map((reward) => {
-                  const remaining = reward.quantity - reward.claimedCount;
-                  const progress = (reward.claimedCount / reward.quantity) * 100;
-                  const canClaim = (user?.points || 0) >= reward.pointsRequired && remaining > 0;
-
-                  return (
-                    <Card key={reward.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Trophy className={cn(
-                            "h-5 w-5",
-                            reward.type === "physical" ? "text-amber-500" :
-                            reward.type === "access" ? "text-primary-500" : "text-emerald-500"
-                          )} />
-                          <Badge variant="secondary" className="text-[10px]">
-                            {reward.type === "physical" ? "실물" : reward.type === "access" ? "이용권" : "디지털"}
-                          </Badge>
-                        </div>
-                        <h3 className="font-semibold text-surface-900 dark:text-surface-50 mb-1">
-                          {reward.title}
-                        </h3>
-                        <p className="text-sm text-surface-500 dark:text-surface-400 mb-3">
-                          {reward.description}
-                        </p>
-                        <div className="mb-3">
-                          <div className="flex justify-between text-xs text-surface-500 mb-1">
-                            <span>남은 수량</span>
-                            <span>{remaining} / {reward.quantity}</span>
-                          </div>
-                          <Progress value={progress} size="sm" />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-primary-600 dark:text-primary-400">
-                            {formatNumber(reward.pointsRequired)} P
-                          </span>
-                          <Button
-                            size="sm"
-                            disabled={!canClaim}
-                            variant={canClaim ? "primary" : "outline"}
-                          >
-                            {remaining === 0 ? "품절" : canClaim ? "교환하기" : "포인트 부족"}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
+            <RewardsTab 
+              rewards={dummyRewards}
+              pointRules={dummyPointRules}
+              topSupporters={dummyTopSupporters}
+              claimedRewards={dummyClaimedRewards}
+              projectId={id || "1"}
+              isOwner={project.author.id === user?.id}
+            />
           )}
 
           {/* 마일스톤 - GitHub 스타일 */}
