@@ -38,6 +38,9 @@ import {
   RotateCcw,
   AlertCircle,
   Image as ImageIcon,
+  Github,
+  Download,
+  Link2,
 } from "lucide-react";
 import { Button, Avatar, Badge, Textarea, Progress, Card, CardContent, CardHeader, CardTitle, Input } from "@/shared/ui";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
@@ -61,9 +64,15 @@ interface PostComment {
   replies?: PostComment[];
 }
 
+interface VoteOption {
+  id: string;
+  text: string;
+  votesCount: number;
+}
+
 interface DevPost {
   id: string;
-  type: "announcement" | "update" | "discussion";
+  type: "announcement" | "update" | "discussion" | "vote";
   title: string;
   content: string;
   author: {
@@ -79,6 +88,10 @@ interface DevPost {
   commentsCount: number;
   createdAt: string;
   comments?: PostComment[];
+  // 투표 관련 필드
+  voteOptions?: VoteOption[];
+  votedOptionId?: string; // 현재 사용자가 투표한 옵션 ID
+  totalVotes?: number;
 }
 
 interface UserFeedback {
@@ -100,16 +113,22 @@ interface UserFeedback {
   createdAt: string;
 }
 
+interface ChangelogChange {
+  id: string;
+  type: "feature" | "improvement" | "fix" | "breaking";
+  description: string;
+}
+
 interface ChangelogEntry {
   id: string;
   version: string;
   title: string;
   description: string;
-  changes: {
-    type: "feature" | "improvement" | "fix" | "breaking";
-    description: string;
-  }[];
+  changes: ChangelogChange[];
   releasedAt: string;
+  // 링크 정보
+  repositoryUrl?: string;
+  downloadUrl?: string;
 }
 
 // 더미 데이터
@@ -272,6 +291,30 @@ const dummyDevPosts: DevPost[] = [
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 50).toISOString(),
       },
     ],
+  },
+  {
+    id: "dp4",
+    type: "vote",
+    title: "🗳️ 다음 업데이트에 어떤 기능을 추가할까요?",
+    content: "여러분의 의견을 듣고 싶습니다! 가장 원하는 기능에 투표해주세요.",
+    author: {
+      id: "u1",
+      username: "indiemaker",
+      displayName: "인디메이커",
+      role: "Founder",
+    },
+    likesCount: 34,
+    isLiked: false,
+    commentsCount: 15,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(),
+    voteOptions: [
+      { id: "vo1", text: "다크모드 지원", votesCount: 45 },
+      { id: "vo2", text: "모바일 앱 출시", votesCount: 38 },
+      { id: "vo3", text: "API 확장", votesCount: 22 },
+      { id: "vo4", text: "알림 기능 개선", votesCount: 18 },
+    ],
+    votedOptionId: undefined,
+    totalVotes: 123,
   },
 ];
 
@@ -452,12 +495,18 @@ const dummyChangelog: ChangelogEntry[] = [
     title: "v2.0 베타 릴리즈",
     description: "대규모 업데이트! AI 기능과 새로운 UI를 만나보세요.",
     changes: [
-      { type: "feature", description: "AI 기반 자동 추천 시스템 추가" },
-      { type: "feature", description: "다크모드 지원" },
-      { type: "improvement", description: "전체 UI/UX 개선" },
-      { type: "improvement", description: "페이지 로딩 속도 50% 향상" },
+      { id: "ch1-1", type: "feature", description: "AI 기반 자동 추천 시스템 추가" },
+      { id: "ch1-2", type: "feature", description: "다크모드 지원" },
+      { id: "ch1-3", type: "feature", description: "실시간 알림 시스템" },
+      { id: "ch1-4", type: "improvement", description: "전체 UI/UX 개선" },
+      { id: "ch1-5", type: "improvement", description: "페이지 로딩 속도 50% 향상" },
+      { id: "ch1-6", type: "improvement", description: "모바일 반응형 레이아웃 최적화" },
+      { id: "ch1-7", type: "fix", description: "Safari 브라우저 호환성 문제 해결" },
+      { id: "ch1-8", type: "breaking", description: "API v1 지원 종료 예정" },
     ],
     releasedAt: "2024-12-01",
+    repositoryUrl: "https://github.com/example/project/releases/tag/v2.0.0-beta",
+    downloadUrl: "https://example.com/downloads/v2.0.0-beta",
   },
   {
     id: "cl2",
@@ -465,11 +514,12 @@ const dummyChangelog: ChangelogEntry[] = [
     title: "버그 수정 및 안정화",
     description: "여러 버그를 수정하고 안정성을 개선했습니다.",
     changes: [
-      { type: "fix", description: "Safari 이미지 로딩 오류 수정" },
-      { type: "fix", description: "모바일에서 스크롤 문제 해결" },
-      { type: "improvement", description: "에러 메시지 개선" },
+      { id: "ch2-1", type: "fix", description: "Safari 이미지 로딩 오류 수정" },
+      { id: "ch2-2", type: "fix", description: "모바일에서 스크롤 문제 해결" },
+      { id: "ch2-3", type: "improvement", description: "에러 메시지 개선" },
     ],
     releasedAt: "2024-11-15",
+    repositoryUrl: "https://github.com/example/project/releases/tag/v1.5.2",
   },
   {
     id: "cl3",
@@ -477,9 +527,9 @@ const dummyChangelog: ChangelogEntry[] = [
     title: "검색 기능 강화",
     description: "더 강력해진 검색 기능을 사용해보세요.",
     changes: [
-      { type: "feature", description: "전체 텍스트 검색 지원" },
-      { type: "feature", description: "검색 필터 추가" },
-      { type: "breaking", description: "검색 API 엔드포인트 변경" },
+      { id: "ch3-1", type: "feature", description: "전체 텍스트 검색 지원" },
+      { id: "ch3-2", type: "feature", description: "검색 필터 추가" },
+      { id: "ch3-3", type: "breaking", description: "검색 API 엔드포인트 변경" },
     ],
     releasedAt: "2024-11-01",
   },
@@ -625,15 +675,55 @@ function CommentItem({ comment, depth = 0, onReply, onLike }: CommentItemProps) 
 // 피드 포스트 카드 컴포넌트
 interface DevPostCardProps {
   post: DevPost;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onTogglePin?: (e?: React.MouseEvent) => void;
 }
 
-function DevPostCard({ post }: DevPostCardProps) {
+function DevPostCard({ post, onEdit, onDelete, onTogglePin }: DevPostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
   const [likesCount, setLikesCount] = useState(post.likesCount);
   const [comments, setComments] = useState<PostComment[]>(post.comments || []);
   const [newComment, setNewComment] = useState("");
   const { user } = useUserStore();
+
+  // 투표 관련 상태
+  const [voteOptions, setVoteOptions] = useState<VoteOption[]>(post.voteOptions || []);
+  const [votedOptionId, setVotedOptionId] = useState<string | undefined>(post.votedOptionId);
+  const [totalVotes, setTotalVotes] = useState(post.totalVotes || 0);
+
+  const handleVote = (optionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (votedOptionId === optionId) {
+      // 투표 취소
+      setVoteOptions((prev) =>
+        prev.map((opt) =>
+          opt.id === optionId ? { ...opt, votesCount: opt.votesCount - 1 } : opt
+        )
+      );
+      setTotalVotes((prev) => prev - 1);
+      setVotedOptionId(undefined);
+    } else {
+      // 새 투표 또는 변경
+      setVoteOptions((prev) =>
+        prev.map((opt) => {
+          if (opt.id === optionId) {
+            return { ...opt, votesCount: opt.votesCount + 1 };
+          }
+          if (opt.id === votedOptionId) {
+            return { ...opt, votesCount: opt.votesCount - 1 };
+          }
+          return opt;
+        })
+      );
+      if (!votedOptionId) {
+        setTotalVotes((prev) => prev + 1);
+      }
+      setVotedOptionId(optionId);
+    }
+  };
 
   const handleLike = () => {
     setIsLiked(!isLiked);
@@ -743,6 +833,71 @@ function DevPostCard({ post }: DevPostCardProps) {
               <p className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">
                 {post.content}
               </p>
+              
+              {/* 투표 UI (투표 타입일 때만) */}
+              {post.type === "vote" && voteOptions.length > 0 && (
+                <div className="mt-4 space-y-2" onClick={(e) => e.stopPropagation()}>
+                  {voteOptions.map((option) => {
+                    const percentage = totalVotes > 0 ? Math.round((option.votesCount / totalVotes) * 100) : 0;
+                    const isSelected = votedOptionId === option.id;
+                    const hasVoted = !!votedOptionId;
+                    
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={(e) => handleVote(option.id, e)}
+                        className={cn(
+                          "relative w-full text-left rounded-lg border-2 overflow-hidden transition-all",
+                          isSelected
+                            ? "border-primary-400 dark:border-primary-600"
+                            : "border-surface-200 dark:border-surface-700 hover:border-surface-300 dark:hover:border-surface-600"
+                        )}
+                      >
+                        {/* 투표 진행률 바 (투표 후에만 표시) */}
+                        {hasVoted && (
+                          <div
+                            className={cn(
+                              "absolute inset-y-0 left-0 transition-all",
+                              isSelected
+                                ? "bg-primary-100 dark:bg-primary-900/30"
+                                : "bg-surface-100 dark:bg-surface-800"
+                            )}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        )}
+                        
+                        <div className="relative px-4 py-2.5 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {isSelected && (
+                              <CheckCircle2 className="h-4 w-4 text-primary-500 shrink-0" />
+                            )}
+                            <span className={cn(
+                              "text-sm font-medium",
+                              isSelected ? "text-primary-700 dark:text-primary-300" : "text-surface-700 dark:text-surface-300"
+                            )}>
+                              {option.text}
+                            </span>
+                          </div>
+                          {hasVoted && (
+                            <span className={cn(
+                              "text-sm font-semibold tabular-nums",
+                              isSelected ? "text-primary-600 dark:text-primary-400" : "text-surface-500"
+                            )}>
+                              {percentage}%
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                  
+                  <p className="text-xs text-surface-400 pt-1">
+                    {totalVotes}명 투표 참여
+                    {votedOptionId && " · 다시 클릭하면 투표 취소"}
+                  </p>
+                </div>
+              )}
+              
               <div className="mt-3 flex items-center gap-4">
                 <button
                   onClick={(e) => {
@@ -764,19 +919,63 @@ function DevPostCard({ post }: DevPostCardProps) {
                   <MessageCircle className="h-4 w-4" />
                   {formatNumber(totalComments || post.commentsCount)}
                 </button>
-                <button
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 text-sm text-surface-500 hover:text-primary-500 transition-colors"
-                >
-                  <Share2 className="h-4 w-4" />
-                </button>
-                <span className="ml-auto text-surface-400">
-                  {isExpanded ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </span>
+                
+                {/* 관리 액션 버튼 */}
+                {(onEdit || onDelete || onTogglePin) && (
+                  <div className="ml-auto flex items-center gap-1">
+                    {onTogglePin && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTogglePin(e);
+                        }}
+                        className={cn(
+                          "p-1.5 rounded transition-colors",
+                          post.isPinned
+                            ? "text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/30"
+                            : "text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800"
+                        )}
+                        title={post.isPinned ? "고정 해제" : "상단 고정"}
+                      >
+                        <Bookmark className={cn("h-4 w-4", post.isPinned && "fill-current")} />
+                      </button>
+                    )}
+                    {onEdit && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit();
+                        }}
+                        className="p-1.5 rounded text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+                        title="수정"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete();
+                        }}
+                        className="p-1.5 rounded text-surface-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                        title="삭제"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+                
+                {!onEdit && !onDelete && !onTogglePin && (
+                  <span className="ml-auto text-surface-400">
+                    {isExpanded ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -1715,13 +1914,1119 @@ function FeedbackTab({ feedbacks: initialFeedbacks, projectId }: FeedbackTabProp
   );
 }
 
-// 개발사 피드 탭 컴포넌트
-function DevFeedTab() {
+// 변경사항 탭 컴포넌트
+interface ChangelogTabProps {
+  changelogs: ChangelogEntry[];
+  projectId: string;
+}
+
+// 변경사항 타입 정보
+const CHANGE_TYPE_INFO = {
+  feature: { label: "새 기능", color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400" },
+  improvement: { label: "개선", color: "text-primary-600 bg-primary-50 dark:bg-primary-900/20 dark:text-primary-400" },
+  fix: { label: "수정", color: "text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400" },
+  breaking: { label: "주의", color: "text-rose-600 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400" },
+};
+
+const MAX_VISIBLE_CHANGES = 5;
+
+// URL에서 도메인 추출
+function extractDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace("www.", "");
+  } catch {
+    return url;
+  }
+}
+
+// 변경사항 카드 컴포넌트
+interface ChangelogCardProps {
+  entry: ChangelogEntry;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function ChangelogCard({ entry, onEdit, onDelete }: ChangelogCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const hasMoreChanges = entry.changes.length > MAX_VISIBLE_CHANGES;
+  const visibleChanges = isExpanded ? entry.changes : entry.changes.slice(0, MAX_VISIBLE_CHANGES);
+  const hiddenCount = entry.changes.length - MAX_VISIBLE_CHANGES;
+
   return (
-    <div className="space-y-4">
-      {dummyDevPosts.map((post) => (
-        <DevPostCard key={post.id} post={post} />
-      ))}
+    <Card className="group">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <Badge className="bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                {entry.version}
+              </Badge>
+              <span className="text-sm text-surface-500">{entry.releasedAt}</span>
+            </div>
+            <h3 className="font-semibold text-surface-900 dark:text-surface-50">
+              {entry.title}
+            </h3>
+            {/* 링크 표시 - 타이틀 아래 */}
+            {(entry.repositoryUrl || entry.downloadUrl) && (
+              <div className="flex flex-wrap items-center gap-3 mt-2">
+                {entry.repositoryUrl && (
+                  <a
+                    href={entry.repositoryUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs text-surface-500 hover:text-primary-500 transition-colors"
+                  >
+                    <Github className="h-3.5 w-3.5" />
+                    <span>{extractDomain(entry.repositoryUrl)}</span>
+                    <ExternalLink className="h-3 w-3 opacity-50" />
+                  </a>
+                )}
+                {entry.downloadUrl && (
+                  <a
+                    href={entry.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs text-surface-500 hover:text-primary-500 transition-colors"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>{extractDomain(entry.downloadUrl)}</span>
+                    <ExternalLink className="h-3 w-3 opacity-50" />
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+          {/* 관리 액션 */}
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+            <button
+              onClick={onEdit}
+              className="p-1.5 rounded text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+              title="수정"
+            >
+              <Edit className="h-4 w-4" />
+            </button>
+            <button
+              onClick={onDelete}
+              className="p-1.5 rounded text-surface-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+              title="삭제"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        {entry.description && (
+          <p className="text-sm text-surface-600 dark:text-surface-400 mb-4">
+            {entry.description}
+          </p>
+        )}
+        <div className="space-y-2">
+          {visibleChanges.map((change) => (
+            <div key={change.id} className="flex items-start gap-2">
+              <span className={cn("px-2 py-0.5 rounded text-xs font-medium shrink-0", CHANGE_TYPE_INFO[change.type].color)}>
+                {CHANGE_TYPE_INFO[change.type].label}
+              </span>
+              <span className="text-sm text-surface-700 dark:text-surface-300">
+                {change.description}
+              </span>
+            </div>
+          ))}
+        </div>
+        {/* 더 보기 버튼 */}
+        {hasMoreChanges && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="mt-3 flex items-center gap-1 text-sm text-primary-500 hover:text-primary-600 transition-colors"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUp className="h-4 w-4" />
+                접기
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-4 w-4" />
+                {hiddenCount}개 더 보기
+              </>
+            )}
+          </button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ChangelogTab({ changelogs: initialChangelogs, projectId }: ChangelogTabProps) {
+  const { user } = useUserStore();
+  const [changelogs, setChangelogs] = useState<ChangelogEntry[]>(initialChangelogs);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingChangelog, setEditingChangelog] = useState<ChangelogEntry | null>(null);
+  const [formData, setFormData] = useState({
+    version: "",
+    title: "",
+    description: "",
+    repositoryUrl: "",
+    downloadUrl: "",
+    features: [{ id: `f-${Date.now()}`, description: "" }] as { id: string; description: string }[],
+    improvements: [{ id: `i-${Date.now()}`, description: "" }] as { id: string; description: string }[],
+    fixes: [{ id: `x-${Date.now()}`, description: "" }] as { id: string; description: string }[],
+    breakings: [] as { id: string; description: string }[],
+  });
+
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    if (!isModalOpen) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsModalOpen(false);
+      }
+    };
+    
+    document.addEventListener("keydown", handleEscape);
+    document.body.style.overflow = "hidden";
+    
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "";
+    };
+  }, [isModalOpen]);
+
+  const handleOpenModal = (changelog?: ChangelogEntry) => {
+    if (changelog) {
+      setEditingChangelog(changelog);
+      // 기존 changes를 타입별로 분류
+      const features = changelog.changes.filter(c => c.type === "feature").map(c => ({ id: c.id, description: c.description }));
+      const improvements = changelog.changes.filter(c => c.type === "improvement").map(c => ({ id: c.id, description: c.description }));
+      const fixes = changelog.changes.filter(c => c.type === "fix").map(c => ({ id: c.id, description: c.description }));
+      const breakings = changelog.changes.filter(c => c.type === "breaking").map(c => ({ id: c.id, description: c.description }));
+      
+      setFormData({
+        version: changelog.version,
+        title: changelog.title,
+        description: changelog.description,
+        repositoryUrl: changelog.repositoryUrl || "",
+        downloadUrl: changelog.downloadUrl || "",
+        features: features.length > 0 ? features : [{ id: `f-${Date.now()}`, description: "" }],
+        improvements: improvements.length > 0 ? improvements : [{ id: `i-${Date.now()}`, description: "" }],
+        fixes: fixes.length > 0 ? fixes : [{ id: `x-${Date.now()}`, description: "" }],
+        breakings,
+      });
+    } else {
+      setEditingChangelog(null);
+      setFormData({
+        version: "",
+        title: "",
+        description: "",
+        repositoryUrl: "",
+        downloadUrl: "",
+        features: [{ id: `f-${Date.now()}`, description: "" }],
+        improvements: [{ id: `i-${Date.now()}`, description: "" }],
+        fixes: [{ id: `x-${Date.now()}`, description: "" }],
+        breakings: [],
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!formData.version.trim() || !formData.title.trim()) return;
+
+    // 모든 변경사항 합치기
+    const changes: ChangelogChange[] = [
+      ...formData.features.filter(f => f.description.trim()).map(f => ({ id: f.id, type: "feature" as const, description: f.description })),
+      ...formData.improvements.filter(i => i.description.trim()).map(i => ({ id: i.id, type: "improvement" as const, description: i.description })),
+      ...formData.fixes.filter(x => x.description.trim()).map(x => ({ id: x.id, type: "fix" as const, description: x.description })),
+      ...formData.breakings.filter(b => b.description.trim()).map(b => ({ id: b.id, type: "breaking" as const, description: b.description })),
+    ];
+
+    if (editingChangelog) {
+      // 수정
+      setChangelogs((prev) =>
+        prev.map((cl) =>
+          cl.id === editingChangelog.id
+            ? {
+                ...cl,
+                version: formData.version,
+                title: formData.title,
+                description: formData.description,
+                changes,
+                repositoryUrl: formData.repositoryUrl || undefined,
+                downloadUrl: formData.downloadUrl || undefined,
+              }
+            : cl
+        )
+      );
+    } else {
+      // 새 변경사항 추가
+      const newChangelog: ChangelogEntry = {
+        id: `cl${Date.now()}`,
+        version: formData.version,
+        title: formData.title,
+        description: formData.description,
+        changes,
+        releasedAt: new Date().toISOString().split("T")[0],
+        repositoryUrl: formData.repositoryUrl || undefined,
+        downloadUrl: formData.downloadUrl || undefined,
+      };
+      setChangelogs((prev) => [newChangelog, ...prev]);
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleDelete = (changelogId: string) => {
+    if (confirm("정말 이 변경사항을 삭제하시겠습니까?")) {
+      setChangelogs((prev) => prev.filter((cl) => cl.id !== changelogId));
+    }
+  };
+
+  const addChangeItem = (type: "features" | "improvements" | "fixes" | "breakings") => {
+    const prefix = type === "features" ? "f" : type === "improvements" ? "i" : type === "fixes" ? "x" : "b";
+    setFormData((prev) => ({
+      ...prev,
+      [type]: [...prev[type], { id: `${prefix}-${Date.now()}`, description: "" }],
+    }));
+  };
+
+  const updateChangeItem = (type: "features" | "improvements" | "fixes" | "breakings", id: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [type]: prev[type].map((item) => (item.id === id ? { ...item, description: value } : item)),
+    }));
+  };
+
+  const removeChangeItem = (type: "features" | "improvements" | "fixes" | "breakings", id: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [type]: prev[type].filter((item) => item.id !== id),
+    }));
+  };
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-surface-500">
+          총 {changelogs.length}개의 릴리즈
+        </p>
+        <Button size="sm" onClick={() => handleOpenModal()}>
+          <Plus className="h-4 w-4 mr-1" />
+          변경사항 추가
+        </Button>
+      </div>
+
+      {/* Changelog List */}
+      {changelogs.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <FileText className="h-10 w-10 mx-auto mb-3 text-surface-300 dark:text-surface-600" />
+            <p className="text-surface-500 dark:text-surface-400">
+              아직 변경사항이 없습니다
+            </p>
+            <Button onClick={() => handleOpenModal()} variant="outline" size="sm" className="mt-4">
+              <Plus className="h-4 w-4 mr-1" />
+              첫 변경사항 추가
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {changelogs.map((entry) => (
+            <ChangelogCard 
+              key={entry.id} 
+              entry={entry} 
+              onEdit={() => handleOpenModal(entry)}
+              onDelete={() => handleDelete(entry.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Create/Edit Modal */}
+      {isModalOpen && createPortal(
+        <div className="fixed inset-0 z-50">
+          {/* 배경 오버레이 */}
+          <div
+            className="hidden md:block fixed inset-0 bg-surface-950/40 backdrop-blur-[2px]"
+            onClick={() => setIsModalOpen(false)}
+          />
+
+          {/* 모달 컨테이너 */}
+          <div className="fixed inset-0 md:flex md:items-center md:justify-center md:p-4">
+            <div className="h-full w-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-lg md:rounded-xl bg-white dark:bg-surface-900 md:border md:border-surface-200 md:dark:border-surface-800 md:shadow-xl flex flex-col overflow-hidden">
+              
+              {/* 헤더 */}
+              <header className="shrink-0 h-14 flex items-center justify-between px-4 border-b border-surface-100 dark:border-surface-800 bg-white dark:bg-surface-900">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+                  >
+                    <ChevronLeft className="h-5 w-5 text-surface-600 dark:text-surface-400" />
+                  </button>
+                  <h1 className="text-lg font-bold text-surface-900 dark:text-surface-50">
+                    {editingChangelog ? "변경사항 수정" : "변경사항 추가"}
+                  </h1>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={handleSave} 
+                  disabled={!formData.version.trim() || !formData.title.trim()}
+                  className="rounded-full"
+                >
+                  {editingChangelog ? "저장" : "추가"}
+                </Button>
+              </header>
+
+              {/* 콘텐츠 */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-4 md:p-6 space-y-6">
+                  {/* 버전 & 제목 */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                        버전 <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        value={formData.version}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, version: e.target.value }))}
+                        placeholder="v1.0.0"
+                        maxLength={20}
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                        제목 <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        value={formData.title}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                        placeholder="예: 새로운 기능 출시"
+                        maxLength={50}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 설명 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                      설명
+                    </label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                      placeholder="이번 릴리즈에 대한 간단한 설명"
+                      maxLength={200}
+                      rows={2}
+                    />
+                  </div>
+
+                  {/* 링크 */}
+                  <div className="space-y-3 p-4 rounded-lg bg-surface-50 dark:bg-surface-800/50">
+                    <p className="text-sm font-medium text-surface-700 dark:text-surface-300">링크</p>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Github className="h-4 w-4 text-surface-400 shrink-0" />
+                        <Input
+                          value={formData.repositoryUrl}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, repositoryUrl: e.target.value }))}
+                          placeholder="저장소 URL (선택)"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Download className="h-4 w-4 text-surface-400 shrink-0" />
+                        <Input
+                          value={formData.downloadUrl}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, downloadUrl: e.target.value }))}
+                          placeholder="다운로드 URL (선택)"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 새 기능 */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <Sparkles className="h-4 w-4" />
+                        새 기능
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => addChangeItem("features")}
+                        className="text-xs text-primary-500 hover:text-primary-600"
+                      >
+                        + 추가
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {formData.features.map((item, index) => (
+                        <div key={item.id} className="flex items-center gap-2">
+                          <Input
+                            value={item.description}
+                            onChange={(e) => updateChangeItem("features", item.id, e.target.value)}
+                            placeholder={`새 기능 ${index + 1}`}
+                            className="text-sm"
+                          />
+                          {formData.features.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeChangeItem("features", item.id)}
+                              className="p-1 text-surface-400 hover:text-rose-500"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 개선 */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-primary-600 dark:text-primary-400 flex items-center gap-1">
+                        <ThumbsUp className="h-4 w-4" />
+                        개선
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => addChangeItem("improvements")}
+                        className="text-xs text-primary-500 hover:text-primary-600"
+                      >
+                        + 추가
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {formData.improvements.map((item, index) => (
+                        <div key={item.id} className="flex items-center gap-2">
+                          <Input
+                            value={item.description}
+                            onChange={(e) => updateChangeItem("improvements", item.id, e.target.value)}
+                            placeholder={`개선 사항 ${index + 1}`}
+                            className="text-sm"
+                          />
+                          {formData.improvements.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeChangeItem("improvements", item.id)}
+                              className="p-1 text-surface-400 hover:text-rose-500"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 수정 */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                        <Bug className="h-4 w-4" />
+                        수정
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => addChangeItem("fixes")}
+                        className="text-xs text-primary-500 hover:text-primary-600"
+                      >
+                        + 추가
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {formData.fixes.map((item, index) => (
+                        <div key={item.id} className="flex items-center gap-2">
+                          <Input
+                            value={item.description}
+                            onChange={(e) => updateChangeItem("fixes", item.id, e.target.value)}
+                            placeholder={`버그 수정 ${index + 1}`}
+                            className="text-sm"
+                          />
+                          {formData.fixes.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeChangeItem("fixes", item.id)}
+                              className="p-1 text-surface-400 hover:text-rose-500"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 주의 (Breaking Changes) */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        주의 (Breaking Changes)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => addChangeItem("breakings")}
+                        className="text-xs text-primary-500 hover:text-primary-600"
+                      >
+                        + 추가
+                      </button>
+                    </div>
+                    {formData.breakings.length === 0 ? (
+                      <p className="text-xs text-surface-400 py-2">
+                        호환성을 깨는 변경사항이 있으면 추가하세요
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {formData.breakings.map((item, index) => (
+                          <div key={item.id} className="flex items-center gap-2">
+                            <Input
+                              value={item.description}
+                              onChange={(e) => updateChangeItem("breakings", item.id, e.target.value)}
+                              placeholder={`주의 사항 ${index + 1}`}
+                              className="text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeChangeItem("breakings", item.id)}
+                              className="p-1 text-surface-400 hover:text-rose-500"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* 푸터 - 삭제 버튼 (수정 모드에서만) */}
+              {editingChangelog && (
+                <footer className="shrink-0 px-4 py-3 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-900">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      handleDelete(editingChangelog.id);
+                      setIsModalOpen(false);
+                    }}
+                    className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    변경사항 삭제
+                  </Button>
+                </footer>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+// 개발사 피드 (공지사항) 탭 컴포넌트
+interface DevFeedTabProps {
+  projectId: string;
+}
+
+// 포스트 타입 정보
+const POST_TYPE_INFO = {
+  announcement: { label: "공지", icon: Megaphone, color: "text-primary-500 bg-primary-50 dark:bg-primary-900/20", borderColor: "border-primary-300 dark:border-primary-700" },
+  update: { label: "업데이트", icon: Sparkles, color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20", borderColor: "border-emerald-300 dark:border-emerald-700" },
+  vote: { label: "투표", icon: ThumbsUp, color: "text-amber-500 bg-amber-50 dark:bg-amber-900/20", borderColor: "border-amber-300 dark:border-amber-700" },
+};
+
+function DevFeedTab({ projectId }: DevFeedTabProps) {
+  const { user } = useUserStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [posts, setPosts] = useState<DevPost[]>(dummyDevPosts);
+  const [filter, setFilter] = useState<"all" | "announcement" | "update" | "vote">("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<DevPost | null>(null);
+  const [formData, setFormData] = useState({
+    type: "announcement" as "announcement" | "update" | "vote",
+    title: "",
+    content: "",
+    isPinned: false,
+    images: [] as string[],
+    voteOptions: ["", ""] as string[], // 투표 옵션 (최소 2개, 최대 5개)
+  });
+
+  const filteredPosts = filter === "all" 
+    ? posts 
+    : posts.filter((p) => p.type === filter);
+
+  // 고정된 게시물을 상단에 정렬
+  const sortedPosts = [...filteredPosts].sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    if (!isModalOpen) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsModalOpen(false);
+      }
+    };
+    
+    document.addEventListener("keydown", handleEscape);
+    document.body.style.overflow = "hidden";
+    
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "";
+    };
+  }, [isModalOpen]);
+
+  const handleOpenModal = (post?: DevPost) => {
+    if (post) {
+      setEditingPost(post);
+      setFormData({
+        type: post.type as "announcement" | "update" | "vote",
+        title: post.title,
+        content: post.content,
+        isPinned: post.isPinned || false,
+        images: [],
+        voteOptions: ["", ""],
+      });
+    } else {
+      setEditingPost(null);
+      setFormData({ type: "announcement", title: "", content: "", isPinned: false, images: [], voteOptions: ["", ""] });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!formData.title.trim() || !formData.content.trim()) return;
+    // 투표 타입일 때 최소 2개의 유효한 옵션 필요
+    if (formData.type === "vote") {
+      const validOptions = formData.voteOptions.filter(opt => opt.trim());
+      if (validOptions.length < 2) return;
+    }
+
+    if (editingPost) {
+      // 수정
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === editingPost.id
+            ? { ...p, type: formData.type, title: formData.title, content: formData.content, isPinned: formData.isPinned }
+            : p
+        )
+      );
+    } else {
+      // 새 포스트 추가
+      // 투표 옵션 생성 (투표 타입일 때만)
+      const voteOptionsData = formData.type === "vote" 
+        ? formData.voteOptions
+            .filter(opt => opt.trim())
+            .map((text, index) => ({
+              id: `vo-${Date.now()}-${index}`,
+              text: text.trim(),
+              votesCount: 0,
+            }))
+        : undefined;
+
+      const newPost: DevPost = {
+        id: `dp${Date.now()}`,
+        type: formData.type,
+        title: formData.title,
+        content: formData.content,
+        isPinned: formData.isPinned,
+        author: {
+          id: user?.id || "current",
+          username: user?.username || "guest",
+          displayName: user?.displayName || "게스트",
+          role: "Founder", // 프로젝트 관리자로 가정
+        },
+        likesCount: 0,
+        isLiked: false,
+        commentsCount: 0,
+        createdAt: new Date().toISOString(),
+        comments: [],
+        // 투표 관련 필드
+        voteOptions: voteOptionsData,
+        votedOptionId: undefined,
+        totalVotes: 0,
+      };
+      setPosts((prev) => [newPost, ...prev]);
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    const remainingSlots = 3 - formData.images.length;
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    
+    filesToProcess.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setFormData((prev) => ({
+            ...prev,
+            images: [...prev.images, event.target!.result as string].slice(0, 3),
+          }));
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleDelete = (postId: string) => {
+    if (confirm("정말 이 공지사항을 삭제하시겠습니까?")) {
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+    }
+  };
+
+  const handleTogglePin = (postId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId ? { ...p, isPinned: !p.isPinned } : p
+      )
+    );
+  };
+
+  return (
+    <div>
+      {/* Filter & Actions */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex gap-2">
+          {(["all", "announcement", "update", "vote"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                filter === f
+                  ? "bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                  : "text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+              )}
+            >
+              {f === "all" ? "전체" : POST_TYPE_INFO[f].label}
+            </button>
+          ))}
+        </div>
+        <Button size="sm" onClick={() => handleOpenModal()}>
+          <Plus className="h-4 w-4 mr-1" />
+          공지 작성
+        </Button>
+      </div>
+
+      {/* Posts List */}
+      {sortedPosts.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Megaphone className="h-10 w-10 mx-auto mb-3 text-surface-300 dark:text-surface-600" />
+            <p className="text-surface-500 dark:text-surface-400">
+              {filter === "all" ? "아직 공지사항이 없습니다" : `${POST_TYPE_INFO[filter].label} 게시물이 없습니다`}
+            </p>
+            <Button onClick={() => handleOpenModal()} variant="outline" size="sm" className="mt-4">
+              <Plus className="h-4 w-4 mr-1" />
+              첫 공지 작성
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {sortedPosts.map((post) => (
+            <DevPostCard 
+              key={post.id} 
+              post={post}
+              onEdit={() => handleOpenModal(post)}
+              onDelete={() => handleDelete(post.id)}
+              onTogglePin={(e) => handleTogglePin(post.id, e)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Create/Edit Modal */}
+      {isModalOpen && createPortal(
+        <div className="fixed inset-0 z-50">
+          {/* 배경 오버레이 */}
+          <div
+            className="hidden md:block fixed inset-0 bg-surface-950/40 backdrop-blur-[2px]"
+            onClick={() => setIsModalOpen(false)}
+          />
+
+          {/* 모달 컨테이너 */}
+          <div className="fixed inset-0 md:flex md:items-center md:justify-center md:p-4">
+            <div className="h-full w-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-lg md:rounded-xl bg-white dark:bg-surface-900 md:border md:border-surface-200 md:dark:border-surface-800 md:shadow-xl flex flex-col overflow-hidden">
+              
+              {/* 헤더 */}
+              <header className="shrink-0 h-14 flex items-center justify-between px-4 border-b border-surface-100 dark:border-surface-800 bg-white dark:bg-surface-900">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+                  >
+                    <ChevronLeft className="h-5 w-5 text-surface-600 dark:text-surface-400" />
+                  </button>
+                  <h1 className="text-lg font-bold text-surface-900 dark:text-surface-50">
+                    {editingPost ? "공지 수정" : "공지 작성"}
+                  </h1>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={handleSave} 
+                  disabled={
+                    !formData.title.trim() || 
+                    !formData.content.trim() ||
+                    (formData.type === "vote" && formData.voteOptions.filter(opt => opt.trim()).length < 2)
+                  }
+                  className="rounded-full"
+                >
+                  {editingPost ? "저장" : "작성"}
+                </Button>
+              </header>
+
+              {/* 콘텐츠 */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-4 md:p-6 space-y-6">
+                  {/* 고정하기 옵션 - 상단에 배치 */}
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, isPinned: !prev.isPinned }))}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <div className={cn(
+                      "relative w-9 h-5 rounded-full transition-colors",
+                      formData.isPinned
+                        ? "bg-primary-500"
+                        : "bg-surface-200 dark:bg-surface-700"
+                    )}>
+                      <div className={cn(
+                        "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform",
+                        formData.isPinned ? "translate-x-4" : "translate-x-0.5"
+                      )} />
+                    </div>
+                    <Bookmark className={cn("h-4 w-4", formData.isPinned ? "text-primary-500" : "text-surface-400")} />
+                    <span className={cn("font-medium", formData.isPinned ? "text-surface-900 dark:text-surface-50" : "text-surface-500")}>
+                      상단에 고정
+                    </span>
+                  </button>
+
+                  {/* 타입 선택 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                      타입 <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {(["announcement", "update", "vote"] as const).map((type) => {
+                        const info = POST_TYPE_INFO[type];
+                        const Icon = info.icon;
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, type }))}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-colors",
+                              formData.type === type
+                                ? cn(info.color, info.borderColor)
+                                : "border-transparent bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700"
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                            {info.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 제목 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                      제목 <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      value={formData.title}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                      placeholder="공지 제목을 입력하세요"
+                      maxLength={100}
+                    />
+                    <p className="text-xs text-surface-500 text-right">
+                      {formData.title.length}/100
+                    </p>
+                  </div>
+
+                  {/* 내용 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                      내용 <span className="text-red-500">*</span>
+                    </label>
+                    <Textarea
+                      value={formData.content}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, content: e.target.value }))}
+                      placeholder={formData.type === "vote" ? "투표에 대한 설명을 작성해주세요" : "공지 내용을 작성해주세요"}
+                      maxLength={3000}
+                      rows={formData.type === "vote" ? 4 : 8}
+                    />
+                    <p className="text-xs text-surface-500 text-right">
+                      {formData.content.length}/3000
+                    </p>
+                  </div>
+
+                  {/* 투표 옵션 (투표 타입일 때만) */}
+                  {formData.type === "vote" && (
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                        투표 항목 <span className="text-red-500">*</span>
+                        <span className="text-surface-400 font-normal ml-1">(최소 2개, 최대 5개)</span>
+                      </label>
+                      <div className="space-y-2">
+                        {formData.voteOptions.map((option, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-surface-100 dark:bg-surface-800 text-xs font-medium text-surface-500">
+                              {index + 1}
+                            </span>
+                            <Input
+                              value={option}
+                              onChange={(e) => {
+                                const newOptions = [...formData.voteOptions];
+                                newOptions[index] = e.target.value;
+                                setFormData((prev) => ({ ...prev, voteOptions: newOptions }));
+                              }}
+                              placeholder={`옵션 ${index + 1}`}
+                              maxLength={50}
+                              className="flex-1"
+                            />
+                            {formData.voteOptions.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newOptions = formData.voteOptions.filter((_, i) => i !== index);
+                                  setFormData((prev) => ({ ...prev, voteOptions: newOptions }));
+                                }}
+                                className="p-1.5 rounded text-surface-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {formData.voteOptions.length < 5 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              voteOptions: [...prev.voteOptions, ""],
+                            }));
+                          }}
+                          className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-600 transition-colors"
+                        >
+                          <Plus className="h-4 w-4" />
+                          옵션 추가
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 이미지 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                      이미지 (최대 3개)
+                    </label>
+                    
+                    {/* 이미지 미리보기 */}
+                    {formData.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {formData.images.map((img, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={img}
+                              alt={`첨부 이미지 ${index + 1}`}
+                              className="h-24 w-24 rounded-lg object-cover border border-surface-200 dark:border-surface-700"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-surface-900 text-white flex items-center justify-center hover:bg-rose-500 transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {formData.images.length < 3 && (
+                      <>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={handleImageUpload}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-surface-200 dark:border-surface-700 rounded-lg text-surface-500 hover:border-primary-300 hover:text-primary-500 dark:hover:border-primary-700 transition-colors"
+                        >
+                          <ImageIcon className="h-5 w-5" />
+                          <span className="text-sm">이미지 추가 ({formData.images.length}/3)</span>
+                        </button>
+                      </>
+                    )}
+                    <p className="text-xs text-surface-400">
+                      스크린샷이나 관련 이미지를 첨부할 수 있습니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 푸터 - 삭제 버튼 (수정 모드에서만) */}
+              {editingPost && (
+                <footer className="shrink-0 px-4 py-3 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-900">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      handleDelete(editingPost.id);
+                      setIsModalOpen(false);
+                    }}
+                    className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    공지 삭제
+                  </Button>
+                </footer>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -1830,7 +3135,7 @@ export function ProjectCommunityPage() {
         <div className="min-h-[60vh]">
           {/* 개발사 피드 */}
           {activeTab === "devfeed" && (
-            <DevFeedTab />
+            <DevFeedTab projectId={id || "1"} />
           )}
 
           {/* 피드백 */}
@@ -1923,56 +3228,7 @@ export function ProjectCommunityPage() {
 
           {/* 변경사항 */}
           {activeTab === "changelog" && (
-            <div className="space-y-6">
-              {dummyChangelog.map((entry) => (
-                <Card key={entry.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge className="bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
-                            {entry.version}
-                          </Badge>
-                          <span className="text-sm text-surface-500">{entry.releasedAt}</span>
-                        </div>
-                        <h3 className="font-semibold text-surface-900 dark:text-surface-50">
-                          {entry.title}
-                        </h3>
-                      </div>
-                    </div>
-                    <p className="text-sm text-surface-600 dark:text-surface-400 mb-4">
-                      {entry.description}
-                    </p>
-                    <div className="space-y-2">
-                      {entry.changes.map((change, i) => {
-                        const colors = {
-                          feature: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400",
-                          improvement: "text-primary-600 bg-primary-50 dark:bg-primary-900/20 dark:text-primary-400",
-                          fix: "text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400",
-                          breaking: "text-rose-600 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400",
-                        };
-                        const labels = {
-                          feature: "새 기능",
-                          improvement: "개선",
-                          fix: "수정",
-                          breaking: "주의",
-                        };
-                        return (
-                          <div key={i} className="flex items-start gap-2">
-                            <span className={cn("px-2 py-0.5 rounded text-xs font-medium shrink-0", colors[change.type])}>
-                              {labels[change.type]}
-                            </span>
-                            <span className="text-sm text-surface-700 dark:text-surface-300">
-                              {change.description}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <ChangelogTab changelogs={dummyChangelog} projectId={id || "1"} />
           )}
         </div>
       </div>
