@@ -15,7 +15,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || isLoading}
         className={cn(
           // 레이아웃
- 
+          "inline-flex items-center justify-center gap-2 rounded-lg transition-all duration-150",
           // 타이포
           "font-medium whitespace-nowrap text-sm",
           // 상태
