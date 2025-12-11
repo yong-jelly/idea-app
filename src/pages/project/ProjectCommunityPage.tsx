@@ -55,6 +55,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Button, Avatar, Badge, Textarea, Progress, Card, CardContent, CardHeader, CardTitle, Input } from "@/shared/ui";
+import { CommentThread, type CommentNode } from "@/shared/ui/comment";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
 import { useProjectStore, CATEGORY_INFO, type Milestone, type MilestoneTask, type Reward } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
@@ -70,8 +71,12 @@ interface PostComment {
     role?: string;
   };
   content: string;
+  parentId?: string;
+  depth?: number;
   likesCount: number;
   isLiked: boolean;
+  isDeleted?: boolean;
+  images?: string[];
   createdAt: string;
   replies?: PostComment[];
 }
@@ -675,125 +680,6 @@ const FEEDBACK_STATUS_INFO = {
   closed: { label: "닫힘", color: "bg-surface-200 text-surface-500 dark:bg-surface-700 dark:text-surface-400" },
 };
 
-// 댓글 컴포넌트
-interface CommentItemProps {
-  comment: PostComment;
-  depth?: number;
-  onReply: (parentId: string, content: string) => void;
-  onLike: (commentId: string) => void;
-}
-
-function CommentItem({ comment, depth = 0, onReply, onLike }: CommentItemProps) {
-  const [showReplyInput, setShowReplyInput] = useState(false);
-  const [replyText, setReplyText] = useState("");
-  const [showReplies, setShowReplies] = useState(true);
-  const hasReplies = comment.replies && comment.replies.length > 0;
-
-  const handleSubmitReply = () => {
-    if (replyText.trim()) {
-      onReply(comment.id, replyText);
-      setReplyText("");
-      setShowReplyInput(false);
-    }
-  };
-
-  return (
-    <div className={cn("relative", depth > 0 && "ml-10")}>
-      {/* Thread line */}
-      {depth > 0 && (
-        <div className="absolute -left-5 top-0 bottom-0 w-px bg-surface-200 dark:bg-surface-700" />
-      )}
-      
-      <div className="flex gap-3 py-3">
-        <Avatar fallback={comment.author.displayName} size="sm" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-surface-900 dark:text-surface-50 text-sm">
-              {comment.author.displayName}
-            </span>
-            {comment.author.role && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                {comment.author.role}
-              </Badge>
-            )}
-            <span className="text-xs text-surface-400">
-              {formatRelativeTime(comment.createdAt)}
-            </span>
-          </div>
-          <p className="text-surface-700 dark:text-surface-300 text-sm whitespace-pre-wrap">
-            {comment.content}
-          </p>
-          <div className="flex items-center gap-3 mt-2">
-            <button
-              onClick={() => onLike(comment.id)}
-              className={cn(
-                "flex items-center gap-1 text-xs transition-colors",
-                comment.isLiked
-                  ? "text-rose-500"
-                  : "text-surface-400 hover:text-rose-500"
-              )}
-            >
-              <Heart className={cn("h-3.5 w-3.5", comment.isLiked && "fill-current")} />
-              {comment.likesCount > 0 && formatNumber(comment.likesCount)}
-            </button>
-            <button
-              onClick={() => setShowReplyInput(!showReplyInput)}
-              className="flex items-center gap-1 text-xs text-surface-400 hover:text-primary-500 transition-colors"
-            >
-              <Reply className="h-3.5 w-3.5" />
-              답글
-            </button>
-            {hasReplies && (
-              <button
-                onClick={() => setShowReplies(!showReplies)}
-                className="flex items-center gap-1 text-xs text-primary-500 hover:text-primary-600 transition-colors"
-              >
-                {showReplies ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                {comment.replies!.length}개의 답글
-              </button>
-            )}
-          </div>
-          
-          {/* Reply input */}
-          {showReplyInput && (
-            <div className="mt-3 flex gap-2">
-              <Textarea
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="답글을 입력하세요..."
-                className="min-h-[60px] text-sm flex-1"
-              />
-              <div className="flex flex-col gap-1">
-                <Button size="sm" onClick={handleSubmitReply} disabled={!replyText.trim()}>
-                  <Send className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowReplyInput(false)}>
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Replies */}
-      {hasReplies && showReplies && (
-        <div className="relative">
-          {comment.replies!.map((reply) => (
-            <CommentItem
-              key={reply.id}
-              comment={reply}
-              depth={depth + 1}
-              onReply={onReply}
-              onLike={onLike}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // 피드 포스트 카드 컴포넌트
 interface DevPostCardProps {
   post: DevPost;
@@ -806,8 +692,25 @@ function DevPostCard({ post, onEdit, onDelete, onTogglePin }: DevPostCardProps) 
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
   const [likesCount, setLikesCount] = useState(post.likesCount);
-  const [comments, setComments] = useState<PostComment[]>(post.comments || []);
-  const [newComment, setNewComment] = useState("");
+  const normalizeComments = (items: PostComment[], depth = 0, parentId?: string): CommentNode[] =>
+    items.map((item) => {
+      const itemDepth = Number.isFinite(item.depth) && item.depth! >= 0 ? item.depth! : depth;
+      return {
+        id: item.id,
+        author: item.author,
+        content: item.content,
+        parentId: item.parentId ?? parentId,
+        depth: itemDepth,
+        likesCount: item.likesCount,
+        isLiked: item.isLiked,
+        isDeleted: item.isDeleted,
+        images: item.images,
+        createdAt: item.createdAt,
+        updatedAt: (item as any).updatedAt,
+        replies: item.replies ? normalizeComments(item.replies, itemDepth + 1, item.id) : [],
+      };
+    });
+  const [comments, setComments] = useState<CommentNode[]>(normalizeComments(post.comments || []));
   const { user } = useUserStore();
 
   // 투표 관련 상태
@@ -853,8 +756,8 @@ function DevPostCard({ post, onEdit, onDelete, onTogglePin }: DevPostCardProps) 
   };
 
   const handleCommentLike = (commentId: string) => {
-    const updateLike = (items: PostComment[]): PostComment[] => {
-      return items.map((item) => {
+    const updateLike = (items: CommentNode[]): CommentNode[] =>
+      items.map((item) => {
         if (item.id === commentId) {
           return {
             ...item,
@@ -867,13 +770,44 @@ function DevPostCard({ post, onEdit, onDelete, onTogglePin }: DevPostCardProps) 
         }
         return item;
       });
-    };
-    setComments(updateLike(comments));
+    setComments((prev) => updateLike(prev));
   };
 
-  const handleReply = (parentId: string, content: string) => {
-    const newReply: PostComment = {
-      id: `reply-${Date.now()}`,
+  const handleReply = (parentId: string, content: string, _images: string[]) => {
+    const addReply = (items: CommentNode[], depth = 0): CommentNode[] =>
+      items.map((item) => {
+        const currentDepth = Number.isFinite(item.depth) && item.depth! >= 0 ? item.depth! : depth;
+        if (item.id === parentId) {
+          const newReply: CommentNode = {
+            id: `reply-${Date.now()}`,
+            author: {
+              id: user?.id || "current",
+              username: user?.username || "guest",
+              displayName: user?.displayName || "게스트",
+            },
+            content,
+            likesCount: 0,
+            isLiked: false,
+            depth: currentDepth + 1,
+            parentId,
+            createdAt: new Date().toISOString(),
+            replies: [],
+          };
+          return { ...item, replies: [...(item.replies || []), newReply] };
+        }
+        if (item.replies) {
+          return { ...item, replies: addReply(item.replies, currentDepth + 1) };
+        }
+        return item;
+      });
+
+    setComments((prev) => addReply(prev));
+  };
+
+  const handleAddComment = (content: string, _images: string[]) => {
+    if (!content.trim()) return;
+    const comment: CommentNode = {
+      id: `comment-${Date.now()}`,
       author: {
         id: user?.id || "current",
         username: user?.username || "guest",
@@ -882,44 +816,45 @@ function DevPostCard({ post, onEdit, onDelete, onTogglePin }: DevPostCardProps) 
       content,
       likesCount: 0,
       isLiked: false,
+      depth: 0,
       createdAt: new Date().toISOString(),
+      replies: [],
     };
+    setComments((prev) => [...prev, comment]);
+  };
 
-    const addReply = (items: PostComment[]): PostComment[] => {
-      return items.map((item) => {
-        if (item.id === parentId) {
-          return { ...item, replies: [...(item.replies || []), newReply] };
+  const handleEditComment = (commentId: string, content: string, _images: string[]) => {
+    const update = (items: CommentNode[]): CommentNode[] =>
+      items.map((item) => {
+        if (item.id === commentId) {
+          return { ...item, content, updatedAt: new Date().toISOString() as any };
         }
         if (item.replies) {
-          return { ...item, replies: addReply(item.replies) };
+          return { ...item, replies: update(item.replies) };
         }
         return item;
       });
-    };
-    setComments(addReply(comments));
+    setComments((prev) => update(prev));
   };
 
-  const handleAddComment = () => {
-    if (!newComment.trim()) return;
-    const comment: PostComment = {
-      id: `comment-${Date.now()}`,
-      author: {
-        id: user?.id || "current",
-        username: user?.username || "guest",
-        displayName: user?.displayName || "게스트",
-      },
-      content: newComment,
-      likesCount: 0,
-      isLiked: false,
-      createdAt: new Date().toISOString(),
-    };
-    setComments([...comments, comment]);
-    setNewComment("");
+  const handleDeleteComment = (commentId: string) => {
+    const markDelete = (items: CommentNode[]): CommentNode[] =>
+      items.map((item) => {
+        if (item.id === commentId) {
+          return { ...item, isDeleted: true };
+        }
+        if (item.replies) {
+          return { ...item, replies: markDelete(item.replies) };
+        }
+        return item;
+      });
+    setComments((prev) => markDelete(prev));
   };
 
-  const totalComments = comments.reduce((acc, c) => {
-    return acc + 1 + (c.replies?.length || 0);
-  }, 0);
+  const countAllComments = (items: CommentNode[]): number =>
+    items.reduce((acc, c) => acc + 1 + (c.replies ? countAllComments(c.replies) : 0), 0);
+
+  const totalComments = countAllComments(comments);
 
   return (
     <Card className={cn(post.isPinned && "ring-2 ring-primary-200 dark:ring-primary-800")}>
@@ -1106,43 +1041,28 @@ function DevPostCard({ post, onEdit, onDelete, onTogglePin }: DevPostCardProps) 
         {/* Expanded Comments Section */}
         {isExpanded && (
           <div className="border-t border-surface-100 dark:border-surface-800">
-            {/* Comment Input */}
-            <div className="p-4 border-b border-surface-100 dark:border-surface-800">
-              <div className="flex gap-3">
-                <Avatar fallback={user?.displayName || "?"} size="sm" />
-                <div className="flex-1">
-                  <Textarea
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="댓글을 작성하세요..."
-                    className="min-h-[60px] text-sm"
-                  />
-                  <div className="mt-2 flex justify-end">
-                    <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()}>
-                      <Send className="h-3.5 w-3.5 mr-1" />
-                      댓글 작성
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Comments List */}
-            <div className="px-4 divide-y divide-surface-100 dark:divide-surface-800">
-              {comments.length > 0 ? (
-                comments.map((comment) => (
-                  <CommentItem
-                    key={comment.id}
-                    comment={comment}
-                    onReply={handleReply}
-                    onLike={handleCommentLike}
-                  />
-                ))
-              ) : (
-                <div className="py-8 text-center text-surface-400 text-sm">
-                  아직 댓글이 없습니다. 첫 번째 댓글을 작성해보세요!
-                </div>
-              )}
+            <div className="px-4 py-4">
+              <CommentThread
+                comments={comments}
+                currentUser={
+                  user
+                    ? {
+                        id: user.id,
+                        username: user.username,
+                        displayName: user.displayName,
+                      }
+                    : { id: "guest", displayName: "게스트" }
+                }
+                currentUserId={user?.id}
+                maxDepth={3}
+                enableAttachments={false}
+                maxImages={0}
+                onCreate={handleAddComment}
+                onReply={handleReply}
+                onLike={handleCommentLike}
+                onEdit={handleEditComment}
+                onDelete={handleDeleteComment}
+              />
             </div>
           </div>
         )}

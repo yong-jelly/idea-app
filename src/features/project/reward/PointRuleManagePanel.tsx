@@ -197,3 +197,4 @@ export function PointRuleManagePanel({ rules, projectId, onUpdate, onToggleActiv
 }
 
 
+

@@ -1,30 +1,14 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
-import {
-  ExternalLink,
-  Share2,
-  Bookmark,
-  MessageSquare,
-  Users,
-  Github,
-  Globe,
-  Heart,
-  MoreHorizontal,
-  Play,
-  ChevronLeft,
-  ChevronRight,
-  Send,
-  Reply,
-  Megaphone,
-  Info,
-} from "lucide-react";
-import { Button, Avatar, Badge, Textarea } from "@/shared/ui";
-import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
+import { ExternalLink, Share2, Bookmark, MessageSquare, Users, Github, Globe, Play, ChevronLeft, ChevronRight, Megaphone, Info } from "lucide-react";
+import { Button, Avatar } from "@/shared/ui";
+import { cn, formatNumber } from "@/shared/lib/utils";
 import { useProjectStore, CATEGORY_INFO, UpvoteCard } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
+import { CommentThread, type CommentNode } from "@/shared/ui/comment";
 
-// 댓글 타입 정의
-interface ProjectComment {
+// 댓글 타입 정의 (raw) - CommentThread에 맞춰 정규화해서 사용
+type RawProjectComment = {
   id: string;
   author: {
     id: string;
@@ -32,16 +16,21 @@ interface ProjectComment {
     displayName: string;
     avatar?: string;
     isMaker?: boolean;
+    role?: string;
   };
   content: string;
   likesCount: number;
   isLiked: boolean;
   createdAt: string;
-  replies?: ProjectComment[];
-}
+  replies?: RawProjectComment[];
+  depth?: number;
+  parentId?: string;
+  images?: string[];
+  isDeleted?: boolean;
+};
 
 // 더미 댓글 데이터
-const dummyComments: ProjectComment[] = [
+const dummyComments: RawProjectComment[] = [
   {
     id: "c1",
     author: {
@@ -67,6 +56,7 @@ const dummyComments: ProjectComment[] = [
         likesCount: 5,
         isLiked: false,
         createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+        depth: 1,
       },
       {
         id: "c1-2",
@@ -81,8 +71,10 @@ const dummyComments: ProjectComment[] = [
         likesCount: 3,
         isLiked: false,
         createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+        depth: 1,
       },
     ],
+    depth: 0,
   },
   {
     id: "c2",
@@ -97,6 +89,7 @@ const dummyComments: ProjectComment[] = [
     isLiked: true,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
     replies: [],
+    depth: 0,
   },
   {
     id: "c3",
@@ -111,6 +104,7 @@ const dummyComments: ProjectComment[] = [
     isLiked: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
     replies: [],
+    depth: 0,
   },
 ];
 
@@ -139,107 +133,7 @@ const dummyTeam: TeamMember[] = [
   },
 ];
 
-// 댓글 컴포넌트
-function CommentItem({
-  comment,
-  onReply,
-  onLike,
-  depth = 0,
-}: {
-  comment: ProjectComment;
-  onReply: (commentId: string) => void;
-  onLike: (commentId: string) => void;
-  depth?: number;
-}) {
-  const [showReplies, setShowReplies] = useState(true);
-
-  return (
-    <div className={cn("group", depth > 0 && "ml-12 mt-4")}>
-      <div className="flex gap-3">
-        <Link to={`/profile/${comment.author.username}`}>
-          <Avatar
-            src={comment.author.avatar}
-            fallback={comment.author.displayName}
-            size={depth > 0 ? "sm" : "md"}
-          />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <Link
-              to={`/profile/${comment.author.username}`}
-              className="font-semibold text-surface-900 hover:underline dark:text-surface-50"
-            >
-              {comment.author.displayName}
-            </Link>
-            {comment.author.isMaker && (
-              <Badge className="bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 text-[10px]">
-                Maker
-              </Badge>
-            )}
-            <span className="text-sm text-surface-400 dark:text-surface-500">
-              {formatRelativeTime(comment.createdAt)}
-            </span>
-          </div>
-          <p className="text-surface-700 dark:text-surface-300 whitespace-pre-wrap">
-            {comment.content}
-          </p>
-          <div className="mt-2 flex items-center gap-4">
-            <button
-              onClick={() => onLike(comment.id)}
-              className={cn(
-                "flex items-center gap-1 text-sm transition-colors",
-                comment.isLiked
-                  ? "text-rose-500"
-                  : "text-surface-400 hover:text-rose-500"
-              )}
-            >
-              <Heart
-                className={cn("h-4 w-4", comment.isLiked && "fill-current")}
-              />
-              {comment.likesCount > 0 && (
-                <span>{formatNumber(comment.likesCount)}</span>
-              )}
-            </button>
-            <button
-              onClick={() => onReply(comment.id)}
-              className="flex items-center gap-1 text-sm text-surface-400 hover:text-primary-500 transition-colors"
-            >
-              <Reply className="h-4 w-4" />
-              답글
-            </button>
-            <button className="text-surface-400 hover:text-surface-600 dark:hover:text-surface-300">
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Replies */}
-      {comment.replies && comment.replies.length > 0 && (
-        <div className="mt-2">
-          {!showReplies ? (
-            <button
-              onClick={() => setShowReplies(true)}
-              className="ml-12 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400"
-            >
-              {comment.replies.length}개의 답글 보기
-            </button>
-          ) : (
-            comment.replies.map((reply) => (
-              <CommentItem
-                key={reply.id}
-                comment={reply}
-                onReply={onReply}
-                onLike={onLike}
-                depth={depth + 1}
-              />
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+const COMMENT_MAX_DEPTH = 3;
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -248,8 +142,32 @@ export function ProjectDetailPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "team">(
     "overview"
   );
-  const [commentText, setCommentText] = useState("");
-  const [comments, setComments] = useState<ProjectComment[]>(dummyComments);
+  const normalizeComments = (items: RawProjectComment[], depth = 0, parentId?: string): CommentNode[] =>
+    items.map((item) => {
+      const itemDepth = Number.isFinite(item.depth) && item.depth! >= 0 ? item.depth! : depth;
+      return {
+        id: item.id,
+        author: {
+          id: item.author.id,
+          username: item.author.username,
+          displayName: item.author.displayName,
+          avatarUrl: item.author.avatar,
+          role: item.author.isMaker ? "Maker" : item.author.role,
+        },
+        content: item.content,
+        parentId: item.parentId ?? parentId,
+        depth: itemDepth,
+        likesCount: item.likesCount,
+        isLiked: item.isLiked,
+        isDeleted: item.isDeleted,
+        images: item.images,
+        createdAt: item.createdAt,
+        updatedAt: (item as any).updatedAt,
+        replies: item.replies ? normalizeComments(item.replies, itemDepth + 1, item.id) : [],
+      };
+    });
+
+  const [comments, setComments] = useState<CommentNode[]>(normalizeComments(dummyComments));
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // 프로젝트 찾기 (더미)
@@ -263,61 +181,108 @@ export function ProjectDetailPage() {
     "https://picsum.photos/seed/proj3/800/450",
   ];
 
-  const handleSubmitComment = () => {
-    if (!commentText.trim() || !user) return;
-
-    const newComment: ProjectComment = {
+  const handleAddComment = (content: string, _images: string[]) => {
+    if (!content.trim()) return;
+    const newComment: CommentNode = {
       id: `c${Date.now()}`,
       author: {
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        avatar: user.avatar,
+        id: user?.id || "current",
+        username: user?.username || "guest",
+        displayName: user?.displayName || "게스트",
+        avatarUrl: user?.avatar,
       },
-      content: commentText,
+      content,
       likesCount: 0,
       isLiked: false,
+      depth: 0,
       createdAt: new Date().toISOString(),
       replies: [],
     };
+    setComments((prev) => [...prev, newComment]);
+  };
 
-    setComments([newComment, ...comments]);
-    setCommentText("");
+  const handleReply = (parentId: string, content: string, _images: string[]) => {
+    const addReply = (items: CommentNode[], depth = 0): CommentNode[] =>
+      items.map((item) => {
+        const currentDepth = Number.isFinite(item.depth) && item.depth! >= 0 ? item.depth! : depth;
+        if (item.id === parentId) {
+          if (currentDepth >= COMMENT_MAX_DEPTH) return item;
+          const newReply: CommentNode = {
+            id: `reply-${Date.now()}`,
+            author: {
+              id: user?.id || "current",
+              username: user?.username || "guest",
+              displayName: user?.displayName || "게스트",
+              avatarUrl: user?.avatar,
+            },
+            content,
+            likesCount: 0,
+            isLiked: false,
+            depth: currentDepth + 1,
+            parentId,
+            createdAt: new Date().toISOString(),
+            replies: [],
+          };
+          return { ...item, replies: [...(item.replies || []), newReply] };
+        }
+        if (item.replies) {
+          return { ...item, replies: addReply(item.replies, currentDepth + 1) };
+        }
+        return item;
+      });
+
+    setComments((prev) => addReply(prev));
   };
 
   const handleLikeComment = (commentId: string) => {
-    setComments((prev) =>
-      prev.map((c) => {
-        if (c.id === commentId) {
+    const toggleLike = (items: CommentNode[]): CommentNode[] =>
+      items.map((item) => {
+        if (item.id === commentId) {
           return {
-            ...c,
-            isLiked: !c.isLiked,
-            likesCount: c.isLiked ? c.likesCount - 1 : c.likesCount + 1,
+            ...item,
+            isLiked: !item.isLiked,
+            likesCount: item.isLiked ? item.likesCount - 1 : item.likesCount + 1,
           };
         }
-        if (c.replies) {
-          return {
-            ...c,
-            replies: c.replies.map((r) =>
-              r.id === commentId
-                ? {
-                    ...r,
-                    isLiked: !r.isLiked,
-                    likesCount: r.isLiked ? r.likesCount - 1 : r.likesCount + 1,
-                  }
-                : r
-            ),
-          };
+        if (item.replies) {
+          return { ...item, replies: toggleLike(item.replies) };
         }
-        return c;
-      })
-    );
+        return item;
+      });
+    setComments((prev) => toggleLike(prev));
   };
 
-  const handleReplyComment = (commentId: string) => {
-    // TODO: 답글 UI 구현
-    console.log("Reply to:", commentId);
+  const handleEditComment = (commentId: string, content: string, _images: string[]) => {
+    const update = (items: CommentNode[]): CommentNode[] =>
+      items.map((item) => {
+        if (item.id === commentId) {
+          return { ...item, content, updatedAt: new Date().toISOString() };
+        }
+        if (item.replies) {
+          return { ...item, replies: update(item.replies) };
+        }
+        return item;
+      });
+    setComments((prev) => update(prev));
   };
+
+  const handleDeleteComment = (commentId: string) => {
+    const markDelete = (items: CommentNode[]): CommentNode[] =>
+      items.map((item) => {
+        if (item.id === commentId) {
+          return { ...item, isDeleted: true };
+        }
+        if (item.replies) {
+          return { ...item, replies: markDelete(item.replies) };
+        }
+        return item;
+      });
+    setComments((prev) => markDelete(prev));
+  };
+
+  const countAllComments = (items: CommentNode[]): number =>
+    items.reduce((acc, c) => acc + 1 + (c.replies ? countAllComments(c.replies) : 0), 0);
+  const totalComments = countAllComments(comments);
 
   if (!project) {
     return (
@@ -605,48 +570,32 @@ export function ProjectDetailPage() {
                 {/* Comments Section */}
                 <div>
                   <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-50 mb-4">
-                    댓글 ({comments.length})
+                    댓글 ({totalComments})
                   </h3>
 
-                  {/* Comment Input */}
-                  <div className="mb-6 p-4 rounded-xl bg-surface-50 dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-800">
-                    <div className="flex gap-3">
-                      <Avatar
-                        src={user?.avatar}
-                        fallback={user?.displayName || "?"}
-                        size="md"
-                      />
-                      <div className="flex-1">
-                        <Textarea
-                          value={commentText}
-                          onChange={(e) => setCommentText(e.target.value)}
-                          placeholder="이 프로젝트에 대한 의견을 남겨주세요..."
-                          className="min-h-[80px] resize-none"
-                        />
-                        <div className="mt-2 flex justify-end">
-                          <Button
-                            onClick={handleSubmitComment}
-                            disabled={!commentText.trim()}
-                            size="sm"
-                          >
-                            <Send className="h-4 w-4 mr-1" />
-                            댓글 작성
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Comments List */}
-                  <div className="space-y-6">
-                    {comments.map((comment) => (
-                      <CommentItem
-                        key={comment.id}
-                        comment={comment}
-                        onReply={handleReplyComment}
-                        onLike={handleLikeComment}
-                      />
-                    ))}
+                  <div className="mb-6 p-4 rounded-xl bg-white dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-800">
+                    <CommentThread
+                      comments={comments}
+                      currentUser={
+                        user
+                          ? {
+                              id: user.id,
+                              username: user.username,
+                              displayName: user.displayName,
+                              avatarUrl: user.avatar,
+                            }
+                          : { id: "guest", displayName: "게스트" }
+                      }
+                      currentUserId={user?.id}
+                      maxDepth={COMMENT_MAX_DEPTH}
+                      enableAttachments={false}
+                      maxImages={0}
+                      onCreate={handleAddComment}
+                      onReply={handleReply}
+                      onLike={handleLikeComment}
+                      onEdit={handleEditComment}
+                      onDelete={handleDeleteComment}
+                    />
                   </div>
                 </div>
               </>

@@ -1,20 +1,21 @@
 import { useParams, useNavigate, Link } from "react-router";
-import { ArrowLeft, MoreHorizontal, MessageCircle, Heart, Bookmark, ExternalLink, Flag, Clock, CheckCircle2, Plus, X, Pencil, Trash2, Send } from "lucide-react";
-import { Button, Avatar, Textarea } from "@/shared/ui";
+import { ArrowLeft, MessageCircle, Bookmark, ExternalLink, Flag, Clock, CheckCircle2, Plus, Heart } from "lucide-react";
+import { Button, Avatar } from "@/shared/ui";
 import { cn, formatNumber } from "@/shared/lib/utils";
+import { CommentThread, type CommentNode } from "@/shared/ui/comment";
 import { usePostStore } from "@/entities/post";
 import { useUserStore } from "@/entities/user";
 import { LeftSidebar } from "@/widgets";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 // 댓글 타입 정의
-const MAX_COMMENT_DEPTH = 2; // 최대 depth (0, 1, 2 = 원글 > 댓글 > 대댓글 > 대대댓글)
+const MAX_COMMENT_DEPTH = 3; // CommentThread 기본값에 맞춤
 
-interface Comment {
+type RawComment = {
   id: string;
-  parentId?: string; // 부모 댓글 ID (없으면 원글에 대한 답글)
-  replyTo?: { username: string; displayName: string }; // 답장 대상
-  depth: number; // 0: 원글에 대한 답글, 1: 대댓글, 2: 대대댓글 (최대)
+  parentId?: string;
+  replyTo?: { username: string; displayName: string };
+  depth?: number;
   author: {
     id: string;
     username: string;
@@ -25,11 +26,13 @@ interface Comment {
   createdAt: string;
   likesCount: number;
   isLiked: boolean;
-  isDeleted?: boolean; // 삭제된 댓글 여부
-}
+  isDeleted?: boolean;
+  images?: string[];
+  replies?: RawComment[];
+};
 
 // 데모용 댓글 데이터 (대댓글 포함)
-const initialComments: Comment[] = [
+const initialComments: RawComment[] = [
   {
     id: "c1",
     depth: 0,
@@ -166,14 +169,31 @@ export function PostDetailPage() {
   const navigate = useNavigate();
   const { posts, toggleLike, toggleBookmark } = usePostStore();
   const { user } = useUserStore();
-  
-  const [replyContent, setReplyContent] = useState("");
-  const [topCommentContent, setTopCommentContent] = useState(""); // 상단 입력 필드
-  const [comments, setComments] = useState<Comment[]>(initialComments);
-  const [activeReplyId, setActiveReplyId] = useState<string | null>(null); // 현재 답글 작성 중인 댓글 ID (null이면 원글)
-  const [editingCommentId, setEditingCommentId] = useState<string | null>(null); // 수정 중인 댓글 ID
-  const [editContent, setEditContent] = useState(""); // 수정 내용
-  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null); // 삭제 확인 중인 댓글 ID
+
+  const normalizeComments = (items: RawComment[], depth = 0, parentId?: string): CommentNode[] =>
+    items.map((item) => {
+      const itemDepth = Number.isFinite(item.depth) && item.depth! >= 0 ? item.depth! : depth;
+      return {
+        id: item.id,
+        author: {
+          id: item.author.id,
+          username: item.author.username,
+          displayName: item.author.displayName,
+          avatarUrl: item.author.avatar,
+        },
+        content: item.content,
+        parentId: item.parentId ?? parentId,
+        depth: itemDepth,
+        likesCount: item.likesCount,
+        isLiked: item.isLiked,
+        isDeleted: item.isDeleted,
+        images: item.images,
+        createdAt: item.createdAt,
+        replies: item.replies ? normalizeComments(item.replies, itemDepth + 1, item.id) : [],
+      };
+    });
+
+  const [comments, setComments] = useState<CommentNode[]>(normalizeComments(initialComments));
 
   // 페이지 진입 시 스크롤을 맨 위로 이동
   useEffect(() => {
@@ -183,124 +203,113 @@ export function PostDetailPage() {
   // 포스트 찾기
   const post = posts.find((p) => p.id === postId);
 
-  // 답글 작성
-  const handleReply = (targetComment?: Comment) => {
-    if (!replyContent.trim() || !user) return;
-    
-    const newComment: Comment = {
+  // 댓글 추가
+  const handleAddComment = (content: string, _images: string[]) => {
+    if (!content.trim()) return;
+    const newComment: CommentNode = {
       id: `c${Date.now()}`,
-      parentId: targetComment?.id,
-      depth: targetComment ? Math.min(targetComment.depth + 1, MAX_COMMENT_DEPTH) : 0,
-      replyTo: targetComment ? { 
-        username: targetComment.author.username, 
-        displayName: targetComment.author.displayName 
-      } : undefined,
       author: {
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        avatar: user.avatar,
+        id: user?.id || "current",
+        username: user?.username || "guest",
+        displayName: user?.displayName || "게스트",
+        avatarUrl: user?.avatar,
       },
-      content: replyContent.trim(),
-      createdAt: new Date().toISOString(),
+      content,
       likesCount: 0,
       isLiked: false,
-    };
-    
-    if (targetComment) {
-      // 대댓글인 경우: 부모 댓글 바로 다음에 삽입
-      const parentIndex = comments.findIndex(c => c.id === targetComment.id);
-      if (parentIndex !== -1) {
-        // 같은 부모의 마지막 대댓글 찾기
-        let insertIndex = parentIndex + 1;
-        while (insertIndex < comments.length && comments[insertIndex].parentId === targetComment.id) {
-          insertIndex++;
-        }
-        const newComments = [...comments];
-        newComments.splice(insertIndex, 0, newComment);
-        setComments(newComments);
-      } else {
-        setComments([newComment, ...comments]);
-      }
-    } else {
-      // 원글에 대한 답글: 맨 앞에 추가
-      setComments([newComment, ...comments]);
-    }
-    
-    setReplyContent("");
-    setActiveReplyId(null);
-  };
-
-  // 상단/하단 댓글 작성 (원글에 대한 댓글)
-  const handleDirectComment = (content: string, clearFn: () => void) => {
-    if (!content.trim() || !user) return;
-    
-    const newComment: Comment = {
-      id: `c${Date.now()}`,
       depth: 0,
-      author: {
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        avatar: user.avatar,
-      },
-      content: content.trim(),
       createdAt: new Date().toISOString(),
-      likesCount: 0,
-      isLiked: false,
+      replies: [],
     };
-    
-    setComments([newComment, ...comments]);
-    clearFn();
+    setComments((prev) => [...prev, newComment]);
   };
 
-  // 좋아요 토글
+  // 답글 추가
+  const handleReply = (parentId: string, content: string, _images: string[]) => {
+    const addReply = (items: CommentNode[], depth = 0): CommentNode[] =>
+      items.map((item) => {
+        const currentDepth = Number.isFinite(item.depth) && item.depth! >= 0 ? item.depth! : depth;
+        if (item.id === parentId) {
+          if (currentDepth >= MAX_COMMENT_DEPTH) return item;
+          const newReply: CommentNode = {
+            id: `reply-${Date.now()}`,
+            author: {
+              id: user?.id || "current",
+              username: user?.username || "guest",
+              displayName: user?.displayName || "게스트",
+              avatarUrl: user?.avatar,
+            },
+            content,
+            likesCount: 0,
+            isLiked: false,
+            depth: currentDepth + 1,
+            parentId,
+            createdAt: new Date().toISOString(),
+            replies: [],
+          };
+          return { ...item, replies: [...(item.replies || []), newReply] };
+        }
+        if (item.replies) {
+          return { ...item, replies: addReply(item.replies, currentDepth + 1) };
+        }
+        return item;
+      });
+
+    setComments((prev) => addReply(prev));
+  };
+
+  // 댓글 좋아요
   const handleCommentLike = (commentId: string) => {
-    setComments(comments.map(c => 
-      c.id === commentId 
-        ? { ...c, isLiked: !c.isLiked, likesCount: c.isLiked ? c.likesCount - 1 : c.likesCount + 1 }
-        : c
-    ));
+    const toggleLike = (items: CommentNode[]): CommentNode[] =>
+      items.map((item) => {
+        if (item.id === commentId) {
+          return {
+            ...item,
+            isLiked: !item.isLiked,
+            likesCount: item.isLiked ? item.likesCount - 1 : item.likesCount + 1,
+          };
+        }
+        if (item.replies) {
+          return { ...item, replies: toggleLike(item.replies) };
+        }
+        return item;
+      });
+    setComments((prev) => toggleLike(prev));
   };
 
-  // 댓글 수정 시작
-  const handleStartEdit = (comment: Comment) => {
-    setEditingCommentId(comment.id);
-    setEditContent(comment.content);
+  // 댓글 수정
+  const handleEditComment = (commentId: string, content: string, _images: string[]) => {
+    const update = (items: CommentNode[]): CommentNode[] =>
+      items.map((item) => {
+        if (item.id === commentId) {
+          return { ...item, content, updatedAt: new Date().toISOString() };
+        }
+        if (item.replies) {
+          return { ...item, replies: update(item.replies) };
+        }
+        return item;
+      });
+    setComments((prev) => update(prev));
   };
 
-  // 댓글 수정 저장
-  const handleSaveEdit = (commentId: string) => {
-    if (!editContent.trim()) return;
-    setComments(comments.map(c => 
-      c.id === commentId ? { ...c, content: editContent.trim() } : c
-    ));
-    setEditingCommentId(null);
-    setEditContent("");
+  // 댓글 삭제 (소프트)
+  const handleDeleteComment = (commentId: string) => {
+    const markDelete = (items: CommentNode[]): CommentNode[] =>
+      items.map((item) => {
+        if (item.id === commentId) {
+          return { ...item, isDeleted: true };
+        }
+        if (item.replies) {
+          return { ...item, replies: markDelete(item.replies) };
+        }
+        return item;
+      });
+    setComments((prev) => markDelete(prev));
   };
 
-  // 댓글 수정 취소
-  const handleCancelEdit = () => {
-    setEditingCommentId(null);
-    setEditContent("");
-  };
-
-  // 댓글 삭제
-  const handleDelete = (commentId: string) => {
-    // 하위 댓글이 있는지 확인
-    const hasChildComments = comments.some(c => c.parentId === commentId && !c.isDeleted);
-    
-    if (hasChildComments) {
-      // 하위 댓글이 있으면 삭제 표시만 (실제 제거하지 않음)
-      setComments(comments.map(c => 
-        c.id === commentId ? { ...c, isDeleted: true } : c
-      ));
-    } else {
-      // 하위 댓글이 없으면 실제로 삭제
-      setComments(comments.filter(c => c.id !== commentId));
-    }
-    setDeletingCommentId(null);
-  };
+  const countAllComments = (items: CommentNode[]): number =>
+    items.reduce((acc, c) => acc + 1 + (c.replies ? countAllComments(c.replies) : 0), 0);
+  const totalComments = countAllComments(comments);
 
   if (!post) {
     return (
@@ -377,9 +386,6 @@ export function PostDetailPage() {
                 </span>
               </div>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
           </div>
 
           {/* Post Type Badge & Info */}
@@ -536,7 +542,7 @@ export function PostDetailPage() {
             {/* 댓글 */}
             <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-surface-500 hover:text-surface-700 hover:bg-surface-100 dark:hover:bg-surface-800 dark:hover:text-surface-300 transition-all">
               <MessageCircle className="h-[18px] w-[18px]" />
-              <span className="text-[13px] tabular-nums">{formatNumber(comments.length)}</span>
+              <span className="text-[13px] tabular-nums">{formatNumber(totalComments)}</span>
             </button>
 
             {/* 좋아요 */}
@@ -568,105 +574,30 @@ export function PostDetailPage() {
           </div>
         </article>
 
-        {/* 상단 댓글 입력 필드 - 항상 보임 */}
-        {user && (
-          <div className="px-4 py-4 border-b border-surface-100 dark:border-surface-800">
-            <div className="flex gap-3">
-              <Avatar
-                src={user.avatar}
-                alt={user.displayName}
-                fallback={user.displayName}
-                size="md"
-              />
-              <div className="flex-1">
-                <Textarea
-                  value={topCommentContent}
-                  onChange={(e) => setTopCommentContent(e.target.value)}
-                  placeholder="댓글을 작성하세요..."
-                  className="min-h-[80px] resize-none border border-surface-200 dark:border-surface-700 rounded-xl p-3 text-[15px] focus:ring-1 focus:ring-primary-500 bg-white dark:bg-surface-900"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                      e.preventDefault();
-                      handleDirectComment(topCommentContent, () => setTopCommentContent(""));
-                    }
-                  }}
-                />
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-surface-400">⌘+Enter로 전송</span>
-                  <Button 
-                    size="sm" 
-                    disabled={!topCommentContent.trim()}
-                    onClick={() => handleDirectComment(topCommentContent, () => setTopCommentContent(""))}
-                    className="gap-1.5"
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                    댓글 작성
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Reply Composer for Post (인라인) - 답글 버튼 클릭 시 */}
-        {user && activeReplyId === "post" && (
-          <InlineReplyComposer
-            user={user}
-            replyTo={{ username: post.author.username, displayName: post.author.displayName }}
-            value={replyContent}
-            onChange={setReplyContent}
-            onSubmit={() => handleReply()}
-            onCancel={() => { setActiveReplyId(null); setReplyContent(""); }}
+        {/* Comments */}
+        <div className="px-4 py-4">
+          <CommentThread
+            comments={comments}
+            currentUser={
+              user
+                ? {
+                    id: user.id,
+                    username: user.username,
+                    displayName: user.displayName,
+                    avatarUrl: user.avatar,
+                  }
+                : { id: "guest", displayName: "게스트" }
+            }
+            currentUserId={user?.id}
+            maxDepth={MAX_COMMENT_DEPTH}
+            enableAttachments={true}
+            maxImages={1}
+            onCreate={handleAddComment}
+            onReply={handleReply}
+            onLike={handleCommentLike}
+            onEdit={handleEditComment}
+            onDelete={handleDeleteComment}
           />
-        )}
-
-        {/* Comments with Nested Replies */}
-        <div>
-          {comments.map((comment) => (
-            <div key={comment.id}>
-              <CommentItem
-                comment={comment}
-                postAuthor={post.author}
-                currentUser={user}
-                isReplyActive={activeReplyId === comment.id}
-                isEditing={editingCommentId === comment.id}
-                isDeleting={deletingCommentId === comment.id}
-                editContent={editContent}
-                onReplyClick={() => setActiveReplyId(activeReplyId === comment.id ? null : comment.id)}
-                onLike={handleCommentLike}
-                onStartEdit={handleStartEdit}
-                onSaveEdit={handleSaveEdit}
-                onCancelEdit={handleCancelEdit}
-                onEditContentChange={setEditContent}
-                onDeleteClick={() => setDeletingCommentId(comment.id)}
-                onDeleteConfirm={handleDelete}
-                onDeleteCancel={() => setDeletingCommentId(null)}
-                canReply={comment.depth < MAX_COMMENT_DEPTH}
-              />
-              
-              {/* 인라인 답글 작성 UI */}
-              {user && activeReplyId === comment.id && (
-                <InlineReplyComposer
-                  user={user}
-                  replyTo={{ username: comment.author.username, displayName: comment.author.displayName }}
-                  value={replyContent}
-                  onChange={setReplyContent}
-                  onSubmit={() => handleReply(comment)}
-                  onCancel={() => { setActiveReplyId(null); setReplyContent(""); }}
-                  depth={comment.depth}
-                />
-              )}
-            </div>
-          ))}
-
-          {/* Empty State */}
-          {comments.length === 0 && (
-            <div className="py-12 text-center">
-              <MessageCircle className="h-12 w-12 text-surface-300 dark:text-surface-600 mx-auto mb-3" />
-              <p className="text-surface-500 dark:text-surface-400">아직 댓글이 없습니다</p>
-              <p className="text-sm text-surface-400 dark:text-surface-500 mt-1">첫 번째 댓글을 남겨보세요!</p>
-            </div>
-          )}
         </div>
       </main>
     </div>

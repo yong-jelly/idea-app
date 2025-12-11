@@ -1,24 +1,17 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Link, useParams, useNavigate } from "react-router";
+import { Link, useParams } from "react-router";
 import {
   ChevronLeft,
   ThumbsUp,
   MessageCircle,
   Share2,
-  MoreHorizontal,
   Bug,
   Lightbulb,
   Sparkles,
   MessageSquareText,
-  Send,
-  Image as ImageIcon,
   X,
-  Reply,
-  ChevronDown,
-  ChevronUp,
   Edit,
-  Trash2,
   CheckCircle2,
   Clock,
   AlertCircle,
@@ -29,14 +22,12 @@ import {
   MessageSquarePlus,
   History,
   Pin,
-  Eye,
   Link2,
-  Copy,
   Check,
 } from "lucide-react";
-import { Button, Avatar, Badge, Textarea, Card, CardContent, Input, Separator } from "@/shared/ui";
+import { Button, Avatar, Badge, Textarea, Card, CardContent, Separator } from "@/shared/ui";
+import { CommentThread } from "@/shared/ui/comment";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
-import { useProjectStore, CATEGORY_INFO } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 
 // ========== 타입 정의 ==========
@@ -65,6 +56,7 @@ interface FeedbackComment {
   replies?: FeedbackComment[];
   createdAt: string;
   updatedAt?: string;
+  isDeleted?: boolean;
 }
 
 interface FeedbackHistory {
@@ -120,7 +112,10 @@ const FEEDBACK_PRIORITY_INFO = {
   critical: { label: "긴급", color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300" },
 };
 
-const MAX_COMMENT_DEPTH = 3;
+// 댓글 기본 설정: 프로젝트 전역에서 동일한 경험을 주기 위해 상수화
+const COMMENT_MAX_DEPTH = 3;
+const COMMENT_ENABLE_ATTACHMENTS = true;
+const COMMENT_MAX_IMAGES = 1;
 
 // ========== 더미 데이터 ==========
 
@@ -345,242 +340,6 @@ const dummyFeedbacks: Feedback[] = [
   },
 ];
 
-// ========== 컴포넌트 ==========
-
-interface CommentInputProps {
-  placeholder?: string;
-  onSubmit: (content: string, images: string[]) => void;
-  onCancel?: () => void;
-  showCancel?: boolean;
-  autoFocus?: boolean;
-}
-
-function CommentInput({ placeholder = "댓글을 입력하세요...", onSubmit, onCancel, showCancel, autoFocus }: CommentInputProps) {
-  const [content, setContent] = useState("");
-  const [images, setImages] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleSubmit = () => {
-    if (!content.trim() && images.length === 0) return;
-    onSubmit(content, images);
-    setContent("");
-    setImages([]);
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setImages((prev) => [...prev, event.target!.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  return (
-    <div className="space-y-3">
-      <Textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder={placeholder}
-        className="min-h-[80px] text-sm"
-        autoFocus={autoFocus}
-      />
-      
-      {images.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {images.map((img, index) => (
-            <div key={index} className="relative">
-              <img
-                src={img}
-                alt={`첨부 이미지 ${index + 1}`}
-                className="h-20 w-20 rounded-lg object-cover border border-surface-200 dark:border-surface-700"
-              />
-              <button
-                onClick={() => removeImage(index)}
-                className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-surface-900 text-white flex items-center justify-center hover:bg-rose-500 transition-colors"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handleImageUpload}
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            className="text-surface-500 hover:text-primary-500"
-          >
-            <ImageIcon className="h-4 w-4 mr-1" />
-            이미지
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          {showCancel && (
-            <Button variant="ghost" size="sm" onClick={onCancel}>
-              취소
-            </Button>
-          )}
-          <Button size="sm" onClick={handleSubmit} disabled={!content.trim() && images.length === 0}>
-            <Send className="h-3.5 w-3.5 mr-1" />
-            작성
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface CommentItemProps {
-  comment: FeedbackComment;
-  onReply: (parentId: string, content: string, images: string[]) => void;
-  onLike: (commentId: string) => void;
-  onDelete?: (commentId: string) => void;
-  maxDepth?: number;
-}
-
-function CommentItem({ comment, onReply, onLike, onDelete, maxDepth = MAX_COMMENT_DEPTH }: CommentItemProps) {
-  const [showReplyInput, setShowReplyInput] = useState(false);
-  const [showReplies, setShowReplies] = useState(true);
-  const hasReplies = comment.replies && comment.replies.length > 0;
-  const canReply = comment.depth < maxDepth - 1;
-
-  const handleSubmitReply = (content: string, images: string[]) => {
-    onReply(comment.id, content, images);
-    setShowReplyInput(false);
-  };
-
-  return (
-    <div className={cn("relative", comment.depth > 0 && "ml-10")}>
-      {comment.depth > 0 && (
-        <div className="absolute -left-5 top-0 bottom-0 w-px bg-surface-200 dark:bg-surface-700" />
-      )}
-      
-      <div className="py-4">
-        <div className="flex gap-3">
-          <Avatar fallback={comment.author.displayName} size="sm" />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-medium text-surface-900 dark:text-surface-50 text-sm">
-                {comment.author.displayName}
-              </span>
-              {comment.author.role && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {comment.author.role}
-                </Badge>
-              )}
-              <span className="text-xs text-surface-400">
-                {formatRelativeTime(comment.createdAt)}
-              </span>
-            </div>
-            
-            <p className="text-surface-700 dark:text-surface-300 text-sm whitespace-pre-wrap mb-2">
-              {comment.content}
-            </p>
-
-            {comment.images && comment.images.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {comment.images.map((img, index) => (
-                  <img
-                    key={index}
-                    src={img}
-                    alt={`댓글 이미지 ${index + 1}`}
-                    className="max-h-40 rounded-lg border border-surface-200 dark:border-surface-700 cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => window.open(img, "_blank")}
-                  />
-                ))}
-              </div>
-            )}
-            
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => onLike(comment.id)}
-                className={cn(
-                  "flex items-center gap-1 text-xs transition-colors",
-                  comment.isLiked
-                    ? "text-primary-500"
-                    : "text-surface-400 hover:text-primary-500"
-                )}
-              >
-                <ThumbsUp className={cn("h-3.5 w-3.5", comment.isLiked && "fill-current")} />
-                {comment.likesCount > 0 && formatNumber(comment.likesCount)}
-              </button>
-              
-              {canReply && (
-                <button
-                  onClick={() => setShowReplyInput(!showReplyInput)}
-                  className="flex items-center gap-1 text-xs text-surface-400 hover:text-primary-500 transition-colors"
-                >
-                  <Reply className="h-3.5 w-3.5" />
-                  답글
-                </button>
-              )}
-              
-              {hasReplies && (
-                <button
-                  onClick={() => setShowReplies(!showReplies)}
-                  className="flex items-center gap-1 text-xs text-primary-500 hover:text-primary-600 transition-colors"
-                >
-                  {showReplies ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                  {comment.replies!.length}개의 답글
-                </button>
-              )}
-            </div>
-            
-            {showReplyInput && (
-              <div className="mt-3">
-                <CommentInput
-                  placeholder={`@${comment.author.displayName}에게 답글...`}
-                  onSubmit={handleSubmitReply}
-                  onCancel={() => setShowReplyInput(false)}
-                  showCancel
-                  autoFocus
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {hasReplies && showReplies && (
-        <div className="relative">
-          {comment.replies!.map((reply) => (
-            <CommentItem
-              key={reply.id}
-              comment={reply}
-              onReply={onReply}
-              onLike={onLike}
-              onDelete={onDelete}
-              maxDepth={maxDepth}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // 공식 답변 작성 모달
 interface DevResponseModalProps {
   isOpen: boolean;
@@ -659,8 +418,6 @@ function DevResponseModal({ isOpen, onClose, initialValue = "", onSubmit }: DevR
 
 export function FeedbackDetailPage() {
   const { id, feedbackId } = useParams<{ id: string; feedbackId: string }>();
-  const navigate = useNavigate();
-  const { projects } = useProjectStore();
   const { user } = useUserStore();
 
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -705,9 +462,6 @@ export function FeedbackDetailPage() {
       setFeedback({ ...originalFeedback });
     }
   };
-
-  const project = projects[0];
-  const categoryInfo = project ? CATEGORY_INFO[project.category] : null;
 
   if (!feedback) {
     return (
@@ -888,6 +642,8 @@ export function FeedbackDetailPage() {
     const addReplyRecursive = (comments: FeedbackComment[], targetId: string, depth: number): FeedbackComment[] => {
       return comments.map((c) => {
         if (c.id === targetId) {
+          const parentDepth = Number.isFinite(c.depth) && c.depth >= 0 ? c.depth : depth;
+          if (parentDepth >= COMMENT_MAX_DEPTH) return c;
           const newReply: FeedbackComment = {
             id: `reply-${Date.now()}`,
             author: {
@@ -899,14 +655,15 @@ export function FeedbackDetailPage() {
             images: images.length > 0 ? images : undefined,
             likesCount: 0,
             isLiked: false,
-            depth: depth + 1,
+            depth: Math.min(parentDepth + 1, COMMENT_MAX_DEPTH),
             parentId: targetId,
             createdAt: new Date().toISOString(),
           };
           return { ...c, replies: [...(c.replies || []), newReply] };
         }
         if (c.replies) {
-          return { ...c, replies: addReplyRecursive(c.replies, targetId, c.depth) };
+          const nextDepth = Number.isFinite(c.depth) && c.depth >= 0 ? c.depth : depth;
+          return { ...c, replies: addReplyRecursive(c.replies, targetId, nextDepth) };
         }
         return c;
       });
@@ -919,6 +676,49 @@ export function FeedbackDetailPage() {
         comments: addReplyRecursive(prev.comments || [], parentId, 0),
         commentsCount: prev.commentsCount + 1,
       };
+    });
+  };
+
+  // 댓글 수정 (인라인)
+  const handleEditComment = (commentId: string, content: string, images: string[]) => {
+    const updateRecursive = (comments: FeedbackComment[]): FeedbackComment[] =>
+      comments.map((c) => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            content,
+            images: images.length > 0 ? images : undefined,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        if (c.replies) {
+          return { ...c, replies: updateRecursive(c.replies) };
+        }
+        return c;
+      });
+
+    setFeedback((prev) => {
+      if (!prev) return prev;
+      return { ...prev, comments: updateRecursive(prev.comments || []) };
+    });
+  };
+
+  // 댓글 삭제 (소프트 삭제, 하위 답글 유지)
+  const handleDeleteComment = (commentId: string) => {
+    const markDeleteRecursive = (comments: FeedbackComment[]): FeedbackComment[] =>
+      comments.map((c) => {
+        if (c.id === commentId) {
+          return { ...c, isDeleted: true };
+        }
+        if (c.replies) {
+          return { ...c, replies: markDeleteRecursive(c.replies) };
+        }
+        return c;
+      });
+
+    setFeedback((prev) => {
+      if (!prev) return prev;
+      return { ...prev, comments: markDeleteRecursive(prev.comments || []) };
     });
   };
 
@@ -1144,36 +944,27 @@ export function FeedbackDetailPage() {
                   댓글 ({totalComments})
                 </h2>
 
-                {/* Comment Input */}
-                <div className="mb-6 pb-6 border-b border-surface-100 dark:border-surface-800">
-                  <div className="flex gap-3">
-                    <Avatar fallback={user?.displayName || "?"} size="sm" />
-                    <div className="flex-1">
-                      <CommentInput
-                        placeholder="의견을 남겨주세요..."
-                        onSubmit={handleAddComment}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Comments List */}
-                {feedback.comments && feedback.comments.length > 0 ? (
-                  <div className="divide-y divide-surface-100 dark:divide-surface-800">
-                    {feedback.comments.map((comment) => (
-                      <CommentItem
-                        key={comment.id}
-                        comment={comment}
-                        onReply={handleReply}
-                        onLike={handleCommentLike}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-8 text-center text-surface-400 text-sm">
-                    아직 댓글이 없습니다. 첫 번째 댓글을 작성해보세요!
-                  </div>
-                )}
+                <CommentThread
+                  comments={feedback.comments || []}
+                  currentUser={
+                    user
+                      ? {
+                          id: user.id,
+                          username: user.username,
+                          displayName: user.displayName,
+                        }
+                      : { id: "guest", displayName: "게스트" }
+                  }
+                  currentUserId={user?.id}
+                  maxDepth={COMMENT_MAX_DEPTH}
+                  enableAttachments={COMMENT_ENABLE_ATTACHMENTS}
+                  maxImages={COMMENT_MAX_IMAGES}
+                  onCreate={handleAddComment}
+                  onReply={handleReply}
+                  onLike={handleCommentLike}
+                  onEdit={handleEditComment}
+                  onDelete={handleDeleteComment}
+                />
               </CardContent>
             </Card>
           </div>
