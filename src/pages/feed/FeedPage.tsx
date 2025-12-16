@@ -1,17 +1,49 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LeftSidebar, FeedTimeline } from "@/widgets";
 import { cn } from "@/shared/lib/utils";
+import { SignUpModal } from "@/pages/auth";
+import { useUserStore } from "@/entities/user";
 
 type FeedTab = "home" | "projects" | "community";
 
 export function FeedPage() {
   const [activeTab, setActiveTab] = useState<FeedTab>("home");
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const { isAuthenticated } = useUserStore();
+
+  // ESC 키로 모달 닫기 (ProjectCommunityPage 패턴 참고)
+  useEffect(() => {
+    if (!showSignUpModal) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowSignUpModal(false);
+      }
+    };
+    
+    document.addEventListener("keydown", handleEscape);
+    document.body.style.overflow = "hidden";
+    
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "";
+    };
+  }, [showSignUpModal]);
 
   const tabs: { id: FeedTab; label: string }[] = [
     { id: "home", label: "홈" },
     { id: "projects", label: "프로젝트" },
     { id: "community", label: "커뮤니티" },
   ];
+
+  // 비회원이 프로젝트나 커뮤니티 탭을 클릭할 때 모달 표시
+  const handleTabClick = (tabId: FeedTab) => {
+    if (!isAuthenticated && (tabId === "projects" || tabId === "community")) {
+      setShowSignUpModal(true);
+      return;
+    }
+    setActiveTab(tabId);
+  };
 
   return (
     <div className="mx-auto flex max-w-5xl items-start">
@@ -28,7 +60,7 @@ export function FeedPage() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabClick(tab.id)}
                 className={cn(
                   "flex-1 h-[53px] text-sm font-medium transition-colors relative",
                   activeTab === tab.id
@@ -50,7 +82,7 @@ export function FeedPage() {
 
         {/* Feed Content */}
         <div className={activeTab === "home" ? "block" : "hidden"}>
-          <FeedTimeline />
+          <FeedTimeline onSignUpPrompt={() => setShowSignUpModal(true)} />
         </div>
 
         <div className={activeTab === "projects" ? "block" : "hidden"}>
@@ -61,6 +93,12 @@ export function FeedPage() {
           <CommunityFeed />
         </div>
       </main>
+
+      {/* 회원 가입 모달 */}
+      <SignUpModal
+        open={showSignUpModal}
+        onOpenChange={setShowSignUpModal}
+      />
     </div>
   );
 }

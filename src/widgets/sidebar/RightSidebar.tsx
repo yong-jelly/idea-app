@@ -44,7 +44,7 @@ export function RightSidebar() {
     .slice(0, 3);
 
   return (
-    <aside className="sticky top-[4.5rem] h-[calc(100vh-5.5rem)] w-80 shrink-0 overflow-y-auto pb-6 space-y-5">
+    <aside className="sticky top-14 h-[calc(100vh-3.5rem)] w-[350px] shrink-0 overflow-y-auto pb-6 space-y-5">
       {/* Active Projects */}
       <Card variant="bordered">
         <CardHeader className="pb-2">

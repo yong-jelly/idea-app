@@ -1,13 +1,46 @@
+import { useState, useEffect } from "react";
 import { Bookmark } from "lucide-react";
 import { LeftSidebar } from "@/widgets";
 import { useProjectStore } from "@/entities/project";
+import { useUserStore } from "@/entities/user";
 import { ProjectListItem } from "@/entities/project/ui/ProjectListItem";
+import { SignUpModal } from "@/pages/auth";
 
 export function BookmarksPage() {
   const { projects, toggleProjectLike } = useProjectStore();
+  const { isAuthenticated } = useUserStore();
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
 
-  // 북마크한 프로젝트만 필터링 (데모용으로 isLiked가 true인 것)
-  const bookmarkedProjects = projects.filter((p) => p.isLiked);
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    if (!showSignUpModal) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowSignUpModal(false);
+      }
+    };
+    
+    document.addEventListener("keydown", handleEscape);
+    document.body.style.overflow = "hidden";
+    
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "";
+    };
+  }, [showSignUpModal]);
+
+  // 비회원이면 빈 배열 반환
+  const bookmarkedProjects = isAuthenticated ? projects.filter((p) => p.isLiked) : [];
+
+  // 북마크 토글 핸들러 (비회원이면 모달 표시)
+  const handleToggleLike = (projectId: string) => {
+    if (!isAuthenticated) {
+      setShowSignUpModal(true);
+      return;
+    }
+    toggleProjectLike(projectId);
+  };
 
   return (
     <div className="mx-auto flex max-w-5xl items-start">
@@ -47,12 +80,18 @@ export function BookmarksPage() {
                 key={project.id}
                 project={project}
                 rank={index + 1}
-                onUpvote={toggleProjectLike}
+                onUpvote={() => handleToggleLike(project.id)}
               />
             ))}
           </div>
         )}
       </main>
+
+      {/* 회원 가입 모달 */}
+      <SignUpModal
+        open={showSignUpModal}
+        onOpenChange={setShowSignUpModal}
+      />
     </div>
   );
 }

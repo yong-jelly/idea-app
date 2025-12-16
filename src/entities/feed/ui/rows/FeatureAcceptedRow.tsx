@@ -17,6 +17,8 @@ export interface FeatureAcceptedRowProps {
   onBookmark?: () => void;
   onClick?: () => void;
   className?: string;
+  isAuthenticated?: boolean;
+  onSignUpPrompt?: () => void;
 }
 
 /**
@@ -33,6 +35,8 @@ export function FeatureAcceptedRow({
   onBookmark,
   onClick,
   className,
+  isAuthenticated = true,
+  onSignUpPrompt,
 }: FeatureAcceptedRowProps) {
   // 미니멀 체크 아이콘
   const CheckIcon = () => (
@@ -82,6 +86,8 @@ export function FeatureAcceptedRow({
         onComment={onComment}
         onRepost={onRepost}
         onBookmark={onBookmark}
+        isAuthenticated={isAuthenticated}
+        onSignUpPrompt={onSignUpPrompt}
       />
 
       {post.source && <FeedSourceFooter source={post.source} />}

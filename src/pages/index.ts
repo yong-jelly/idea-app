@@ -4,4 +4,5 @@ export { CreateProjectPage, SupportPage, FeatureRequestsPage, ProjectDetailPage,
 export { ProfilePage } from "./profile";
 export { MyProjectsPage } from "./my-projects";
 export { BookmarksPage } from "./bookmarks";
+export { SignUpPage, LoginPage } from "./auth";
 

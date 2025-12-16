@@ -1,140 +1,58 @@
 import { useParams, useNavigate, Link } from "react-router";
-import { Calendar, Link as LinkIcon, Github, Twitter, Settings, UserPlus, FileText, Folder, Heart, ArrowLeft, Award } from "lucide-react";
-import { useState } from "react";
+import { Calendar, Link as LinkIcon, Github, Twitter, Settings, FileText, Folder, Heart, ArrowLeft, Award } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Button, Avatar, Badge } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
-import { useUserStore, type User, type Badge as UserBadge, BadgeDisplay, BadgeGrid, BADGE_INFO } from "@/entities/user";
-import { usePostStore } from "@/entities/post";
+import { useUserStore, BadgeGrid } from "@/entities/user";
+import { usePostStore, type Post } from "@/entities/post";
 import { ProjectListItem, useProjectStore } from "@/entities/project";
 import { ProfileEditModal } from "./ProfileEditModal";
+import { SignUpModal } from "@/pages/auth";
 import {
   TextPostRow,
   ProjectUpdateRow,
   MilestoneAchievedRow,
   FeatureAcceptedRow,
 } from "@/entities/feed";
-import type {
-  TextPost,
-  ProjectUpdatePost,
-  MilestoneAchievedPost,
-  FeatureAcceptedPost,
-  ExtendedInteractions,
-} from "@/entities/feed";
 
-// 더미 배지 데이터
-const dummyBadges: UserBadge[] = [
-  { id: "b1", type: "early_supporter", name: "얼리 서포터", description: "프로젝트 초기에 서포트", icon: "🌟", rarity: "rare", earnedAt: "2024-02-01T00:00:00Z", projectTitle: "Indie App" },
-  { id: "b2", type: "bug_hunter", name: "버그 헌터", description: "10개 이상의 버그 발견", icon: "🐛", rarity: "epic", earnedAt: "2024-05-15T00:00:00Z" },
-  { id: "b3", type: "streak_7", name: "7일 연속", description: "7일 연속 출석", icon: "🔥", rarity: "common", earnedAt: "2024-06-01T00:00:00Z", projectTitle: "Dev Tools" },
-  { id: "b4", type: "beta_tester", name: "베타 테스터", description: "베타 테스트 참여", icon: "🧪", rarity: "rare", earnedAt: "2024-07-10T00:00:00Z", projectTitle: "Indie App" },
-  { id: "b5", type: "top_contributor", name: "탑 기여자", description: "상위 기여자로 선정", icon: "🏆", rarity: "legendary", earnedAt: "2024-08-20T00:00:00Z", projectTitle: "Open Source Kit" },
-  { id: "b6", type: "first_feedback", name: "첫 피드백", description: "첫 번째 피드백 작성", icon: "✨", rarity: "common", earnedAt: "2024-01-20T00:00:00Z" },
-];
-
-// 데모용 프로필 데이터
-const demoProfiles: Record<string, User> = {
-  indie_dev: {
-    id: "1",
-    username: "indie_dev",
-    displayName: "김인디",
-    avatar: undefined,
-    bio: "풀스택 인디 개발자 🚀 AI와 웹 개발을 좋아합니다. 사이드 프로젝트로 세상을 바꾸고 싶어요.",
-    website: "https://indie.dev",
-    github: "indie-dev",
-    twitter: "indie_dev",
-    points: 1250,
-    level: "gold",
-    subscribedProjectsCount: 12,
-    supportedProjectsCount: 8,
-    projectsCount: 5,
-    badges: dummyBadges,
-    createdAt: "2024-01-15T00:00:00Z",
-  },
-  frontend_lee: {
-    id: "2",
-    username: "frontend_lee",
-    displayName: "이프론트",
-    avatar: undefined,
-    bio: "프론트엔드 개발자 | React, TypeScript 전문",
-    website: undefined,
-    github: "frontend-lee",
-    twitter: undefined,
-    points: 890,
-    level: "silver",
-    subscribedProjectsCount: 5,
-    supportedProjectsCount: 3,
-    projectsCount: 3,
-    badges: dummyBadges.slice(0, 3),
-    createdAt: "2024-03-01T00:00:00Z",
-  },
-};
-
-// Post 타입을 FeedPost 타입으로 변환
-function convertToFeedPost(post: ReturnType<typeof usePostStore>["posts"][0]) {
-  const interactions: ExtendedInteractions = {
-    likesCount: post.likesCount,
-    commentsCount: post.commentsCount,
-    repostsCount: post.repostsCount,
-    bookmarksCount: post.bookmarksCount,
-    isLiked: post.isLiked,
-    isReposted: post.isReposted,
-    isBookmarked: post.isBookmarked,
-  };
-
-  const base = {
-    id: post.id,
-    author: post.author,
-    content: post.content,
-    images: post.images,
-    source: post.source,
-    createdAt: post.createdAt,
-    interactions,
-  };
-
-  switch (post.type) {
-    case "text":
-      return { ...base, type: "text" as const } satisfies TextPost;
-    case "project_update":
-      return {
-        ...base,
-        type: "project_update" as const,
-        projectId: post.projectId!,
-        projectTitle: post.projectTitle!,
-      } satisfies ProjectUpdatePost;
-    case "milestone":
-      return {
-        ...base,
-        type: "milestone" as const,
-        projectId: post.projectId!,
-        projectTitle: post.projectTitle!,
-        milestoneTitle: post.milestoneTitle!,
-      } satisfies MilestoneAchievedPost;
-    case "feature_accepted":
-      return {
-        ...base,
-        type: "feature_accepted" as const,
-        projectId: post.projectId!,
-        projectTitle: post.projectTitle!,
-        featureTitle: post.featureTitle!,
-      } satisfies FeatureAcceptedPost;
-  }
-}
-
-type TabType = "posts" | "projects" | "likes" | "badges";
+// 분리된 모듈 import
+import type { ProfileTabType } from "./profile-page/types";
+import { convertToFeedPost } from "./profile-page/lib";
+import { demoProfiles } from "./profile-page/mock-data";
 
 export function ProfilePage() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const { user: currentUser } = useUserStore();
+  const { user: currentUser, isAuthenticated } = useUserStore();
   const { posts, toggleLike, toggleRepost, toggleBookmark } = usePostStore();
   const { projects, toggleProjectLike } = useProjectStore();
-  const [activeTab, setActiveTab] = useState<TabType>("posts");
+  const [activeTab, setActiveTab] = useState<ProfileTabType>("posts");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
 
   const isOwnProfile = currentUser?.username === username;
   
   // 자신의 프로필이면 currentUser 사용, 아니면 demoProfiles에서 가져오기
   const profile = isOwnProfile && currentUser ? currentUser : (username ? demoProfiles[username] : null);
+
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    if (!showSignUpModal) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowSignUpModal(false);
+      }
+    };
+    
+    document.addEventListener("keydown", handleEscape);
+    document.body.style.overflow = "hidden";
+    
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "";
+    };
+  }, [showSignUpModal]);
 
   if (!profile) {
     return (
@@ -144,15 +62,19 @@ export function ProfilePage() {
     );
   }
 
-  const userPosts = posts.filter((p) => p.author.username === username);
-  const userProjects = projects.filter((p) => p.author.username === username);
-  const likedPosts = posts.filter((p) => p.isLiked);
+  // 자신의 프로필인데 비회원이면 빈 데이터 반환
+  const userPosts = (isOwnProfile && !isAuthenticated) ? [] : posts.filter((p) => p.author.username === username);
+  const userProjects = (isOwnProfile && !isAuthenticated) ? [] : projects.filter((p) => p.author.username === username);
+  const likedPosts = (isOwnProfile && !isAuthenticated) ? [] : posts.filter((p) => p.isLiked);
 
-  const handlePostClick = (post: ReturnType<typeof usePostStore>["posts"][0]) => {
+  const handlePostClick = (post: Post) => {
     navigate(`/${post.author.username}/status/${post.id}`);
   };
 
-  const renderPost = (post: ReturnType<typeof usePostStore>["posts"][0]) => {
+  /**
+   * 포스트 렌더링 함수
+   */
+  const renderPost = (post: Post) => {
     const feedPost = convertToFeedPost(post);
     const handlers = {
       onLike: () => toggleLike(post.id),
@@ -160,6 +82,8 @@ export function ProfilePage() {
       onBookmark: () => toggleBookmark(post.id),
       onComment: () => navigate(`/${post.author.username}/status/${post.id}`),
       onClick: () => handlePostClick(post),
+      isAuthenticated,
+      onSignUpPrompt: () => setShowSignUpModal(true),
     };
 
     switch (feedPost.type) {
@@ -177,10 +101,10 @@ export function ProfilePage() {
   const userBadges = profile.badges || [];
 
   const profileNavItems = [
-    { id: "posts" as TabType, label: "포스트", icon: FileText, count: userPosts.length },
-    { id: "projects" as TabType, label: "프로젝트", icon: Folder, count: userProjects.length },
-    { id: "likes" as TabType, label: "좋아요", icon: Heart, count: likedPosts.length },
-    { id: "badges" as TabType, label: "배지", icon: Award, count: userBadges.length },
+    { id: "posts" as ProfileTabType, label: "포스트", icon: FileText, count: userPosts.length },
+    { id: "projects" as ProfileTabType, label: "프로젝트", icon: Folder, count: userProjects.length },
+    { id: "likes" as ProfileTabType, label: "좋아요", icon: Heart, count: likedPosts.length },
+    { id: "badges" as ProfileTabType, label: "배지", icon: Award, count: userBadges.length },
   ];
 
   return (
@@ -188,84 +112,6 @@ export function ProfilePage() {
       {/* Left Sidebar - Desktop Only */}
       <div className="hidden lg:block w-[275px] shrink-0 px-3 self-stretch">
         <aside className="sticky top-16 w-60 pt-2 pb-6">
-          {/* Profile Card */}
-          <div className="mx-1 rounded-xl border border-surface-200 bg-white p-4 dark:border-surface-800 dark:bg-surface-900 mb-4">
-            <div className="flex items-center gap-3 mb-3">
-              <Avatar
-                src={profile.avatar}
-                alt={profile.displayName}
-                fallback={profile.displayName}
-                size="lg"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1">
-                  <p className="font-semibold text-surface-900 dark:text-surface-50 truncate">
-                    {profile.displayName}
-                  </p>
-                  <Badge
-                    variant={
-                      profile.level === "platinum"
-                        ? "default"
-                        : profile.level === "gold"
-                        ? "warning"
-                        : profile.level === "silver"
-                        ? "secondary"
-                        : "outline"
-                    }
-                    className="uppercase text-[8px] px-1"
-                  >
-                    {profile.level}
-                  </Badge>
-                </div>
-                <p className="text-sm text-surface-500 dark:text-surface-400 truncate">
-                  @{profile.username}
-                </p>
-              </div>
-            </div>
-
-            {/* Badges Preview */}
-            {userBadges.length > 0 && (
-              <div className="mb-3">
-                <BadgeDisplay 
-                  badges={userBadges} 
-                  maxDisplay={5} 
-                  size="sm"
-                  onViewAll={() => setActiveTab("badges")}
-                />
-              </div>
-            )}
-
-            {/* Stats */}
-            <div className="flex items-center gap-3 text-sm mb-3">
-              <span>
-                <strong className="text-surface-900 dark:text-surface-50">{profile.subscribedProjectsCount || 0}</strong>
-                <span className="text-surface-500 ml-1 text-xs">구독</span>
-              </span>
-              <span>
-                <strong className="text-surface-900 dark:text-surface-50">{profile.supportedProjectsCount || 0}</strong>
-                <span className="text-surface-500 ml-1 text-xs">서포트</span>
-              </span>
-            </div>
-
-            {/* Action Button */}
-            {isOwnProfile ? (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full text-sm"
-                onClick={() => setIsEditModalOpen(true)}
-              >
-                <Settings className="mr-1.5 h-4 w-4" />
-                프로필 편집
-              </Button>
-            ) : (
-              <Button size="sm" className="w-full text-sm">
-                <UserPlus className="mr-1.5 h-4 w-4" />
-                팔로우
-              </Button>
-            )}
-          </div>
-
           {/* Profile Navigation */}
           <nav className="flex flex-col gap-0.5">
             {profileNavItems.map((item) => {
@@ -298,55 +144,112 @@ export function ProfilePage() {
             })}
           </nav>
 
-          {/* Links */}
-          <div className="mt-4 px-3 space-y-1.5 text-xs text-surface-500">
-            {profile.website && (
-              <a
-                href={profile.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 hover:text-primary-500 transition-colors"
+          {/* Action Buttons */}
+          {isOwnProfile && (
+            <div className="mt-5 px-1">
+              <Button 
+                variant="outline" 
+                className="w-full gap-2"
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    setShowSignUpModal(true);
+                    return;
+                  }
+                  setIsEditModalOpen(true);
+                }}
               >
-                <LinkIcon className="h-3 w-3" />
-                {profile.website.replace("https://", "")}
-              </a>
-            )}
-            {profile.github && (
-              <a
-                href={`https://github.com/${profile.github}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 hover:text-surface-700 dark:hover:text-surface-300 transition-colors"
-              >
-                <Github className="h-3 w-3" />
-                {profile.github}
-              </a>
-            )}
-            {profile.twitter && (
-              <a
-                href={`https://twitter.com/${profile.twitter}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 hover:text-sky-500 transition-colors"
-              >
-                <Twitter className="h-3 w-3" />
-                @{profile.twitter}
-              </a>
-            )}
-            <div className="flex items-center gap-1.5 pt-1">
-              <Calendar className="h-3 w-3" />
-              {new Date(profile.createdAt).toLocaleDateString("ko-KR", {
-                year: "numeric",
-                month: "short",
-              })} 가입
+                <Settings className="h-4 w-4" />
+                프로필 편집
+              </Button>
             </div>
+          )}
+
+          {/* Profile Card */}
+          <div className="mt-6 mx-1 rounded-xl border border-surface-200 bg-white p-3 dark:border-surface-800 dark:bg-surface-900">
+            <div className="flex items-center gap-3">
+              <Avatar
+                src={profile.avatar}
+                alt={profile.displayName}
+                fallback={profile.displayName}
+                size="md"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="font-semibold text-surface-900 dark:text-surface-50 truncate text-sm">
+                    {profile.displayName}
+                  </p>
+                  <Badge
+                    variant={
+                      profile.level === "platinum"
+                        ? "default"
+                        : profile.level === "gold"
+                        ? "warning"
+                        : profile.level === "silver"
+                        ? "secondary"
+                        : "outline"
+                    }
+                    className="uppercase text-[8px] px-1 shrink-0"
+                  >
+                    {profile.level}
+                  </Badge>
+                </div>
+                <p className="text-xs text-surface-500 dark:text-surface-400 truncate">
+                  @{profile.username}
+                </p>
+              </div>
+            </div>
+
+            {/* 외부 링크 */}
+            {(profile.website || profile.github || profile.twitter) && (
+              <div className="mt-3 pt-3 border-t border-surface-100 dark:border-surface-800 flex items-center gap-2">
+                {profile.website && (
+                  <a
+                    href={profile.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-md hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400 hover:text-primary-500 transition-colors"
+                    title={profile.website}
+                  >
+                    <LinkIcon className="h-4 w-4" />
+                  </a>
+                )}
+                {profile.github && (
+                  <a
+                    href={`https://github.com/${profile.github}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-md hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400 hover:text-surface-900 dark:hover:text-surface-100 transition-colors"
+                    title={`GitHub: ${profile.github}`}
+                  >
+                    <Github className="h-4 w-4" />
+                  </a>
+                )}
+                {profile.twitter && (
+                  <a
+                    href={`https://twitter.com/${profile.twitter}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-md hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400 hover:text-sky-500 transition-colors"
+                    title={`Twitter: @${profile.twitter}`}
+                  >
+                    <Twitter className="h-4 w-4" />
+                  </a>
+                )}
+                <span className="ml-auto text-[10px] text-surface-400 dark:text-surface-500">
+                  {new Date(profile.createdAt).toLocaleDateString("ko-KR", {
+                    year: "numeric",
+                    month: "short",
+                  })} 가입
+                </span>
+              </div>
+            )}
           </div>
         </aside>
       </div>
 
       {/* Main Content */}
       <main className="min-w-0 flex-1 min-h-[calc(100vh-3.5rem)] bg-white dark:bg-surface-950 border-x border-surface-200 dark:border-surface-800">
-        {/* Sticky Header - 이름 + 탭만 */}
+        {/* Sticky Header */}
         <div className="sticky top-14 z-10 bg-white/80 dark:bg-surface-950/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
           <div className="h-[53px] flex items-center gap-3 px-4">
             <Link
@@ -390,7 +293,7 @@ export function ProfilePage() {
           </div>
         </div>
 
-        {/* Mobile Profile Card - 스크롤됨 */}
+        {/* Mobile Profile Card */}
         <div className="lg:hidden px-4 py-3 border-b border-surface-100 dark:border-surface-800">
           <div className="flex items-start justify-between mb-2">
             <Avatar
@@ -400,20 +303,44 @@ export function ProfilePage() {
               size="lg"
               className="h-14 w-14"
             />
-            {isOwnProfile ? (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="rounded-full text-xs"
-                onClick={() => setIsEditModalOpen(true)}
-              >
-                편집
-              </Button>
-            ) : (
-              <Button size="sm" className="rounded-full text-xs">
-                팔로우
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {profile.github && (
+                <a
+                  href={`https://github.com/${profile.github}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400"
+                >
+                  <Github className="h-4 w-4" />
+                </a>
+              )}
+              {profile.twitter && (
+                <a
+                  href={`https://twitter.com/${profile.twitter}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-400"
+                >
+                  <Twitter className="h-4 w-4" />
+                </a>
+              )}
+              {isOwnProfile && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="rounded-full text-xs"
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      setShowSignUpModal(true);
+                      return;
+                    }
+                    setIsEditModalOpen(true);
+                  }}
+                >
+                  편집
+                </Button>
+              )}
+            </div>
           </div>
           <div className="mb-2">
             <div className="flex items-center gap-1">
@@ -421,7 +348,15 @@ export function ProfilePage() {
                 {profile.displayName}
               </h2>
               <Badge
-                variant={profile.level === "gold" ? "warning" : "secondary"}
+                variant={
+                  profile.level === "platinum"
+                    ? "default"
+                    : profile.level === "gold"
+                    ? "warning"
+                    : profile.level === "silver"
+                    ? "secondary"
+                    : "outline"
+                }
                 className="uppercase text-[8px] px-1"
               >
                 {profile.level}
@@ -432,19 +367,16 @@ export function ProfilePage() {
           {profile.bio && (
             <p className="text-sm text-surface-700 dark:text-surface-300 mb-2">{profile.bio}</p>
           )}
-          <div className="flex items-center gap-3 text-sm">
-            <span>
-              <strong>{profile.followingCount}</strong>
-              <span className="text-surface-500 ml-1">팔로잉</span>
-            </span>
-            <span>
-              <strong>{profile.followersCount}</strong>
-              <span className="text-surface-500 ml-1">팔로워</span>
-            </span>
+          <div className="flex items-center gap-1.5 text-xs text-surface-400">
+            <Calendar className="h-3 w-3" />
+            {new Date(profile.createdAt).toLocaleDateString("ko-KR", {
+              year: "numeric",
+              month: "short",
+            })} 가입
           </div>
         </div>
 
-        {/* Tab Content - 모든 탭을 렌더링하고 CSS로 숨김 처리하여 레이아웃 흔들림 방지 */}
+        {/* Tab Content */}
         <div className="min-h-[50vh]">
           {/* 포스트 탭 */}
           <div className={activeTab === "posts" ? "block" : "hidden"}>
@@ -509,6 +441,12 @@ export function ProfilePage() {
           onOpenChange={setIsEditModalOpen}
         />
       )}
+
+      {/* 회원 가입 모달 */}
+      <SignUpModal
+        open={showSignUpModal}
+        onOpenChange={setShowSignUpModal}
+      />
     </div>
   );
 }

@@ -44,6 +44,10 @@ export interface CommentThreadProps {
   maxDepth?: number;
   enableAttachments?: boolean;
   maxImages?: number;
+  /** 현재 사용자 인증 여부 - 비회원이면 좋아요/답글 시 onSignUpPrompt 호출 */
+  isAuthenticated?: boolean;
+  /** 비회원이 회원용 기능(좋아요, 답글) 클릭 시 호출되는 콜백 */
+  onSignUpPrompt?: () => void;
   onCreate: (content: string, images: string[]) => void | Promise<void>;
   onReply: (parentId: string, content: string, images: string[]) => void | Promise<void>;
   onLike: (commentId: string) => void;
@@ -243,6 +247,9 @@ interface CommentItemProps {
   maxDepth: number;
   enableAttachments: boolean;
   maxImages: number;
+  isAuthenticated?: boolean;
+  /** 비회원이 회원용 기능 클릭 시 호출 */
+  onSignUpPrompt?: () => void;
   onReply: (parentId: string, content: string, images: string[]) => void;
   onLike: (commentId: string) => void;
   onEdit?: (commentId: string, content: string, images: string[]) => void;
@@ -262,6 +269,8 @@ function CommentItem({
   maxDepth,
   enableAttachments,
   maxImages,
+  isAuthenticated = true,
+  onSignUpPrompt,
   onReply,
   onLike,
   onEdit,
@@ -282,7 +291,8 @@ function CommentItem({
   const safeDepth = Number.isFinite(comment.depth) && comment.depth >= 0 ? comment.depth : 0;
   const hasReplies = comment.replies && comment.replies.length > 0;
   // 최대 뎁스보다 작은 경우에만 답글 허용 (예: maxDepth=3 -> depth 0,1,2 에서 답글 가능)
-  const canReply = !isDeleted && safeDepth < effectiveMaxDepth;
+  // 비회원일 때는 답글 기능 숨김
+  const canReply = !isDeleted && safeDepth < effectiveMaxDepth && isAuthenticated;
   const effectiveUserId = currentUserId || currentUser?.id;
   const isMine = effectiveUserId && comment.author.id === effectiveUserId;
 
@@ -383,9 +393,16 @@ function CommentItem({
                 )}
 
                 <div className="flex items-center gap-2">
+                  {/* 좋아요 버튼 - 비회원 시 회원가입 모달 표시 */}
                   {!isDeleted && (
                     <button
-                      onClick={() => onLike(comment.id)}
+                      onClick={() => {
+                        if (!isAuthenticated && onSignUpPrompt) {
+                          onSignUpPrompt();
+                          return;
+                        }
+                        onLike(comment.id);
+                      }}
                       className={cn(
                         "flex items-center gap-1 text-xs transition-colors px-2 py-1 rounded-md",
                         comment.isLiked
@@ -491,6 +508,8 @@ function CommentItem({
               maxDepth={maxDepth}
               enableAttachments={enableAttachments}
               maxImages={maxImages}
+              isAuthenticated={isAuthenticated}
+              onSignUpPrompt={onSignUpPrompt}
               onReply={onReply}
               onLike={onLike}
               onEdit={onEdit}
@@ -537,6 +556,8 @@ export function CommentThread({
   maxDepth = DEFAULT_MAX_DEPTH,
   enableAttachments = true,
   maxImages = DEFAULT_MAX_IMAGES,
+  isAuthenticated = true,
+  onSignUpPrompt,
   onCreate,
   onReply,
   onLike,
@@ -556,17 +577,23 @@ export function CommentThread({
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-3">
-        <Avatar fallback={currentUser?.displayName || "?"} size="sm" />
-        <div className="flex-1">
-          <CommentComposer
-            placeholder="의견을 남겨주세요..."
-            onSubmit={onCreate}
-            enableAttachments={enableAttachments}
-            maxImages={maxImages}
-          />
+      {isAuthenticated ? (
+        <div className="flex gap-3">
+          <Avatar fallback={currentUser?.displayName || "?"} size="sm" />
+          <div className="flex-1">
+            <CommentComposer
+              placeholder="의견을 남겨주세요..."
+              onSubmit={onCreate}
+              enableAttachments={enableAttachments}
+              maxImages={maxImages}
+            />
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="text-sm text-surface-500 dark:text-surface-400">
+          댓글을 작성하려면 로그인이 필요합니다
+        </div>
+      )}
 
       <Separator />
 
@@ -581,6 +608,8 @@ export function CommentThread({
               maxDepth={maxDepth}
               enableAttachments={enableAttachments}
               maxImages={maxImages}
+              isAuthenticated={isAuthenticated}
+              onSignUpPrompt={onSignUpPrompt}
               onReply={onReply}
               onLike={onLike}
               onEdit={onEdit}

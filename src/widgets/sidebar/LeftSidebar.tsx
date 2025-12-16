@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Home, Folder, PlusCircle, Bookmark, Settings, Pencil, User } from "lucide-react";
+import { Home, Folder, PlusCircle, Bookmark, Pencil, User } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button, Avatar } from "@/shared/ui";
 import { useUserStore } from "@/entities/user";
@@ -19,7 +19,7 @@ export function LeftSidebar() {
 
   return (
     <>
-      <aside className="sticky top-16 h-[calc(100vh-4.5rem)] w-60 shrink-0 overflow-y-auto pt-2 pb-6">
+      <aside className="sticky top-14 h-[calc(100vh-3.5rem)] w-[275px] shrink-0 overflow-y-auto pt-2 pb-6 px-3">
         <nav className="flex flex-col gap-0.5">
           {navigation.map((item) => {
             const Icon = item.icon;
@@ -79,60 +79,43 @@ export function LeftSidebar() {
           )}
         </div>
 
-        {/* User Card */}
+        {/* 
+          User Card (간소화)
+          - 역할: 현재 로그인 상태 및 포인트 확인
+          - 상세 정보는 프로필 페이지에서 확인
+        */}
         {isAuthenticated && user && (
-          <div className="mt-6 mx-1 rounded-xl border border-surface-200 bg-white p-4 dark:border-surface-800 dark:bg-surface-900">
+          <Link 
+            to={`/profile/${user.username}`}
+            className="mt-6 mx-1 block rounded-xl border border-surface-200 bg-white p-3 dark:border-surface-800 dark:bg-surface-900 hover:border-primary-200 dark:hover:border-primary-800 transition-colors group"
+          >
             <div className="flex items-center gap-3">
               <Avatar
                 src={user.avatar}
                 alt={user.displayName}
                 fallback={user.displayName}
-                size="lg"
+                size="md"
               />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-surface-900 dark:text-surface-50 truncate">
+                <p className="font-semibold text-surface-900 dark:text-surface-50 truncate text-sm group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                   {user.displayName}
                 </p>
-                <p className="text-sm text-surface-500 dark:text-surface-400 truncate">
+                <p className="text-xs text-surface-500 dark:text-surface-400 truncate">
                   @{user.username}
                 </p>
               </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-1 text-center">
-              <div className="py-2">
-                <p className="text-base font-semibold text-surface-900 dark:text-surface-50">
-                  {user.projectsCount}
+              <div className="text-right">
+                <p className="text-xs text-surface-400 dark:text-surface-500">포인트</p>
+                <p className="text-sm font-semibold text-primary-600 dark:text-primary-400">
+                  {user.points.toLocaleString()}
                 </p>
-                <p className="text-xs text-surface-500 dark:text-surface-400">내 프로젝트</p>
-              </div>
-              <div className="py-2 border-x border-surface-100 dark:border-surface-800">
-                <p className="text-base font-semibold text-surface-900 dark:text-surface-50">
-                  {user.subscribedProjectsCount}
-                </p>
-                <p className="text-xs text-surface-500 dark:text-surface-400">구독 중</p>
-              </div>
-              <div className="py-2">
-                <p className="text-base font-semibold text-surface-900 dark:text-surface-50">
-                  {user.supportedProjectsCount}
-                </p>
-                <p className="text-xs text-surface-500 dark:text-surface-400">응원</p>
               </div>
             </div>
-
-            <div className="mt-3 pt-3 border-t border-surface-100 dark:border-surface-800">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-surface-500 dark:text-surface-400">보유 포인트</span>
-                <span className="font-semibold text-primary-600 dark:text-primary-400">
-                  {user.points.toLocaleString()} P
-                </span>
-              </div>
-            </div>
-          </div>
+          </Link>
         )}
 
         {/* Settings */}
-        <div className="mt-4 px-1">
+        {/* <div className="mt-4 px-1">
           <Link
             to="/settings"
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800/50 transition-colors"
@@ -140,7 +123,7 @@ export function LeftSidebar() {
             <Settings className="h-[18px] w-[18px]" />
             설정
           </Link>
-        </div>
+        </div> */}
       </aside>
 
       {/* Post Composer Modal */}

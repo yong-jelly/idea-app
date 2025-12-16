@@ -1,16 +1,47 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { PlusCircle, Settings, BarChart3 } from "lucide-react";
 import { Button, Badge } from "@/shared/ui";
 import { LeftSidebar } from "@/widgets";
 import { useProjectStore } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
+import { SignUpModal } from "@/pages/auth";
 
 export function MyProjectsPage() {
   const { projects } = useProjectStore();
-  const { user } = useUserStore();
+  const { user, isAuthenticated } = useUserStore();
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
 
-  // 내가 만든 프로젝트만 필터링 (데모용으로 처음 2개)
-  const myProjects = projects.slice(0, 2);
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    if (!showSignUpModal) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowSignUpModal(false);
+      }
+    };
+    
+    document.addEventListener("keydown", handleEscape);
+    document.body.style.overflow = "hidden";
+    
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "";
+    };
+  }, [showSignUpModal]);
+
+  // 비회원이면 빈 배열 반환
+  const myProjects = isAuthenticated ? projects.slice(0, 2) : [];
+
+  // 회원용 버튼 클릭 핸들러
+  const handleMemberAction = (e: React.MouseEvent) => {
+    if (!isAuthenticated) {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowSignUpModal(true);
+    }
+  };
 
   return (
     <div className="mx-auto flex max-w-5xl items-start">
@@ -27,7 +58,7 @@ export function MyProjectsPage() {
             <h1 className="text-lg font-bold text-surface-900 dark:text-surface-50">
               내 프로젝트
             </h1>
-            <Link to="/create-project">
+            <Link to="/create-project" onClick={handleMemberAction}>
               <Button size="sm" className="gap-1.5">
                 <PlusCircle className="h-4 w-4" />
                 새 프로젝트
@@ -49,12 +80,12 @@ export function MyProjectsPage() {
               <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                 첫 번째 프로젝트를 등록하고 사용자들과 소통해보세요
               </p>
-              <Link to="/create-project">
+              {/* <Link to="/create-project" onClick={handleMemberAction}>
                 <Button className="mt-4 gap-1.5">
                   <PlusCircle className="h-4 w-4" />
                   프로젝트 등록하기
                 </Button>
-              </Link>
+              </Link> */}
             </div>
           ) : (
             myProjects.map((project) => (
@@ -100,7 +131,7 @@ export function MyProjectsPage() {
                         <BarChart3 className="h-4 w-4" />
                       </Button>
                     </Link>
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" onClick={handleMemberAction}>
                       <Settings className="h-4 w-4" />
                     </Button>
                   </div>
@@ -110,6 +141,12 @@ export function MyProjectsPage() {
           )}
         </div>
       </main>
+
+      {/* 회원 가입 모달 */}
+      <SignUpModal
+        open={showSignUpModal}
+        onOpenChange={setShowSignUpModal}
+      />
     </div>
   );
 }

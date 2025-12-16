@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { useNavigate } from "react-router";
 import { Loader2 } from "lucide-react";
 import { usePostStore } from "@/entities/post";
+import { useUserStore } from "@/entities/user";
 import { Skeleton } from "@/shared/ui";
 import {
   TextPostRow,
@@ -16,6 +17,10 @@ import type {
   FeatureAcceptedPost,
   ExtendedInteractions,
 } from "@/entities/feed";
+
+interface FeedTimelineProps {
+  onSignUpPrompt?: () => void;
+}
 
 // Post 타입을 FeedPost 타입으로 변환하는 헬퍼
 function convertToFeedPost(post: ReturnType<typeof usePostStore>["posts"][0]) {
@@ -68,9 +73,10 @@ function convertToFeedPost(post: ReturnType<typeof usePostStore>["posts"][0]) {
   }
 }
 
-export function FeedTimeline() {
+export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
   const navigate = useNavigate();
   const { posts, isLoading, hasMore, loadMore, toggleLike, toggleRepost, toggleBookmark } = usePostStore();
+  const { isAuthenticated } = useUserStore();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [isIntersecting, setIsIntersecting] = useState(false);
 
@@ -114,6 +120,8 @@ export function FeedTimeline() {
       onBookmark: () => toggleBookmark(post.id),
       onComment: () => navigate(`/${post.author.username}/status/${post.id}`),
       onClick: () => handlePostClick(post),
+      isAuthenticated,
+      onSignUpPrompt: onSignUpPrompt,
     };
 
     switch (feedPost.type) {
@@ -129,18 +137,18 @@ export function FeedTimeline() {
   };
 
   return (
-    <div className="bg-white dark:bg-surface-950">
+    <div className="bg-white dark:bg-black">
       {posts.map(renderPost)}
 
       {/* Load More Trigger */}
-      <div ref={loadMoreRef} className="py-8 border-b border-surface-100 dark:border-surface-800">
+      <div ref={loadMoreRef} className="py-8 border-b border-surface-200 dark:border-surface-800">
         {isLoading && (
           <div className="flex justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-surface-400" />
           </div>
         )}
         {!hasMore && posts.length > 0 && (
-          <p className="text-center text-sm text-surface-400">
+          <p className="text-center text-sm text-surface-400 dark:text-surface-500">
             모든 포스트를 확인했습니다
           </p>
         )}
@@ -151,11 +159,11 @@ export function FeedTimeline() {
 
 function FeedSkeleton() {
   return (
-    <div className="bg-white dark:bg-surface-950">
+    <div className="bg-white dark:bg-black">
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="px-4 py-3 border-b border-surface-100 dark:border-surface-800"
+          className="px-4 py-3 border-b border-surface-200 dark:border-surface-800"
         >
           <div className="flex gap-3">
             <Skeleton variant="circular" className="h-10 w-10" />

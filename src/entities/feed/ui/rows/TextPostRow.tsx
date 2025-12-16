@@ -16,6 +16,8 @@ export interface TextPostRowProps {
   onBookmark?: () => void;
   onClick?: () => void;
   className?: string;
+  isAuthenticated?: boolean;
+  onSignUpPrompt?: () => void;
 }
 
 /**
@@ -34,6 +36,8 @@ export function TextPostRow({
   onBookmark,
   onClick,
   className,
+  isAuthenticated = true,
+  onSignUpPrompt,
 }: TextPostRowProps) {
   return (
     <FeedRowWrapper
@@ -57,6 +61,8 @@ export function TextPostRow({
         onComment={onComment}
         onRepost={onRepost}
         onBookmark={onBookmark}
+        isAuthenticated={isAuthenticated}
+        onSignUpPrompt={onSignUpPrompt}
       />
 
       {/* 참여 중인 프로젝트/커뮤니티일 때 하단 링크 표시 */}

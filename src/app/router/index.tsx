@@ -6,6 +6,7 @@ import {
   useLocation,
 } from "react-router";
 import { Header } from "@/widgets";
+import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import {
   FeedPage,
   PostDetailPage,
@@ -21,6 +22,8 @@ import {
   ProfilePage,
   MyProjectsPage,
   BookmarksPage,
+  SignUpPage,
+  LoginPage,
 } from "@/pages";
 
 function ScrollToTop() {
@@ -53,6 +56,14 @@ const router = createBrowserRouter([
         element: <FeedPage />,
       },
       {
+        path: "signup",
+        element: <SignUpPage />,
+      },
+      {
+        path: "login",
+        element: <LoginPage />,
+      },
+      {
         path: "explore",
         element: <ExplorePage />,
       },
@@ -65,8 +76,15 @@ const router = createBrowserRouter([
         element: <BookmarksPage />,
       },
       {
+        // 보호된 라우트: 프로젝트 생성 페이지
+        // 비회원이 접근하면 ProtectedRoute 컴포넌트가 메인 피드(/)로 리다이렉트합니다.
+        // 세션 토큰이 없는 경우 접근이 차단됩니다.
         path: "create-project",
-        element: <CreateProjectPage />,
+        element: (
+          <ProtectedRoute>
+            <CreateProjectPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "project/:id",

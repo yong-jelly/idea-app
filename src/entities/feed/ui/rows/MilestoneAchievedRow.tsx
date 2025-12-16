@@ -17,6 +17,8 @@ export interface MilestoneAchievedRowProps {
   onBookmark?: () => void;
   onClick?: () => void;
   className?: string;
+  isAuthenticated?: boolean;
+  onSignUpPrompt?: () => void;
 }
 
 /**
@@ -33,6 +35,8 @@ export function MilestoneAchievedRow({
   onBookmark,
   onClick,
   className,
+  isAuthenticated = true,
+  onSignUpPrompt,
 }: MilestoneAchievedRowProps) {
   // 미니멀 플래그 아이콘
   const FlagIcon = () => (
@@ -82,6 +86,8 @@ export function MilestoneAchievedRow({
         onComment={onComment}
         onRepost={onRepost}
         onBookmark={onBookmark}
+        isAuthenticated={isAuthenticated}
+        onSignUpPrompt={onSignUpPrompt}
       />
 
       {post.source && <FeedSourceFooter source={post.source} />}

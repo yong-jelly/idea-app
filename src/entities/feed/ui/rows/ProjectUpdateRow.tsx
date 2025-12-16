@@ -17,6 +17,8 @@ export interface ProjectUpdateRowProps {
   onBookmark?: () => void;
   onClick?: () => void;
   className?: string;
+  isAuthenticated?: boolean;
+  onSignUpPrompt?: () => void;
 }
 
 /**
@@ -33,6 +35,8 @@ export function ProjectUpdateRow({
   onBookmark,
   onClick,
   className,
+  isAuthenticated = true,
+  onSignUpPrompt,
 }: ProjectUpdateRowProps) {
   // 미니멀 아이콘
   const UpdateIcon = () => (
@@ -72,6 +76,8 @@ export function ProjectUpdateRow({
         onComment={onComment}
         onRepost={onRepost}
         onBookmark={onBookmark}
+        isAuthenticated={isAuthenticated}
+        onSignUpPrompt={onSignUpPrompt}
       />
 
       {post.source && <FeedSourceFooter source={post.source} />}

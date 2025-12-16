@@ -78,13 +78,13 @@ export function FeedSourceHeader({ source, author, createdAt, showMoreButton = t
         <div className="flex items-center gap-1.5 text-sm">
           <Link
             to={`/profile/${author.username}`}
-            className="font-medium text-surface-900 dark:text-surface-50 hover:underline truncate"
+            className="font-medium text-surface-900 dark:text-white hover:underline truncate"
             onClick={(e) => e.stopPropagation()}
           >
             {author.displayName}
           </Link>
-          <span className="text-surface-300 dark:text-surface-600">·</span>
-          <span className="text-surface-400 dark:text-surface-500 shrink-0">
+          <span className="text-surface-300 dark:text-surface-700">·</span>
+          <span className="text-surface-500 dark:text-surface-500 shrink-0">
             {formatRelativeTime(createdAt)}
           </span>
         </div>
@@ -129,7 +129,7 @@ export function FeedSourceFooter({ source }: FeedSourceFooterProps) {
   const label = isCommunity ? "참여 중인 커뮤니티" : "내 프로젝트";
 
   return (
-    <div className="mt-2 pt-2 border-t border-surface-100 dark:border-surface-800">
+    <div className="mt-2 pt-2 border-t border-surface-200 dark:border-surface-800">
       <Link
         to={link}
         className="flex items-center gap-2 text-[13px] text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors group"
@@ -167,7 +167,7 @@ export function AuthorHeader({ author, createdAt, showMoreButton = true, badge, 
       <div className="flex items-center gap-1.5 min-w-0 text-sm">
         <Link
           to={`/profile/${author.username}`}
-          className="font-semibold text-surface-900 dark:text-surface-50 hover:underline truncate"
+          className="font-semibold text-surface-900 dark:text-white hover:underline truncate"
           onClick={(e) => e.stopPropagation()}
         >
           {author.displayName}
@@ -177,11 +177,11 @@ export function AuthorHeader({ author, createdAt, showMoreButton = true, badge, 
             {role}
           </Badge>
         )}
-        <span className="text-surface-400 dark:text-surface-500 truncate">
+        <span className="text-surface-500 dark:text-surface-500 truncate">
           @{author.username}
         </span>
-        <span className="text-surface-300 dark:text-surface-600">·</span>
-        <span className="text-surface-400 dark:text-surface-500 shrink-0">
+        <span className="text-surface-300 dark:text-surface-700">·</span>
+        <span className="text-surface-500 dark:text-surface-500 shrink-0">
           {formatRelativeTime(createdAt)}
         </span>
         {badge}
@@ -242,20 +242,35 @@ export interface InteractionButtonsProps {
   interactions: ExtendedInteractions;
   onLike?: () => void;
   onComment?: () => void;
+  onRepost?: () => void;
   onBookmark?: () => void;
+  isAuthenticated?: boolean;
+  onSignUpPrompt?: () => void;
 }
 
 export function InteractionButtons({
   interactions,
   onLike,
   onComment,
+  onRepost,
   onBookmark,
+  isAuthenticated = true,
+  onSignUpPrompt,
 }: InteractionButtonsProps) {
+  const handleInteraction = (e: React.MouseEvent, handler?: () => void, requiresAuth = false) => {
+    e.stopPropagation();
+    if (requiresAuth && !isAuthenticated && onSignUpPrompt) {
+      onSignUpPrompt();
+      return;
+    }
+    handler?.();
+  };
+
   return (
     <div className="flex items-center gap-1 -ml-2 pt-2">
       {/* 댓글 */}
       <button
-        onClick={(e) => { e.stopPropagation(); onComment?.(); }}
+        onClick={(e) => handleInteraction(e, onComment)}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-surface-500 hover:text-surface-700 hover:bg-surface-100 dark:hover:bg-surface-800 dark:hover:text-surface-300 transition-all"
       >
         <CommentIcon className="h-[18px] w-[18px]" />
@@ -264,7 +279,7 @@ export function InteractionButtons({
 
       {/* 좋아요 */}
       <button
-        onClick={(e) => { e.stopPropagation(); onLike?.(); }}
+        onClick={(e) => handleInteraction(e, onLike, true)}
         className={cn(
           "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all",
           interactions.isLiked
@@ -276,9 +291,25 @@ export function InteractionButtons({
         <span className="text-[13px] tabular-nums">{formatNumber(interactions.likesCount)}</span>
       </button>
 
+      {/* 리포스트 (있는 경우) */}
+      {onRepost && (
+        <button
+          onClick={(e) => handleInteraction(e, onRepost, true)}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all",
+            interactions.isReposted
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-surface-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+          )}
+        >
+          <RepostIcon className="h-[18px] w-[18px]" />
+          <span className="text-[13px] tabular-nums">{formatNumber(interactions.repostsCount || 0)}</span>
+        </button>
+      )}
+
       {/* 북마크 */}
       <button
-        onClick={(e) => { e.stopPropagation(); onBookmark?.(); }}
+        onClick={(e) => handleInteraction(e, onBookmark, true)}
         className={cn(
           "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all ml-auto",
           interactions.isBookmarked
@@ -367,7 +398,7 @@ export interface ContentAreaProps {
 export function ContentArea({ content, images, className }: ContentAreaProps) {
   return (
     <>
-      <div className={cn("text-surface-800 dark:text-surface-200 whitespace-pre-wrap break-words mb-3 leading-relaxed text-[15px]", className)}>
+      <div className={cn("text-surface-900 dark:text-white whitespace-pre-wrap break-words mb-3 leading-relaxed text-[15px]", className)}>
         {content}
       </div>
       {images && images.length > 0 && (
@@ -416,7 +447,7 @@ export function FeedRowWrapper({ className, children, avatar, onClick }: FeedRow
   return (
     <article 
       className={cn(
-        "px-4 py-3 border-b border-surface-100 dark:border-surface-800 bg-white dark:bg-surface-950",
+        "px-4 py-3 border-b border-surface-200 dark:border-surface-800 bg-white dark:bg-black",
         "hover:bg-surface-50 dark:hover:bg-surface-900/50 transition-colors cursor-pointer",
         className
       )}
