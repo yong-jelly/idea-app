@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Camera, Link as LinkIcon, Github, Twitter, X, ArrowLeft } from "lucide-react";
 import { Button, Input, Textarea, Avatar } from "@/shared/ui";
 import { useUserStore } from "@/entities/user";
+import { supabase } from "@/shared/lib/supabase";
 
 export interface ProfileEditModalProps {
   open: boolean;
@@ -21,6 +22,20 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
     twitter: user?.twitter || "",
     avatar: user?.avatar || "",
   });
+
+  // links를 formData에서 관리 (DB의 links 컬럼과 매핑)
+  const getLinksFromUser = () => {
+    if (user?.website || user?.github || user?.twitter) {
+      return {
+        website: user.website || "",
+        github: user.github || "",
+        twitter: user.twitter || "",
+      };
+    }
+    return { website: "", github: "", twitter: "" };
+  };
+
+  const [links, setLinks] = useState(getLinksFromUser());
 
   const [previewAvatar, setPreviewAvatar] = useState<string | undefined>(user?.avatar);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,11 +71,16 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
         avatar: user.avatar || "",
       });
       setPreviewAvatar(user.avatar);
+      setLinks(getLinksFromUser());
     }
   }, [user, open]);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleLinkChange = (field: "website" | "github" | "twitter", value: string) => {
+    setLinks((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleAvatarClick = () => {
@@ -101,19 +121,50 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
 
     setIsLoading(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      // links 객체 생성 (빈 값 제거)
+      const linksData: Record<string, string> = {};
+      if (links.website.trim()) linksData.website = links.website.trim();
+      if (links.github.trim()) linksData.github = links.github.trim();
+      if (links.twitter.trim()) linksData.twitter = links.twitter.trim();
 
-    updateUser({
-      displayName: formData.displayName.trim(),
-      bio: formData.bio.trim() || undefined,
-      website: formData.website.trim() || undefined,
-      github: formData.github.trim() || undefined,
-      twitter: formData.twitter.trim() || undefined,
-      avatar: formData.avatar || undefined,
-    });
+      // Supabase API 호출
+      // bio가 빈 문자열이면 빈 문자열로 전달 (DB 함수에서 null로 변환)
+      // bio를 삭제하려면 빈 문자열을 전달해야 함
+      const bioValue = formData.bio.trim();
+      
+      const { data: updatedUser, error } = await supabase
+        .schema("odd")
+        .rpc("v1_update_user_profile", {
+          p_display_name: formData.displayName.trim(),
+          p_bio: bioValue, // 빈 문자열도 그대로 전달 (DB에서 null로 처리)
+          p_links: Object.keys(linksData).length > 0 ? linksData : null,
+        });
 
-    setIsLoading(false);
-    onOpenChange(false);
+      if (error) {
+        console.error("프로필 업데이트 에러:", error);
+        alert(`프로필 업데이트 실패: ${error.message}`);
+        setIsLoading(false);
+        return;
+      }
+
+      // UserStore 업데이트
+      updateUser({
+        displayName: updatedUser.display_name || "",
+        bio: updatedUser.bio || undefined,
+        website: linksData.website || undefined,
+        github: linksData.github || undefined,
+        twitter: linksData.twitter || undefined,
+        avatar: updatedUser.avatar_url || undefined,
+      });
+
+      setIsLoading(false);
+      onOpenChange(false);
+    } catch (err) {
+      console.error("프로필 업데이트 에러:", err);
+      alert("프로필 업데이트 중 오류가 발생했습니다.");
+      setIsLoading(false);
+    }
   };
 
   const handleClose = () => {
@@ -126,6 +177,7 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
       avatar: user?.avatar || "",
     });
     setPreviewAvatar(user?.avatar);
+    setLinks(getLinksFromUser());
     onOpenChange(false);
   };
 
@@ -160,9 +212,10 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
               size="sm" 
               onClick={handleSubmit} 
               disabled={isLoading}
+              isLoading={isLoading}
               className="rounded-full"
             >
-              {isLoading ? "저장 중..." : "저장"}
+              저장
             </Button>
           </header>
 
@@ -214,14 +267,20 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
 
               {/* 이름 */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                  이름 <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                    이름 <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-xs text-surface-400 dark:text-surface-500">
+                    댓글 등을 통해 다른 사용자들에게 보여지는 이름입니다.
+                  </span>
+                </div>
                 <Input
                   value={formData.displayName}
                   onChange={(e) => handleChange("displayName", e.target.value)}
                   placeholder="이름을 입력하세요"
                   maxLength={30}
+                  disabled={isLoading}
                 />
                 <p className="text-xs text-surface-500 text-right">
                   {formData.displayName.length}/30
@@ -230,15 +289,21 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
 
               {/* 자기소개 */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                  자기소개
-                </label>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                    자기소개
+                  </label>
+                  <span className="text-xs text-surface-400 dark:text-surface-500">
+                    프로필 페이지에서 다른 사용자들에게 보여지는 정보입니다.
+                  </span>
+                </div>
                 <Textarea
                   value={formData.bio}
                   onChange={(e) => handleChange("bio", e.target.value)}
                   placeholder="자신을 소개해주세요"
                   maxLength={160}
                   rows={3}
+                  disabled={isLoading}
                 />
                 <p className="text-xs text-surface-500 text-right">
                   {formData.bio.length}/160
@@ -255,10 +320,11 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
                 <div className="relative">
                   <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
                   <Input
-                    value={formData.website}
-                    onChange={(e) => handleChange("website", e.target.value)}
+                    value={links.website}
+                    onChange={(e) => handleLinkChange("website", e.target.value)}
                     placeholder="https://example.com"
                     className="pl-10"
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -266,10 +332,11 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
                 <div className="relative">
                   <Github className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
                   <Input
-                    value={formData.github}
-                    onChange={(e) => handleChange("github", e.target.value)}
+                    value={links.github}
+                    onChange={(e) => handleLinkChange("github", e.target.value)}
                     placeholder="GitHub 사용자명"
                     className="pl-10"
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -277,10 +344,11 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
                 <div className="relative">
                   <Twitter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
                   <Input
-                    value={formData.twitter}
-                    onChange={(e) => handleChange("twitter", e.target.value)}
+                    value={links.twitter}
+                    onChange={(e) => handleLinkChange("twitter", e.target.value)}
                     placeholder="Twitter 사용자명 (@제외)"
                     className="pl-10"
+                    disabled={isLoading}
                   />
                 </div>
               </div>

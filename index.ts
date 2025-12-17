@@ -11,4 +11,4 @@ const server = Bun.serve({
   },
 });
 
-console.log(`🚀 IndieStart 서버가 http://localhost:${server.port} 에서 실행 중입니다`);
+console.log(`🚀 1DD 서버가 http://localhost:${server.port} 에서 실행 중입니다`);

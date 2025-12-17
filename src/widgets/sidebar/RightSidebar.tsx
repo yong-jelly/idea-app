@@ -229,7 +229,7 @@ export function RightSidebar() {
           <Link to="/terms" className="hover:text-surface-600 dark:hover:text-surface-300 transition-colors">이용약관</Link>
           <Link to="/privacy" className="hover:text-surface-600 dark:hover:text-surface-300 transition-colors">개인정보처리방침</Link>
         </div>
-        <p>© 2024 IndieStart. All rights reserved.</p>
+        <p>© 2024 1DD. All rights reserved.</p>
       </div>
     </aside>
   );

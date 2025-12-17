@@ -33,7 +33,7 @@ export function useFeedActions() {
     // 공유 다이얼로그 열기
     if (navigator.share) {
       navigator.share({
-        title: "IndieStart 포스트",
+        title: "1DD 포스트",
         url: `${window.location.origin}/post/${postId}`,
       });
     } else {

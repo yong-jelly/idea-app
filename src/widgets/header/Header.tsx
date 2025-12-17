@@ -30,11 +30,11 @@ export function Header() {
         <div className="flex h-14 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-600">
-              <span className="text-xs font-bold text-white">IS</span>
+            <div className="flex h-7 w-10 items-center justify-center rounded-lg bg-primary-600">
+              <span className="text-xs font-bold text-white">1DD</span>
             </div>
             <span className="text-lg font-semibold text-surface-900 dark:text-surface-50">
-              IndieStart
+              {/* 1DD */}
             </span>
           </Link>
 

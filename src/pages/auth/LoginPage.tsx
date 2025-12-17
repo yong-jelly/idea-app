@@ -81,7 +81,7 @@ export function LoginPage() {
         {/* 폼 컨텐츠 */}
         <div className="mx-auto max-w-lg">
           <h1 className="text-[31px] font-bold leading-9 text-surface-900 dark:text-white mb-8 text-center">
-            IndieStart에 로그인하기
+            1DD에 로그인하기
           </h1>
 
           {/* 구글 로그인 버튼 */}

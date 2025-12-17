@@ -262,11 +262,25 @@ export function ProfilePage() {
               <h1 className="text-lg font-bold text-surface-900 dark:text-surface-50">
                 {profile.displayName}
               </h1>
-              {profile.bio && (
+              {profile.bio ? (
                 <p className="text-xs text-surface-500 truncate">
+                  {/* {profile.bio.length > 100 ? `${profile.bio.slice(0, 100)}...` : profile.bio} */}
                   {profile.bio.length > 100 ? `${profile.bio.slice(0, 100)}...` : profile.bio}
                 </p>
-              )}
+              ) : isOwnProfile ? (
+                <button
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      setShowSignUpModal(true);
+                      return;
+                    }
+                    setIsEditModalOpen(true);
+                  }}
+                  className="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline"
+                >
+                  아직 자기소개 정보가 없습니다. 프로필 편집을 통해 추가해 보세요!
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -364,9 +378,22 @@ export function ProfilePage() {
             </div>
             <p className="text-sm text-surface-500">@{profile.username}</p>
           </div>
-          {profile.bio && (
+          {profile.bio ? (
             <p className="text-sm text-surface-700 dark:text-surface-300 mb-2">{profile.bio}</p>
-          )}
+          ) : isOwnProfile ? (
+            <button
+              onClick={() => {
+                if (!isAuthenticated) {
+                  setShowSignUpModal(true);
+                  return;
+                }
+                setIsEditModalOpen(true);
+              }}
+              className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline mb-2 text-center w-full"
+            >
+              아직 자기소개 정보가 없습니다. 추가해보세요!
+            </button>
+          ) : null}
           <div className="flex items-center gap-1.5 text-xs text-surface-400">
             <Calendar className="h-3 w-3" />
             {new Date(profile.createdAt).toLocaleDateString("ko-KR", {
