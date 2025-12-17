@@ -22,10 +22,8 @@ import {
   ProfilePage,
   MyProjectsPage,
   BookmarksPage,
-  SignUpPage,
-  LoginPage,
-  AuthCallbackPage,
 } from "@/pages";
+import { AuthCallbackPage } from "@/pages/auth/AuthCallbackPage";
 
 function ScrollToTop() {
   const location = useLocation();
@@ -55,14 +53,6 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <FeedPage />,
-      },
-      {
-        path: "signup",
-        element: <SignUpPage />,
-      },
-      {
-        path: "login",
-        element: <LoginPage />,
       },
       {
         path: "auth/callback",

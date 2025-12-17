@@ -5,6 +5,8 @@ import { Button, Avatar, Badge } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
 import { useUIStore } from "@/shared/config/ui.store";
+import { SignUpModal } from "@/pages/auth";
+import { supabase } from "@/shared/lib/supabase";
 
 const navigation = [
   { name: "피드", href: "/" },
@@ -15,6 +17,7 @@ export function Header() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [signUpModalOpen, setSignUpModalOpen] = useState(false);
   
   const { user, isAuthenticated, logout, toggleAuth, clearSession, sessionToken } = useUserStore();
   const { theme, toggleTheme } = useUIStore();
@@ -174,13 +177,20 @@ export function Header() {
                           logout()과 clearSession()을 모두 호출하여 사용자 정보와 세션 토큰을 완전히 제거합니다.
                         */}
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             console.log("[HEADER] 로그아웃 버튼 클릭", {
                               userId: user?.id,
                               username: user?.username,
                               hasSessionToken: !!sessionToken,
                               timestamp: new Date().toISOString()
                             });
+                            
+                            // Supabase 세션 제거
+                            try {
+                              await supabase.auth.signOut();
+                            } catch (err) {
+                              console.error("[HEADER] Supabase 로그아웃 에러:", err);
+                            }
                             
                             // 사용자 정보 제거
                             logout();
@@ -211,6 +221,7 @@ export function Header() {
               <Button 
                 variant="outline" 
                 size="sm"
+                onClick={() => setSignUpModalOpen(true)}
                 className={cn(
                   "transition-all",
                   !isDev && "hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700 dark:hover:bg-primary-950 dark:hover:border-primary-700 dark:hover:text-primary-300"
@@ -259,6 +270,12 @@ export function Header() {
           </div>
         )}
       </div>
+
+      {/* 회원가입 모달 */}
+      <SignUpModal
+        open={signUpModalOpen}
+        onOpenChange={setSignUpModalOpen}
+      />
     </header>
   );
 }

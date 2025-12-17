@@ -213,7 +213,7 @@ export function SignUpModal({ open, onOpenChange }: SignUpModalProps) {
 
                       {/* 약관 동의 */}
                       <p className="text-[11px] text-surface-500 dark:text-surface-500 mt-4 leading-relaxed text-center">
-                        가입하면 IndieStart의{" "}
+                        가입하면 1DD의{" "}
                         <Link to="/terms" className="text-primary-600 dark:text-primary-400 hover:underline">
                           이용약관
                         </Link>

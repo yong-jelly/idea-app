@@ -70,7 +70,7 @@ export function ExplorePage() {
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-surface-900 dark:text-surface-50">
-              IndieStart의 새 프로젝트 소식을 받아보세요
+              1DD의 새 프로젝트 소식을 받아보세요
             </p>
           </div>
           <Button variant="outline" size="sm">
