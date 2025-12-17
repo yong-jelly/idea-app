@@ -5,6 +5,7 @@ import { Button } from "@/shared/ui";
 import { Input } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
+import { supabase } from "@/shared/lib/supabase";
 
 interface LoginModalProps {
   open: boolean;
@@ -174,8 +175,16 @@ export function LoginModal({ open, onOpenChange, onSwitchToSignUp }: LoginModalP
                       "dark:bg-black dark:border-surface-800 dark:text-white",
                       "dark:hover:bg-surface-900 dark:hover:border-surface-700"
                     )}
-                    onClick={() => {
-                      window.location.href = "/api/auth/google";
+                    onClick={async () => {
+                      const { error } = await supabase.auth.signInWithOAuth({
+                        provider: "google",
+                        options: {
+                          redirectTo: `${window.location.origin}/auth/callback`,
+                        },
+                      });
+                      if (error) {
+                        console.error("Google login error:", error);
+                      }
                     }}
                   >
                     <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
