@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useNavigate } from "react-router";
 import {
   ChevronLeft,
   ThumbsUp,
@@ -29,6 +29,11 @@ import { Button, Avatar, Badge, Textarea, Card, CardContent, Separator } from "@
 import { CommentThread } from "@/shared/ui/comment";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
+import { supabase } from "@/shared/lib/supabase";
+import { getProfileImageUrl, getImageUrl } from "@/shared/lib/storage";
+import { fetchProjectDetail } from "@/entities/project";
+import { useDevFeedComments } from "./community/tabs/hooks/useDevFeedComments";
+import { LoginModal } from "@/pages/auth";
 
 // ========== 타입 정의 ==========
 
@@ -69,7 +74,8 @@ interface FeedbackHistory {
 }
 
 interface Feedback {
-  id: string;
+  id: string; // post_id
+  feedbackId: string; // 실제 feedback_id (투표 등에 사용)
   type: FeedbackType;
   status: FeedbackStatus;
   priority?: FeedbackPriority;
@@ -416,9 +422,56 @@ function DevResponseModal({ isOpen, onClose, initialValue = "", onSubmit }: DevR
 
 // ========== 메인 컴포넌트 ==========
 
+/**
+ * DB 피드백 데이터를 Feedback 타입으로 변환
+ */
+function convertRowToFeedback(row: any): Feedback {
+  // 이미지 URL 변환 (Storage 경로를 URL로)
+  const imageUrls = row.images && Array.isArray(row.images) && row.images.length > 0
+    ? row.images.map((path: string) => {
+        // 이미 URL인 경우 그대로 반환
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+          return path;
+        }
+        // Storage 경로인 경우 URL로 변환
+        return getImageUrl(path);
+      })
+    : undefined;
+
+  return {
+    id: row.post_id || row.id, // post_id를 id로 사용 (라우팅 등에 사용)
+    feedbackId: row.feedback_id || row.id, // 실제 feedback_id 저장 (투표 등에 사용)
+    type: (row.feedback_type || "feature") as FeedbackType,
+    status: (row.status || "open") as FeedbackStatus,
+    priority: row.priority as FeedbackPriority | undefined,
+    title: row.title || "",
+    content: row.content,
+    images: imageUrls,
+    author: {
+      id: String(row.author_id),
+      username: row.author_username || "",
+      displayName: row.author_display_name || "",
+      avatar: row.author_avatar_url ? getProfileImageUrl(row.author_avatar_url, "sm") : undefined,
+    },
+    assignee: row.assignee_id ? {
+      id: String(row.assignee_id),
+      username: "", // TODO: assignee 정보 조회 필요
+      displayName: "",
+    } : undefined,
+    votesCount: row.votes_count || 0,
+    isVoted: row.is_voted || false,
+    commentsCount: row.comments_count || 0,
+    developerResponse: row.developer_response || undefined,
+    isPinned: row.is_pinned || false,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at || undefined,
+  };
+}
+
 export function FeedbackDetailPage() {
   const { id, feedbackId } = useParams<{ id: string; feedbackId: string }>();
-  const { user } = useUserStore();
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useUserStore();
 
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [originalFeedback, setOriginalFeedback] = useState<Feedback | null>(null);
@@ -426,16 +479,91 @@ export function FeedbackDetailPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [projectAuthorId, setProjectAuthorId] = useState<string>("");
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // 프로젝트 멤버 여부 (추후 권한 체크로 교체)
-  const isProjectMember = true; // 데모용 - 실제로는 API에서 권한 체크
+  // 프로젝트 멤버 여부 (프로젝트 작성자와 현재 사용자 비교)
+  const isProjectMember = projectAuthorId && user?.id === projectAuthorId;
 
+  // 댓글 시스템 hook 사용
+  const {
+    comments,
+    isLoadingComments,
+    isLoadingMoreComments,
+    totalComments,
+    hasMore: hasMoreComments,
+    handleAddComment,
+    handleReply,
+    handleLikeComment,
+    handleEditComment,
+    handleDeleteComment,
+    handleLoadMoreComments,
+  } = useDevFeedComments({
+    postId: feedbackId || "",
+    projectAuthorId,
+    isAuthenticated,
+    onSignUpPrompt: () => setShowLoginModal(true),
+  });
+
+  // 프로젝트 정보 조회
   useEffect(() => {
-    const found = dummyFeedbacks.find((f) => f.id === feedbackId);
-    if (found) {
-      setFeedback({ ...found });
-      setOriginalFeedback({ ...found });
-    }
+    if (!id) return;
+
+    const loadProject = async () => {
+      try {
+        const result = await fetchProjectDetail(id);
+        if (result.error) {
+          console.error("프로젝트 조회 실패:", result.error);
+          return;
+        }
+        if (result.overview?.project) {
+          setProjectAuthorId(result.overview.project.author.id);
+        }
+      } catch (err) {
+        console.error("프로젝트 조회 에러:", err);
+      }
+    };
+
+    loadProject();
+  }, [id]);
+
+  // 피드백 상세 조회
+  useEffect(() => {
+    if (!feedbackId) return;
+
+    const loadFeedback = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const { data, error: fetchError } = await supabase
+          .schema("odd")
+          .rpc("v1_fetch_feedback_detail", {
+            p_post_id: feedbackId,
+          });
+
+        if (fetchError) {
+          throw new Error(fetchError.message || "피드백을 불러오는데 실패했습니다");
+        }
+
+        if (!data || data.length === 0) {
+          throw new Error("피드백을 찾을 수 없습니다");
+        }
+
+        const feedbackData = convertRowToFeedback(data[0]);
+        setFeedback(feedbackData);
+        setOriginalFeedback(feedbackData);
+      } catch (err) {
+        console.error("피드백 조회 에러:", err);
+        setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFeedback();
   }, [feedbackId]);
 
   // 변경사항 있는지 확인
@@ -448,12 +576,33 @@ export function FeedbackDetailPage() {
 
   // 저장 핸들러
   const handleSaveChanges = async () => {
-    if (!feedback || !hasChanges) return;
+    if (!feedback || !hasChanges || !feedbackId) return;
     setIsSaving(true);
-    // 실제 구현에서는 API 호출
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setOriginalFeedback({ ...feedback });
-    setIsSaving(false);
+
+    try {
+      const { error } = await supabase
+        .schema("odd")
+        .rpc("v1_update_feedback", {
+          p_post_id: feedbackId,
+          p_status: feedback.status,
+          p_feedback_type: feedback.type,
+          p_priority: feedback.priority || null,
+          p_assignee_id: feedback.assignee?.id ? Number(feedback.assignee.id) : null,
+          p_developer_response: feedback.developerResponse || null,
+        });
+
+      if (error) {
+        throw new Error(error.message || "피드백 수정에 실패했습니다");
+      }
+
+      setOriginalFeedback({ ...feedback });
+      alert("변경사항이 저장되었습니다.");
+    } catch (err) {
+      console.error("피드백 수정 에러:", err);
+      alert(err instanceof Error ? err.message : "피드백 수정에 실패했습니다");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // 변경사항 취소
@@ -463,10 +612,18 @@ export function FeedbackDetailPage() {
     }
   };
 
-  if (!feedback) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <p className="text-surface-500">피드백을 찾을 수 없습니다.</p>
+        <p className="text-surface-500">피드백을 불러오는 중...</p>
+      </div>
+    );
+  }
+
+  if (error || !feedback) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <p className="text-surface-500">{error || "피드백을 찾을 수 없습니다."}</p>
       </div>
     );
   }
@@ -478,15 +635,38 @@ export function FeedbackDetailPage() {
   const StatusIcon = statusInfo.icon;
 
   // 투표 토글
-  const handleVote = () => {
-    setFeedback((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        isVoted: !prev.isVoted,
-        votesCount: prev.isVoted ? prev.votesCount - 1 : prev.votesCount + 1,
-      };
-    });
+  const handleVote = async () => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    if (!feedback) return;
+
+    try {
+      const { error } = await supabase
+        .schema("odd")
+        .rpc("v1_toggle_feedback_vote", {
+          p_feedback_id: feedback.feedbackId, // 실제 feedback_id 사용
+        });
+
+      if (error) {
+        throw new Error(error.message || "투표 처리에 실패했습니다");
+      }
+
+      // 투표 상태 업데이트
+      setFeedback((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          isVoted: !prev.isVoted,
+          votesCount: prev.isVoted ? prev.votesCount - 1 : prev.votesCount + 1,
+        };
+      });
+    } catch (err) {
+      console.error("투표 에러:", err);
+      alert(err instanceof Error ? err.message : "투표 처리에 실패했습니다");
+    }
   };
 
   // 상태 변경
@@ -575,30 +755,50 @@ export function FeedbackDetailPage() {
   };
 
   // 공식 답변 저장
-  const handleDevResponse = (response: string) => {
-    setFeedback((prev) => {
-      if (!prev) return prev;
-      const historyItem: FeedbackHistory = {
-        id: `h${Date.now()}`,
-        type: "response_added",
-        actor: { id: user?.id || "current", username: user?.username || "guest", displayName: user?.displayName || "게스트" },
-        createdAt: new Date().toISOString(),
-      };
-      return {
-        ...prev,
-        developerResponse: response,
-        history: [...(prev.history || []), historyItem],
-        updatedAt: new Date().toISOString(),
-      };
-    });
+  const handleDevResponse = async (response: string) => {
+    if (!feedbackId) return;
+
+    try {
+      const { error } = await supabase
+        .schema("odd")
+        .rpc("v1_update_feedback", {
+          p_post_id: feedbackId,
+          p_developer_response: response || null,
+        });
+
+      if (error) {
+        throw new Error(error.message || "공식 답변 저장에 실패했습니다");
+      }
+
+      setFeedback((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          developerResponse: response,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+    } catch (err) {
+      console.error("공식 답변 저장 에러:", err);
+      alert(err instanceof Error ? err.message : "공식 답변 저장에 실패했습니다");
+    }
   };
 
-  // 고정 토글
-  const handleTogglePin = () => {
-    setFeedback((prev) => {
-      if (!prev) return prev;
-      return { ...prev, isPinned: !prev.isPinned };
-    });
+  // 고정 토글 (TODO: API 구현 필요)
+  const handleTogglePin = async () => {
+    if (!feedbackId) return;
+
+    try {
+      // TODO: 고정 토글 API 구현 필요
+      // 현재는 로컬 상태만 업데이트
+      setFeedback((prev) => {
+        if (!prev) return prev;
+        return { ...prev, isPinned: !prev.isPinned };
+      });
+    } catch (err) {
+      console.error("고정 토글 에러:", err);
+      alert("고정 상태 변경에 실패했습니다");
+    }
   };
 
   // 링크 복사
@@ -608,152 +808,7 @@ export function FeedbackDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // 댓글 추가
-  const handleAddComment = (content: string, images: string[]) => {
-    if (!content.trim() && images.length === 0) return;
-
-    const newCommentObj: FeedbackComment = {
-      id: `c${Date.now()}`,
-      author: {
-        id: user?.id || "current",
-        username: user?.username || "guest",
-        displayName: user?.displayName || "게스트",
-      },
-      content,
-      images: images.length > 0 ? images : undefined,
-      likesCount: 0,
-      isLiked: false,
-      depth: 0,
-      createdAt: new Date().toISOString(),
-    };
-
-    setFeedback((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        comments: [...(prev.comments || []), newCommentObj],
-        commentsCount: prev.commentsCount + 1,
-      };
-    });
-  };
-
-  // 답글 추가
-  const handleReply = (parentId: string, content: string, images: string[]) => {
-    const addReplyRecursive = (comments: FeedbackComment[], targetId: string, depth: number): FeedbackComment[] => {
-      return comments.map((c) => {
-        if (c.id === targetId) {
-          const parentDepth = Number.isFinite(c.depth) && c.depth >= 0 ? c.depth : depth;
-          if (parentDepth >= COMMENT_MAX_DEPTH) return c;
-          const newReply: FeedbackComment = {
-            id: `reply-${Date.now()}`,
-            author: {
-              id: user?.id || "current",
-              username: user?.username || "guest",
-              displayName: user?.displayName || "게스트",
-            },
-            content,
-            images: images.length > 0 ? images : undefined,
-            likesCount: 0,
-            isLiked: false,
-            depth: Math.min(parentDepth + 1, COMMENT_MAX_DEPTH),
-            parentId: targetId,
-            createdAt: new Date().toISOString(),
-          };
-          return { ...c, replies: [...(c.replies || []), newReply] };
-        }
-        if (c.replies) {
-          const nextDepth = Number.isFinite(c.depth) && c.depth >= 0 ? c.depth : depth;
-          return { ...c, replies: addReplyRecursive(c.replies, targetId, nextDepth) };
-        }
-        return c;
-      });
-    };
-
-    setFeedback((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        comments: addReplyRecursive(prev.comments || [], parentId, 0),
-        commentsCount: prev.commentsCount + 1,
-      };
-    });
-  };
-
-  // 댓글 수정 (인라인)
-  const handleEditComment = (commentId: string, content: string, images: string[]) => {
-    const updateRecursive = (comments: FeedbackComment[]): FeedbackComment[] =>
-      comments.map((c) => {
-        if (c.id === commentId) {
-          return {
-            ...c,
-            content,
-            images: images.length > 0 ? images : undefined,
-            updatedAt: new Date().toISOString(),
-          };
-        }
-        if (c.replies) {
-          return { ...c, replies: updateRecursive(c.replies) };
-        }
-        return c;
-      });
-
-    setFeedback((prev) => {
-      if (!prev) return prev;
-      return { ...prev, comments: updateRecursive(prev.comments || []) };
-    });
-  };
-
-  // 댓글 삭제 (소프트 삭제, 하위 답글 유지)
-  const handleDeleteComment = (commentId: string) => {
-    const markDeleteRecursive = (comments: FeedbackComment[]): FeedbackComment[] =>
-      comments.map((c) => {
-        if (c.id === commentId) {
-          return { ...c, isDeleted: true };
-        }
-        if (c.replies) {
-          return { ...c, replies: markDeleteRecursive(c.replies) };
-        }
-        return c;
-      });
-
-    setFeedback((prev) => {
-      if (!prev) return prev;
-      return { ...prev, comments: markDeleteRecursive(prev.comments || []) };
-    });
-  };
-
-  // 댓글 좋아요
-  const handleCommentLike = (commentId: string) => {
-    const updateLikeRecursive = (comments: FeedbackComment[]): FeedbackComment[] => {
-      return comments.map((c) => {
-        if (c.id === commentId) {
-          return {
-            ...c,
-            isLiked: !c.isLiked,
-            likesCount: c.isLiked ? c.likesCount - 1 : c.likesCount + 1,
-          };
-        }
-        if (c.replies) {
-          return { ...c, replies: updateLikeRecursive(c.replies) };
-        }
-        return c;
-      });
-    };
-
-    setFeedback((prev) => {
-      if (!prev) return prev;
-      return { ...prev, comments: updateLikeRecursive(prev.comments || []) };
-    });
-  };
-
-  // 총 댓글 수 계산
-  const countAllComments = (comments: FeedbackComment[]): number => {
-    return comments.reduce((acc, c) => {
-      return acc + 1 + (c.replies ? countAllComments(c.replies) : 0);
-    }, 0);
-  };
-
-  const totalComments = feedback.comments ? countAllComments(feedback.comments) : 0;
+  // 댓글은 useDevFeedComments hook에서 처리됨
 
   // 히스토리 타입 라벨
   const getHistoryLabel = (history: FeedbackHistory) => {
@@ -851,22 +906,31 @@ export function FeedbackDetailPage() {
                       {feedback.content}
                     </p>
                   </div>
-
-                  {/* Images */}
-                  {feedback.images && feedback.images.length > 0 && (
-                    <div className="flex flex-wrap gap-3 mt-6">
-                      {feedback.images.map((img, index) => (
-                        <img
-                          key={index}
-                          src={img}
-                          alt={`피드백 이미지 ${index + 1}`}
-                          className="max-h-60 rounded-xl border border-surface-200 dark:border-surface-700 cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => window.open(img, "_blank")}
-                        />
-                      ))}
-                    </div>
-                  )}
                 </div>
+
+                {/* Images Section (별도 영역) */}
+                {feedback.images && feedback.images.length > 0 && (
+                  <>
+                    <Separator />
+                    <div className="p-6 pt-4">
+                      <div className="flex flex-wrap gap-2">
+                        {feedback.images.map((img, index) => (
+                          <div
+                            key={index}
+                            className="relative group cursor-pointer"
+                            onClick={() => window.open(img, "_blank")}
+                          >
+                            <img
+                              src={img}
+                              alt={`피드백 이미지 ${index + 1}`}
+                              className="h-24 w-24 rounded-lg object-cover border border-surface-200 dark:border-surface-700 group-hover:opacity-90 transition-opacity"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {/* Developer Response */}
                 {feedback.developerResponse && (
@@ -944,27 +1008,45 @@ export function FeedbackDetailPage() {
                   댓글 ({totalComments})
                 </h2>
 
-                <CommentThread
-                  comments={feedback.comments || []}
-                  currentUser={
-                    user
-                      ? {
-                          id: user.id,
-                          username: user.username,
-                          displayName: user.displayName,
-                        }
-                      : { id: "guest", displayName: "게스트" }
-                  }
-                  currentUserId={user?.id}
-                  maxDepth={COMMENT_MAX_DEPTH}
-                  enableAttachments={COMMENT_ENABLE_ATTACHMENTS}
-                  maxImages={COMMENT_MAX_IMAGES}
-                  onCreate={handleAddComment}
-                  onReply={handleReply}
-                  onLike={handleCommentLike}
-                  onEdit={handleEditComment}
-                  onDelete={handleDeleteComment}
-                />
+                {isLoadingComments ? (
+                  <div className="flex items-center justify-center py-8">
+                    <p className="text-surface-500">댓글을 불러오는 중...</p>
+                  </div>
+                ) : (
+                  <CommentThread
+                    comments={comments}
+                    currentUser={
+                      user
+                        ? {
+                            id: user.id,
+                            username: user.username,
+                            displayName: user.displayName,
+                          }
+                        : { id: "guest", displayName: "게스트" }
+                    }
+                    currentUserId={user?.id}
+                    maxDepth={COMMENT_MAX_DEPTH}
+                    enableAttachments={COMMENT_ENABLE_ATTACHMENTS}
+                    maxImages={COMMENT_MAX_IMAGES}
+                    onCreate={handleAddComment}
+                    onReply={handleReply}
+                    onLike={handleLikeComment}
+                    onEdit={handleEditComment}
+                    onDelete={handleDeleteComment}
+                  />
+                )}
+
+                {hasMoreComments && (
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      variant="outline"
+                      onClick={handleLoadMoreComments}
+                      disabled={isLoadingMoreComments}
+                    >
+                      {isLoadingMoreComments ? "로딩 중..." : "더 보기"}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1253,6 +1335,12 @@ export function FeedbackDetailPage() {
         onClose={() => setShowDevResponseModal(false)}
         initialValue={feedback.developerResponse}
         onSubmit={handleDevResponse}
+      />
+
+      {/* Login Modal */}
+      <LoginModal
+        open={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
       />
     </div>
   );

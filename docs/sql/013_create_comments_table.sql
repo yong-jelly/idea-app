@@ -117,6 +117,27 @@ CREATE TRIGGER trigger_decrement_post_comments
     FOR EACH ROW
     EXECUTE FUNCTION odd.decrement_post_comments_count();
 
+-- 댓글 소프트 삭제 시 포스트의 comments_count 감소 (is_deleted가 false에서 true로 변경될 때)
+CREATE OR REPLACE FUNCTION odd.decrement_post_comments_count_on_soft_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- is_deleted가 false에서 true로 변경될 때만 카운트 감소
+    IF OLD.is_deleted = false AND NEW.is_deleted = true THEN
+        UPDATE odd.tbl_posts
+        SET comments_count = GREATEST(comments_count - 1, 0)
+        WHERE id = NEW.post_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_decrement_post_comments_on_soft_delete ON odd.tbl_comments;
+CREATE TRIGGER trigger_decrement_post_comments_on_soft_delete
+    AFTER UPDATE ON odd.tbl_comments
+    FOR EACH ROW
+    WHEN (OLD.is_deleted IS DISTINCT FROM NEW.is_deleted)
+    EXECUTE FUNCTION odd.decrement_post_comments_count_on_soft_delete();
+
 -- =====================================================
 -- 5. depth 자동 계산 트리거
 -- =====================================================

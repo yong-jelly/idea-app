@@ -15,13 +15,9 @@
 -- 기존 외래키 제약조건 제거
 ALTER TABLE odd.tbl_comments DROP CONSTRAINT IF EXISTS tbl_comments_post_id_fkey;
 
--- 새로운 외래키 제약조건 추가 (포스트 또는 프로젝트 참조)
--- CHECK 제약조건으로 하나만 참조하도록 보장
-ALTER TABLE odd.tbl_comments 
-  ADD CONSTRAINT chk_comment_target CHECK (
-    (post_id IN (SELECT id FROM odd.tbl_posts)) OR
-    (post_id IN (SELECT id FROM odd.projects))
-  );
+-- 외래키 제약조건은 제거하고 함수에서 존재 여부를 검증합니다.
+-- CHECK 제약조건은 서브쿼리를 지원하지 않으므로 사용하지 않습니다.
+-- v1_create_comment 함수에서 포스트 또는 프로젝트 존재 여부를 확인합니다.
 
 -- 인덱스는 이미 존재하므로 그대로 사용
 

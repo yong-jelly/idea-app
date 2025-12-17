@@ -501,10 +501,36 @@ export async function fetchProjectDetail(
 }
 
 /**
+ * 프로젝트 댓글 조회 옵션
+ */
+export interface FetchProjectCommentsOptions {
+  /** 페이지당 최상위 댓글 수 (기본값: 30) */
+  limit?: number;
+  /** 페이지 오프셋 (기본값: 0) */
+  offset?: number;
+}
+
+/**
  * 프로젝트 댓글 조회 결과
  */
 export interface FetchProjectCommentsResult {
   comments: any[]; // DB에서 반환된 댓글 데이터 (정규화 전)
+  /** 페이징 정보 */
+  pagination: {
+    totalCount: number; // 전체 댓글 개수 (답글 포함, 삭제된 댓글 포함)
+    deletedTotalCount: number; // 삭제된 댓글 개수 (답글 포함)
+    topLevelCount: number; // 최상위 댓글 개수 (depth=0)
+    size: number;
+    offset: number;
+    hasMore: boolean;
+  };
+  /** 메타 정보 */
+  meta: {
+    postId: string;
+    limit: number;
+    offset: number;
+    serverTime: string;
+  };
   error: Error | null;
 }
 
@@ -512,44 +538,141 @@ export interface FetchProjectCommentsResult {
  * 프로젝트 댓글 조회
  * 
  * @param projectId - 프로젝트 ID (post_id로 사용)
+ * @param options - 페이징 옵션
  * @returns 댓글 목록 또는 에러
  */
 export async function fetchProjectComments(
-  projectId: string
+  projectId: string,
+  options: FetchProjectCommentsOptions = {}
 ): Promise<FetchProjectCommentsResult> {
   try {
     if (!projectId) {
       return {
         comments: [],
+        pagination: {
+          totalCount: 0,
+          deletedTotalCount: 0,
+          topLevelCount: 0,
+          size: 0,
+          offset: 0,
+          hasMore: false,
+        },
+        meta: {
+          postId: projectId,
+          limit: 0,
+          offset: 0,
+          serverTime: new Date().toISOString(),
+        },
         error: new Error("프로젝트 ID가 필요합니다"),
       };
     }
+
+    const limit = options.limit ?? 30;
+    const offset = options.offset ?? 0;
 
     // 프로젝트 ID를 post_id로 사용하여 댓글 조회
     const { data, error } = await supabase
       .schema("odd")
       .rpc("v1_fetch_comments", {
         p_post_id: projectId,
-        p_limit: 200,
-        p_offset: 0,
+        p_limit: limit,
+        p_offset: offset,
       });
 
     if (error) {
       console.error("프로젝트 댓글 조회 에러:", error);
       return {
         comments: [],
+        pagination: {
+          totalCount: 0,
+          topLevelCount: 0,
+          size: limit,
+          offset,
+          hasMore: false,
+        },
+        meta: {
+          postId: projectId,
+          limit,
+          offset,
+          serverTime: new Date().toISOString(),
+        },
         error: new Error(error.message || "댓글을 불러오는데 실패했습니다"),
       };
     }
 
+    // JSONB 응답 파싱
+    const result = data as any;
+    if (!result || typeof result !== 'object') {
+      return {
+        comments: [],
+        pagination: {
+          totalCount: 0,
+          topLevelCount: 0,
+          size: limit,
+          offset,
+          hasMore: false,
+        },
+        meta: {
+          postId: projectId,
+          limit,
+          offset,
+          serverTime: new Date().toISOString(),
+        },
+        error: new Error("잘못된 응답 형식입니다"),
+      };
+    }
+
+    const comments = result.comments || [];
+    const pagination = result.pagination || {
+      totalCount: 0,
+      topLevelCount: 0,
+      size: limit,
+      offset,
+      hasMore: false,
+    };
+    const meta = result.meta || {
+      postId: projectId,
+      limit,
+      offset,
+      serverTime: new Date().toISOString(),
+    };
+
     return {
-      comments: data || [],
+      comments,
+      pagination: {
+        totalCount: pagination.total_count || 0,
+        deletedTotalCount: pagination.deleted_total_count || 0,
+        topLevelCount: pagination.top_level_count || 0,
+        size: pagination.size || limit,
+        offset: pagination.offset || offset,
+        hasMore: pagination.has_more || false,
+      },
+      meta: {
+        postId: meta.post_id || projectId,
+        limit: meta.limit || limit,
+        offset: meta.offset || offset,
+        serverTime: meta.server_time || new Date().toISOString(),
+      },
       error: null,
     };
   } catch (err) {
     console.error("프로젝트 댓글 조회 에러:", err);
     return {
       comments: [],
+      pagination: {
+        totalCount: 0,
+        deletedTotalCount: 0,
+        topLevelCount: 0,
+        size: options.limit ?? 30,
+        offset: options.offset ?? 0,
+        hasMore: false,
+      },
+      meta: {
+        postId: projectId,
+        limit: options.limit ?? 30,
+        offset: options.offset ?? 0,
+        serverTime: new Date().toISOString(),
+      },
       error: err instanceof Error ? err : new Error("알 수 없는 오류"),
     };
   }
@@ -593,6 +716,7 @@ export async function createProjectComment(
         p_content: content.trim(),
         p_parent_id: parentId || null,
         p_images: images ? (images as any) : [],
+        p_source_type_code: "project",
       });
 
     if (error) {
@@ -699,7 +823,7 @@ export async function deleteProjectComment(
       };
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .schema("odd")
       .rpc("v1_delete_comment", {
         p_comment_id: commentId,

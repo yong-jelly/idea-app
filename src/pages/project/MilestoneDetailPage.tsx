@@ -1,21 +1,17 @@
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { Link, useParams, useNavigate } from "react-router";
 import {
   ChevronLeft,
-  Target,
   CheckCircle2,
   Clock,
   Calendar,
-  Plus,
-  X,
-  Edit,
-  Trash2,
-  AlertCircle,
 } from "lucide-react";
-import { Button, Avatar, Badge, Input, Textarea, Progress, Card, CardContent } from "@/shared/ui";
-import { cn, formatRelativeTime } from "@/shared/lib/utils";
+import { Badge } from "@/shared/ui";
+import { cn } from "@/shared/lib/utils";
 import { useProjectStore, CATEGORY_INFO, type Milestone, type MilestoneTask } from "@/entities/project";
+import { TaskModal } from "./milestone/components/TaskModal";
+import { TaskList } from "./milestone/components/TaskList";
+import { formatRelativeTime } from "@/shared/lib/utils";
 
 // 더미 마일스톤 데이터 (실제로는 store에서 가져와야 함)
 const dummyMilestones: Milestone[] = [
@@ -115,11 +111,6 @@ export function MilestoneDetailPage() {
   const [milestone, setMilestone] = useState<Milestone | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<MilestoneTask | null>(null);
-  const [taskFormData, setTaskFormData] = useState<TaskFormData>({
-    title: "",
-    description: "",
-    dueDate: "",
-  });
 
   // 마일스톤 데이터 로드
   useEffect(() => {
@@ -129,24 +120,6 @@ export function MilestoneDetailPage() {
     }
   }, [milestoneId]);
 
-  // ESC 키로 모달 닫기
-  useEffect(() => {
-    if (!isTaskModalOpen) return;
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsTaskModalOpen(false);
-      }
-    };
-
-    document.addEventListener("keydown", handleEscape);
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = "";
-    };
-  }, [isTaskModalOpen]);
 
   const project = projects[0]; // 임시로 첫 번째 프로젝트 사용
   const categoryInfo = project ? CATEGORY_INFO[project.category] : null;
@@ -176,22 +149,12 @@ export function MilestoneDetailPage() {
   };
 
   const handleOpenTaskModal = (task?: MilestoneTask) => {
-    if (task) {
-      setEditingTask(task);
-      setTaskFormData({
-        title: task.title,
-        description: task.description || "",
-        dueDate: task.dueDate || "",
-      });
-    } else {
-      setEditingTask(null);
-      setTaskFormData({ title: "", description: "", dueDate: "" });
-    }
+    setEditingTask(task || null);
     setIsTaskModalOpen(true);
   };
 
-  const handleSaveTask = () => {
-    if (!taskFormData.title.trim()) return;
+  const handleSaveTask = (formData: { title: string; description: string; dueDate: string }) => {
+    if (!formData.title.trim()) return;
 
     if (editingTask) {
       // 수정
@@ -201,9 +164,9 @@ export function MilestoneDetailPage() {
           t.id === editingTask.id
             ? {
                 ...t,
-                title: taskFormData.title,
-                description: taskFormData.description || undefined,
-                dueDate: taskFormData.dueDate || undefined,
+                title: formData.title,
+                description: formData.description || undefined,
+                dueDate: formData.dueDate || undefined,
               }
             : t
         );
@@ -214,9 +177,9 @@ export function MilestoneDetailPage() {
       const newTask: MilestoneTask = {
         id: `t${Date.now()}`,
         milestoneId: milestone.id,
-        title: taskFormData.title,
-        description: taskFormData.description || undefined,
-        dueDate: taskFormData.dueDate || undefined,
+        title: formData.title,
+        description: formData.description || undefined,
+        dueDate: formData.dueDate || undefined,
         status: "todo",
         createdAt: new Date().toISOString(),
       };
@@ -392,280 +355,25 @@ export function MilestoneDetailPage() {
         </div>
 
         {/* Tasks Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-50">
-              태스크 ({tasks.length})
-            </h2>
-            <Button onClick={() => handleOpenTaskModal()} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              태스크 추가
-            </Button>
-          </div>
-
-          {/* Task List */}
-          {tasks.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Target className="h-10 w-10 mx-auto mb-3 text-surface-300 dark:text-surface-600" />
-                <p className="text-surface-500 dark:text-surface-400 mb-4">
-                  아직 태스크가 없습니다
-                </p>
-                <Button onClick={() => handleOpenTaskModal()} variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  첫 태스크 추가
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {/* Todo Tasks */}
-              {todoTasks.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-surface-500 dark:text-surface-400">
-                    할 일 ({todoTasks.length})
-                  </h3>
-                  {todoTasks.map((task) => {
-                    const taskDueLabel = getDueLabel(task.dueDate);
-                    return (
-                      <Card
-                        key={task.id}
-                        className="hover:bg-surface-50/50 dark:hover:bg-surface-800/30 transition-colors group"
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3">
-                            <button
-                              onClick={() => handleToggleTask(task.id)}
-                              className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-surface-300 hover:border-primary-400 dark:border-surface-600 transition-colors"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <h4 className="font-medium text-surface-900 dark:text-surface-50">
-                                    {task.title}
-                                  </h4>
-                                  {task.description && (
-                                    <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
-                                      {task.description}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleOpenTaskModal(task)}
-                                    className="h-7 w-7 p-0"
-                                  >
-                                    <Edit className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteTask(task.id)}
-                                    className="h-7 w-7 p-0 text-surface-400 hover:text-rose-500"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </div>
-                              {task.dueDate && (
-                                <div
-                                  className={cn(
-                                    "flex items-center gap-1 mt-2 text-xs",
-                                    taskDueLabel?.isOverdue
-                                      ? "text-rose-500"
-                                      : "text-surface-400"
-                                  )}
-                                >
-                                  <Calendar className="h-3 w-3" />
-                                  {new Date(task.dueDate).toLocaleDateString("ko-KR", {
-                                    month: "short",
-                                    day: "numeric",
-                                  })}
-                                  {taskDueLabel && (
-                                    <span className={taskDueLabel.isOverdue ? "text-rose-500" : ""}>
-                                      ({taskDueLabel.label})
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Done Tasks */}
-              {doneTasks.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-surface-500 dark:text-surface-400">
-                    완료됨 ({doneTasks.length})
-                  </h3>
-                  {doneTasks.map((task) => (
-                    <Card
-                      key={task.id}
-                      className="hover:bg-surface-50/50 dark:hover:bg-surface-800/30 transition-colors group opacity-60"
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <button
-                            onClick={() => handleToggleTask(task.id)}
-                            className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"
-                          >
-                            <CheckCircle2 className="h-3 w-3" />
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <h4 className="font-medium text-surface-500 line-through">
-                                  {task.title}
-                                </h4>
-                                {task.description && (
-                                  <p className="text-sm text-surface-400 mt-1 line-through">
-                                    {task.description}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleOpenTaskModal(task)}
-                                  className="h-7 w-7 p-0"
-                                >
-                                  <Edit className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteTask(task.id)}
-                                  className="h-7 w-7 p-0 text-surface-400 hover:text-rose-500"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            </div>
-                            {task.completedAt && (
-                              <div className="flex items-center gap-1 mt-2 text-xs text-surface-400">
-                                <CheckCircle2 className="h-3 w-3" />
-                                {formatRelativeTime(task.completedAt)}에 완료
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <TaskList
+          tasks={tasks}
+          todoTasks={todoTasks}
+          doneTasks={doneTasks}
+          onAddTask={() => handleOpenTaskModal()}
+          onToggleTask={handleToggleTask}
+          onEditTask={handleOpenTaskModal}
+          onDeleteTask={handleDeleteTask}
+          getDueLabel={getDueLabel}
+        />
       </div>
 
       {/* Task Add/Edit Modal */}
-      {isTaskModalOpen &&
-        createPortal(
-          <div className="fixed inset-0 z-50">
-            {/* 배경 오버레이 */}
-            <div
-              className="hidden md:block fixed inset-0 bg-surface-950/40 backdrop-blur-[2px]"
-              onClick={() => setIsTaskModalOpen(false)}
-            />
-
-            {/* 모달 컨테이너 */}
-            <div className="fixed inset-0 md:flex md:items-center md:justify-center md:p-4">
-              <div className="h-full w-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-md md:rounded-xl bg-white dark:bg-surface-900 md:border md:border-surface-200 md:dark:border-surface-800 md:shadow-xl flex flex-col overflow-hidden">
-                {/* 헤더 */}
-                <header className="shrink-0 h-14 flex items-center justify-between px-4 border-b border-surface-100 dark:border-surface-800 bg-white dark:bg-surface-900">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setIsTaskModalOpen(false)}
-                      className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
-                    >
-                      <ChevronLeft className="h-5 w-5 text-surface-600 dark:text-surface-400" />
-                    </button>
-                    <h1 className="text-lg font-bold text-surface-900 dark:text-surface-50">
-                      {editingTask ? "태스크 편집" : "새 태스크"}
-                    </h1>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={handleSaveTask}
-                    disabled={!taskFormData.title.trim()}
-                    className="rounded-full"
-                  >
-                    {editingTask ? "저장" : "추가"}
-                  </Button>
-                </header>
-
-                {/* 콘텐츠 */}
-                <div className="flex-1 overflow-y-auto">
-                  <div className="p-4 md:p-6 space-y-6">
-                    {/* 제목 */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                        제목 <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        value={taskFormData.title}
-                        onChange={(e) =>
-                          setTaskFormData((prev) => ({ ...prev, title: e.target.value }))
-                        }
-                        placeholder="예: API 엔드포인트 구현"
-                        maxLength={100}
-                      />
-                      <p className="text-xs text-surface-500 text-right">
-                        {taskFormData.title.length}/100
-                      </p>
-                    </div>
-
-                    {/* 설명 */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                        설명
-                      </label>
-                      <Textarea
-                        value={taskFormData.description}
-                        onChange={(e) =>
-                          setTaskFormData((prev) => ({ ...prev, description: e.target.value }))
-                        }
-                        placeholder="태스크에 대한 상세 설명을 입력하세요"
-                        maxLength={500}
-                        rows={4}
-                      />
-                      <p className="text-xs text-surface-500 text-right">
-                        {taskFormData.description.length}/500
-                      </p>
-                    </div>
-
-                    {/* 기한 */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                        기한
-                      </label>
-                      <Input
-                        type="date"
-                        value={taskFormData.dueDate}
-                        onChange={(e) =>
-                          setTaskFormData((prev) => ({ ...prev, dueDate: e.target.value }))
-                        }
-                      />
-                      <p className="text-xs text-surface-400">
-                        태스크를 완료해야 하는 날짜를 선택하세요
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+      <TaskModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        editingTask={editingTask}
+        onSubmit={handleSaveTask}
+      />
     </div>
   );
 }

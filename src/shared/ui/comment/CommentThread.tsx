@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Reply, ThumbsUp, Edit, Trash2, ChevronDown, ChevronUp, ImageIcon, Send, X } from "lucide-react";
 
 import { Avatar, Badge, Button, Separator, Textarea } from "@/shared/ui";
@@ -53,11 +53,18 @@ export interface CommentThreadProps {
   onLike: (commentId: string) => void;
   onEdit?: (commentId: string, content: string, images: string[]) => void | Promise<void>;
   onDelete?: (commentId: string) => void | Promise<void>;
+  /** 페이징 관련 props */
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void | Promise<void>;
 }
 
-const DEFAULT_MAX_DEPTH = 3;
+// SQL 함수에서 depth >= 2일 때 에러 발생하므로, 기본값은 2로 설정
+// depth 0, 1에서만 답글 가능 (depth 1에서 답글 작성 시 depth 2가 됨)
+const DEFAULT_MAX_DEPTH = 2;
 const DEFAULT_MAX_IMAGES = 1;
 const COLLAPSE_CHAR_LIMIT = 320;
+const DEFAULT_MAX_COMMENT_LENGTH = 150;
 
 interface ComposerProps {
   placeholder?: string;
@@ -69,6 +76,7 @@ interface ComposerProps {
   showCancel?: boolean;
   enableAttachments: boolean;
   maxImages: number;
+  maxLength?: number;
 }
 
 /**
@@ -86,15 +94,20 @@ function CommentComposer({
   showCancel,
   enableAttachments,
   maxImages,
+  maxLength = DEFAULT_MAX_COMMENT_LENGTH,
 }: ComposerProps) {
   const [content, setContent] = useState(initialContent);
   const [images, setImages] = useState<string[]>(initialImages);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  
+  const currentLength = content.length;
+  const isNearLimit = currentLength > maxLength * 0.8;
+  const isOverLimit = currentLength > maxLength;
 
   const handleSubmit = useCallback(async () => {
-    if (!content.trim() && images.length === 0 || isSubmitting) return;
+    if (!content.trim() && images.length === 0 || isSubmitting || isOverLimit) return;
     setIsSubmitting(true);
     const maybePromise = onSubmit(content.trim(), images) as unknown;
     if (maybePromise && typeof (maybePromise as any).then === "function") {
@@ -103,7 +116,14 @@ function CommentComposer({
     setContent("");
     setImages([]);
     setIsSubmitting(false);
-  }, [content, images, isSubmitting, onSubmit]);
+  }, [content, images, isSubmitting, isOverLimit, onSubmit]);
+  
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newContent = e.target.value;
+    if (newContent.length <= maxLength) {
+      setContent(newContent);
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const isSubmitKey = (e.metaKey || e.ctrlKey) && e.key === "Enter";
@@ -143,18 +163,38 @@ function CommentComposer({
 
   const hasReachedLimit = images.length >= maxImages;
 
+  const displayPlaceholder = placeholder.includes("...") 
+    ? placeholder 
+    : `${placeholder} (최대 ${maxLength}자)`;
+
   return (
     <div className="space-y-3">
-      <Textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        className="min-h-[80px] text-sm"
-        autoFocus={autoFocus}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-      />
+      <div className="relative">
+        <Textarea
+          value={content}
+          onChange={handleContentChange}
+          onKeyDown={handleKeyDown}
+          placeholder={displayPlaceholder}
+          className={cn(
+            "min-h-[80px] text-sm pr-16",
+            isOverLimit && "border-rose-300 dark:border-rose-700 focus:border-rose-500 dark:focus:border-rose-500"
+          )}
+          autoFocus={autoFocus}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          maxLength={maxLength}
+        />
+        <div className={cn(
+          "absolute bottom-2 right-2 text-[10px] font-medium transition-colors",
+          isOverLimit 
+            ? "text-rose-500" 
+            : isNearLimit 
+            ? "text-amber-500" 
+            : "text-surface-400"
+        )}>
+          {currentLength}/{maxLength}
+        </div>
+      </div>
 
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -231,7 +271,7 @@ function CommentComposer({
               취소
             </Button>
           )}
-          <Button size="sm" onClick={handleSubmit} disabled={(!content.trim() && images.length === 0) || isSubmitting}>
+          <Button size="sm" onClick={handleSubmit} disabled={(!content.trim() && images.length === 0) || isSubmitting || isOverLimit}>
             <Send className={cn("h-3.5 w-3.5 mr-1", isSubmitting && "animate-spin")} />
             {isSubmitting ? "전송 중..." : "작성"}
           </Button>
@@ -286,18 +326,48 @@ function CommentItem({
   const [isCollapsed, setIsCollapsed] = useState(
     comment.content.length > COLLAPSE_CHAR_LIMIT
   );
+  
+  // 새로 추가된 답글에 대한 애니메이션 상태
+  // 댓글이 최근 10초 이내에 생성되었고 depth > 0이면 애니메이션 적용
+  const isRecentlyCreated = useMemo(() => {
+    if (comment.depth === 0) return false;
+    const createdAt = new Date(comment.createdAt).getTime();
+    const now = Date.now();
+    return (now - createdAt) < 10000; // 10초 이내
+  }, [comment.createdAt, comment.depth]);
+  
+  const [isAnimating, setIsAnimating] = useState(isRecentlyCreated);
+  const hasAnimatedRef = useRef(false);
+  
+  // 답글이 처음 마운트될 때 애니메이션 적용
+  useEffect(() => {
+    if (isRecentlyCreated && !hasAnimatedRef.current) {
+      hasAnimatedRef.current = true;
+      // 다음 프레임에서 애니메이션 시작 (레이아웃 계산 후)
+      requestAnimationFrame(() => {
+        setIsAnimating(false);
+      });
+    }
+  }, [isRecentlyCreated]);
 
   // maxDepth/ depth가 누락되거나 비정상일 때를 대비해 방어적으로 기본값을 적용
   const effectiveMaxDepth = Number.isFinite(maxDepth) && (maxDepth as number) > 0 ? (maxDepth as number) : DEFAULT_MAX_DEPTH;
   const safeDepth = Number.isFinite(comment.depth) && comment.depth >= 0 ? comment.depth : 0;
   const hasReplies = comment.replies && comment.replies.length > 0;
-  // 최대 뎁스보다 작은 경우에만 답글 허용 (예: maxDepth=3 -> depth 0,1,2 에서 답글 가능)
+  // 최대 뎁스보다 작은 경우에만 답글 허용
+  // 예: maxDepth=2 -> depth 0,1에서만 답글 가능 (depth 1에서 답글 작성 시 depth 2가 됨)
+  // depth 2에서는 답글 불가 (SQL 함수에서 depth >= 2일 때 에러 발생)
   // 비회원일 때는 답글 기능 숨김
   const canReply = !isDeleted && safeDepth < effectiveMaxDepth && isAuthenticated;
   const effectiveUserId = currentUserId || currentUser?.id;
   const isMine = effectiveUserId && comment.author.id === effectiveUserId;
 
   const handleSubmitReply = (content: string, images: string[]) => {
+    // 깊이 체크: 최대 깊이를 초과하면 답글 작성 불가
+    if (safeDepth >= effectiveMaxDepth) {
+      setShowReplyInput(false);
+      return;
+    }
     onReply(comment.id, content, images);
     setShowReplyInput(false);
   };
@@ -317,15 +387,26 @@ function CommentItem({
     <div
       className={cn(
         "relative",
-        comment.depth > 0 && "ml-10",
-        confirmDelete && !isDeleted && "bg-rose-50/60 dark:bg-rose-950/20 rounded-lg px-2 py-1"
+        comment.depth > 0 && "ml-10 transition-[margin,opacity,transform] duration-300 ease-out",
+        // 새로 추가된 답글에 대한 부드러운 애니메이션
+        isRecentlyCreated && isAnimating && "opacity-0 -translate-x-2",
+        isRecentlyCreated && !isAnimating && "opacity-100 translate-x-0"
       )}
     >
       {comment.depth > 0 && (
-        <div className="absolute -left-5 top-0 bottom-0 border-l border-dashed border-surface-200/80 dark:border-surface-700/70" />
+        <div 
+          className={cn(
+            "absolute -left-5 top-0 bottom-0 border-l border-dashed border-surface-200/80 dark:border-surface-700/70",
+            isRecentlyCreated && "transition-opacity duration-300",
+            isRecentlyCreated && isAnimating ? "opacity-0" : "opacity-100"
+          )} 
+        />
       )}
 
-      <div className="py-4">
+      <div className={cn(
+        "py-4",
+        confirmDelete && !isDeleted && "bg-rose-50/60 dark:bg-rose-950/20 rounded-lg px-2 py-1"
+      )}>
         <div className="flex gap-3">
           <div className={cn("shrink-0", isDeleted && "opacity-50 grayscale")}>
             <Avatar 
@@ -346,7 +427,8 @@ function CommentItem({
               )}
               <span className="text-xs text-surface-400">
                 {formatRelativeTime(comment.createdAt)}
-                {comment.updatedAt && !comment.isDeleted && <span className="ml-1 text-[10px] text-surface-400">(수정됨)</span>}
+                {comment.updatedAt && !comment.isDeleted && <span className="ml-1 text-[10px] text-surface-400"></span>}
+                {/* {comment.updatedAt && !comment.isDeleted && <span className="ml-1 text-[10px] text-surface-400">(수정됨)</span>} */}
               </span>
             </div>
 
@@ -361,6 +443,7 @@ function CommentItem({
                 initialImages={comment.images || []}
                 enableAttachments={enableAttachments}
                 maxImages={maxImages}
+                maxLength={DEFAULT_MAX_COMMENT_LENGTH}
               />
             ) : (
               <>
@@ -458,11 +541,11 @@ function CommentItem({
                           </button>
                           <button
                             onClick={async () => {
+                              setConfirmDelete(false);
                               const maybePromise = onDelete?.(comment.id) as unknown;
                               if (maybePromise && typeof (maybePromise as any).then === "function") {
                                 await (maybePromise as Promise<void>);
                               }
-                              setConfirmDelete(false);
                             }}
                             className="px-2 py-0.5 rounded-md bg-rose-500 text-white hover:bg-rose-600 transition-colors"
                           >
@@ -484,7 +567,7 @@ function CommentItem({
                   )}
                 </div>
 
-                {showReplyInput && (
+                {showReplyInput && canReply && (
                   <div className="mt-3">
                     <CommentComposer
                       placeholder={`@${comment.author.displayName}에게 답글...`}
@@ -494,6 +577,7 @@ function CommentItem({
                       autoFocus
                       enableAttachments={enableAttachments}
                       maxImages={maxImages}
+                      maxLength={DEFAULT_MAX_COMMENT_LENGTH}
                     />
                   </div>
                 )}
@@ -503,12 +587,14 @@ function CommentItem({
         </div>
       </div>
 
+      {/* 삭제된 댓글도 하위 항목은 표시해야 함 */}
       {hasReplies && showReplies && (
-        <div className="relative">
+        <div className="relative overflow-hidden">
           {comment.replies!.map((reply) => (
             <CommentItem
               key={reply.id}
               comment={reply}
+              currentUser={currentUser}
               currentUserId={currentUserId}
               maxDepth={maxDepth}
               enableAttachments={enableAttachments}
@@ -568,6 +654,9 @@ export function CommentThread({
   onLike,
   onEdit,
   onDelete,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
 }: CommentThreadProps) {
   const sortByRecent = useCallback((items: CommentNode[]): CommentNode[] => {
     return [...items]
@@ -595,6 +684,7 @@ export function CommentThread({
               onSubmit={onCreate}
               enableAttachments={enableAttachments}
               maxImages={maxImages}
+              maxLength={DEFAULT_MAX_COMMENT_LENGTH}
             />
           </div>
         </div>
@@ -607,25 +697,50 @@ export function CommentThread({
       <Separator />
 
       {orderedComments.length > 0 ? (
-        <div className="divide-y divide-surface-100 dark:divide-surface-800">
-          {orderedComments.map((comment) => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              currentUser={currentUser}
-              currentUserId={currentUserId}
-              maxDepth={maxDepth}
-              enableAttachments={enableAttachments}
-              maxImages={maxImages}
-              isAuthenticated={isAuthenticated}
-              onSignUpPrompt={onSignUpPrompt}
-              onReply={onReply}
-              onLike={onLike}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
+        <>
+          <div className="divide-y divide-surface-100 dark:divide-surface-800">
+            {orderedComments.map((comment) => (
+              <CommentItem
+                key={comment.id}
+                comment={comment}
+                currentUser={currentUser}
+                currentUserId={currentUserId}
+                maxDepth={maxDepth}
+                enableAttachments={enableAttachments}
+                maxImages={maxImages}
+                isAuthenticated={isAuthenticated}
+                onSignUpPrompt={onSignUpPrompt}
+                onReply={onReply}
+                onLike={onLike}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+          {hasMore && onLoadMore && (
+            <div className="pt-4 text-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onLoadMore}
+                disabled={isLoadingMore}
+                className="gap-2"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <span className="animate-spin">⟳</span>
+                    <span>로딩 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>더보기</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="py-8 text-center text-surface-400 text-sm">
           아직 댓글이 없습니다. 첫 번째 댓글을 작성해보세요!

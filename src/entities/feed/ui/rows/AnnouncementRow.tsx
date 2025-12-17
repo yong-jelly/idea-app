@@ -87,7 +87,11 @@ export function AnnouncementRow({
           )}
 
           <div className="flex items-start gap-3">
-            <Avatar fallback={post.author.displayName} size="md" />
+            <Avatar 
+              src={post.author.avatar} 
+              fallback={post.author.displayName} 
+              size="md" 
+            />
             <div className="flex-1 min-w-0">
               {/* Header */}
               <div className="flex items-center gap-2 mb-1">

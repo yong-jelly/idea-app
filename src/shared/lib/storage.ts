@@ -294,3 +294,139 @@ export function getProjectImageUrl(
   return getImageUrl(filePath, transform);
 }
 
+/**
+ * 포스트 이미지 업로드
+ * 
+ * @param files - 업로드할 파일 배열 (최대 3개)
+ * @param userId - 사용자 ID (auth.uid())
+ * @param postId - 포스트 ID
+ * @returns 업로드된 파일 경로 배열
+ */
+export async function uploadPostImages(
+  files: File[],
+  userId: string,
+  postId: string
+): Promise<{ paths: string[]; error: Error | null }> {
+  try {
+    if (files.length === 0) {
+      return { paths: [], error: null };
+    }
+
+    if (files.length > 3) {
+      return { paths: [], error: new Error("이미지는 최대 3개까지 업로드 가능합니다") };
+    }
+
+    const paths: string[] = [];
+    const timestamp = Date.now();
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      // 파일 유효성 검사
+      if (!file.type.startsWith("image/")) {
+        return { paths: [], error: new Error(`파일 ${i + 1}: 이미지 파일만 업로드 가능합니다`) };
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        return { paths: [], error: new Error(`파일 ${i + 1}: 파일 크기는 5MB 이하여야 합니다`) };
+      }
+
+      // 파일명 생성: post-{timestamp}-{index}.{extension}
+      const extension = file.name.split(".").pop() || "jpg";
+      const fileName = `post-${timestamp}-${i}.${extension}`;
+      const filePath = `${userId}/images/posts/${postId}/${fileName}`;
+
+      // Storage에 업로드
+      const { error } = await supabase.storage
+        .from(STORAGE_BUCKETS.USER_IMAGES)
+        .upload(filePath, file, {
+          upsert: true,
+          contentType: file.type,
+        });
+
+      if (error) {
+        console.error(`Storage 업로드 에러 (파일 ${i + 1}):`, error);
+        return { paths: [], error: new Error(`파일 ${i + 1} 업로드 실패: ${error.message}`) };
+      }
+
+      paths.push(filePath);
+    }
+
+    return { paths, error: null };
+  } catch (err) {
+    console.error("이미지 업로드 에러:", err);
+    return {
+      paths: [],
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 댓글 이미지 업로드
+ * 
+ * @param files - 업로드할 파일 배열 (최대 3개)
+ * @param userId - 사용자 ID (auth.uid())
+ * @param commentId - 댓글 ID
+ * @returns 업로드된 파일 경로 배열
+ */
+export async function uploadCommentImages(
+  files: File[],
+  userId: string,
+  commentId: string
+): Promise<{ paths: string[]; error: Error | null }> {
+  try {
+    if (files.length === 0) {
+      return { paths: [], error: null };
+    }
+
+    if (files.length > 3) {
+      return { paths: [], error: new Error("이미지는 최대 3개까지 업로드 가능합니다") };
+    }
+
+    const paths: string[] = [];
+    const timestamp = Date.now();
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      // 파일 유효성 검사
+      if (!file.type.startsWith("image/")) {
+        return { paths: [], error: new Error(`파일 ${i + 1}: 이미지 파일만 업로드 가능합니다`) };
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        return { paths: [], error: new Error(`파일 ${i + 1}: 파일 크기는 5MB 이하여야 합니다`) };
+      }
+
+      // 파일명 생성: comment-{timestamp}-{index}.{extension}
+      const extension = file.name.split(".").pop() || "jpg";
+      const fileName = `comment-${timestamp}-${i}.${extension}`;
+      const filePath = `${userId}/images/comments/${commentId}/${fileName}`;
+
+      // Storage에 업로드
+      const { error } = await supabase.storage
+        .from(STORAGE_BUCKETS.USER_IMAGES)
+        .upload(filePath, file, {
+          upsert: true,
+          contentType: file.type,
+        });
+
+      if (error) {
+        console.error(`Storage 업로드 에러 (파일 ${i + 1}):`, error);
+        return { paths: [], error: new Error(`파일 ${i + 1} 업로드 실패: ${error.message}`) };
+      }
+
+      paths.push(filePath);
+    }
+
+    return { paths, error: null };
+  } catch (err) {
+    console.error("이미지 업로드 에러:", err);
+    return {
+      paths: [],
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+

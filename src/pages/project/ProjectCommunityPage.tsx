@@ -149,7 +149,7 @@ interface ChangelogEntry {
 }
 
 // 더미 데이터
-const dummyDevPosts: DevPost[] = [
+export const dummyDevPosts: DevPost[] = [
   {
     id: "dp1",
     type: "announcement",
@@ -335,7 +335,7 @@ const dummyDevPosts: DevPost[] = [
   },
 ];
 
-const dummyFeedback: UserFeedback[] = [
+export const dummyFeedback: UserFeedback[] = [
   {
     id: "fb1",
     type: "feature",
@@ -390,7 +390,7 @@ const dummyFeedback: UserFeedback[] = [
   },
 ];
 
-const dummyMilestones: Milestone[] = [
+export const dummyMilestones: Milestone[] = [
   {
     id: "m1",
     projectId: "1",
@@ -472,7 +472,7 @@ const dummyMilestones: Milestone[] = [
   },
 ];
 
-const dummyRewards: Reward[] = [
+export const dummyRewards: Reward[] = [
   {
     id: "r1",
     projectId: "1",
@@ -557,7 +557,7 @@ const dummyRewards: Reward[] = [
 // 포인트 규칙 더미 데이터
 import { type PointRule, POINT_ACTIVITY_INFO } from "@/entities/project";
 
-const dummyPointRules: PointRule[] = [
+export const dummyPointRules: PointRule[] = [
   { id: "pr1", projectId: "1", activityType: "daily_checkin", points: 10, maxPerDay: 1, description: "매일 출석체크", isActive: true },
   { id: "pr2", projectId: "1", activityType: "weekly_streak", points: 50, description: "7일 연속 출석 보너스", isActive: true },
   { id: "pr3", projectId: "1", activityType: "feedback_submit", points: 30, maxPerDay: 3, description: "피드백 제출", isActive: true },
@@ -582,7 +582,7 @@ interface TopSupporter {
   joinedAt: string;
 }
 
-const dummyTopSupporters: TopSupporter[] = [
+export const dummyTopSupporters: TopSupporter[] = [
   { rank: 1, user: { id: "u1", username: "power_user", displayName: "파워유저" }, points: 2850, feedbackCount: 45, joinedAt: "2024-01-15" },
   { rank: 2, user: { id: "u2", username: "bug_master", displayName: "버그마스터" }, points: 2340, feedbackCount: 38, joinedAt: "2024-02-01" },
   { rank: 3, user: { id: "u3", username: "feedback_king", displayName: "피드백킹" }, points: 1890, feedbackCount: 52, joinedAt: "2024-01-20" },
@@ -599,7 +599,7 @@ interface ClaimedRewardHistory {
   isUsed: boolean;
 }
 
-const dummyClaimedRewards: ClaimedRewardHistory[] = [
+export const dummyClaimedRewards: ClaimedRewardHistory[] = [
   {
     id: "cr1",
     reward: dummyRewards[0],
@@ -615,7 +615,7 @@ const dummyClaimedRewards: ClaimedRewardHistory[] = [
   },
 ];
 
-const dummyChangelog: ChangelogEntry[] = [
+export const dummyChangelog: ChangelogEntry[] = [
   {
     id: "cl1",
     version: "2.0.0-beta",
@@ -871,7 +871,11 @@ function DevPostCard({ post, onEdit, onDelete, onTogglePin }: DevPostCardProps) 
             </div>
           )}
           <div className="flex items-start gap-3">
-            <Avatar fallback={post.author.displayName} size="md" />
+            <Avatar 
+              src={post.author.avatar} 
+              fallback={post.author.displayName} 
+              size="md" 
+            />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-semibold text-surface-900 dark:text-surface-50">
@@ -1077,7 +1081,7 @@ interface MilestonesTabProps {
   projectId: string;
 }
 
-function MilestonesTab({ milestones: initialMilestones, projectId }: MilestonesTabProps) {
+export function MilestonesTab({ milestones: initialMilestones, projectId }: MilestonesTabProps) {
   const navigate = useNavigate();
   const [milestones, setMilestones] = useState(initialMilestones);
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
@@ -1500,7 +1504,7 @@ interface FeedbackTabProps {
   projectId: string;
 }
 
-function FeedbackTab({ feedbacks: initialFeedbacks, projectId }: FeedbackTabProps) {
+export function FeedbackTab({ feedbacks: initialFeedbacks, projectId }: FeedbackTabProps) {
   const navigate = useNavigate();
   const { user } = useUserStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1982,7 +1986,7 @@ const PLATFORM_ICONS: Record<string, typeof Smartphone> = {
   web: Globe,
 };
 
-function RewardsTab({ rewards, pointRules, topSupporters, claimedRewards, projectId, isOwner }: RewardsTabProps) {
+export function RewardsTab({ rewards, pointRules, topSupporters, claimedRewards, projectId, isOwner }: RewardsTabProps) {
   const { user } = useUserStore();
   const [activeSection, setActiveSection] = useState<"rewards" | "earn" | "history" | "leaderboard">("rewards");
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
@@ -2712,7 +2716,7 @@ function ChangelogCard({ entry, onEdit, onDelete }: ChangelogCardProps) {
   );
 }
 
-function ChangelogTab({ changelogs: initialChangelogs, projectId }: ChangelogTabProps) {
+export function ChangelogTab({ changelogs: initialChangelogs, projectId }: ChangelogTabProps) {
   const { user } = useUserStore();
   const [changelogs, setChangelogs] = useState<ChangelogEntry[]>(initialChangelogs);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -3198,7 +3202,7 @@ const POST_TYPE_INFO = {
   vote: { label: "투표", icon: ThumbsUp, color: "text-amber-500 bg-amber-50 dark:bg-amber-900/20", borderColor: "border-amber-300 dark:border-amber-700" },
 };
 
-function DevFeedTab({ projectId }: DevFeedTabProps) {
+export function DevFeedTab({ projectId }: DevFeedTabProps) {
   const { user } = useUserStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [posts, setPosts] = useState<DevPost[]>(dummyDevPosts);
