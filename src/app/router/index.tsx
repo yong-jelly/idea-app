@@ -24,6 +24,7 @@ import {
   BookmarksPage,
   SignUpPage,
   LoginPage,
+  AuthCallbackPage,
 } from "@/pages";
 
 function ScrollToTop() {
@@ -62,6 +63,10 @@ const router = createBrowserRouter([
       {
         path: "login",
         element: <LoginPage />,
+      },
+      {
+        path: "auth/callback",
+        element: <AuthCallbackPage />,
       },
       {
         path: "explore",

@@ -5,6 +5,7 @@ import { Button } from "@/shared/ui";
 import { Input } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
+import { supabase } from "@/shared/lib/supabase";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -20,32 +21,48 @@ export function LoginPage() {
       setError("이메일과 비밀번호를 입력해주세요");
       return;
     }
-    
+
     setIsLoading(true);
     setError("");
-    
-    // 데모용: 간단한 로그인 처리
-    setTimeout(() => {
-      // 실제로는 API 호출로 인증 처리
-      // 여기서는 데모용으로 임시 사용자 생성
-      const demoUser = {
-        id: Date.now().toString(),
-        username: email.split("@")[0].toLowerCase(),
-        displayName: email.split("@")[0],
-        avatar: undefined,
-        bio: "",
-        points: 100,
-        level: "bronze" as const,
-        subscribedProjectsCount: 3,
-        supportedProjectsCount: 5,
-        projectsCount: 1,
-        createdAt: new Date().toISOString(),
-      };
-      
-      login(demoUser);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        setError(error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        // 사용자 정보를 가져와서 스토어에 저장
+        // 실제로는 Supabase에서 사용자 프로필 정보를 가져와야 함
+        const demoUser = {
+          id: data.user.id,
+          username: data.user.email?.split("@")[0].toLowerCase() || "user",
+          displayName: data.user.email?.split("@")[0] || "사용자",
+          avatar: undefined,
+          bio: "",
+          points: 100,
+          level: "bronze" as const,
+          subscribedProjectsCount: 0,
+          supportedProjectsCount: 0,
+          projectsCount: 0,
+          createdAt: data.user.created_at,
+        };
+
+        login(demoUser);
+        navigate("/");
+      }
+    } catch (err) {
+      setError("로그인 중 오류가 발생했습니다");
+      console.error("Login error:", err);
+    } finally {
       setIsLoading(false);
-      navigate("/");
-    }, 1000);
+    }
   };
 
   return (

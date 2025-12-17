@@ -74,6 +74,19 @@ bun run storybook
 
 http://localhost:6006 에서 Storybook을 확인할 수 있습니다.
 
+### 환경 변수 설정
+
+프로젝트 루트에 `.env` 파일을 생성하고 다음 환경 변수를 설정하세요:
+
+```bash
+# Supabase 설정 (필수)
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Google OAuth (선택사항 - 개발 환경에서만 사용)
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+```
+
 ### 빌드
 
 ```bash
