@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Milestone, Sparkles, CheckCircle2 } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Share, MoreHorizontal, Milestone, Sparkles, CheckCircle2 } from "lucide-react";
 import { Card, Badge, Button } from "@/shared/ui";
 import { cn, formatRelativeTime, formatNumber } from "@/shared/lib/utils";
 import { UserAvatar } from "@/entities/user";
@@ -8,13 +8,12 @@ import type { Post } from "../model/post.types";
 export interface PostCardProps {
   post: Post;
   onLike?: (postId: string) => void;
-  onRepost?: (postId: string) => void;
   onBookmark?: (postId: string) => void;
   onComment?: (postId: string) => void;
   onShare?: (postId: string) => void;
 }
 
-export function PostCard({ post, onLike, onRepost, onBookmark, onComment, onShare }: PostCardProps) {
+export function PostCard({ post, onLike, onBookmark, onComment, onShare }: PostCardProps) {
   const getPostTypeInfo = () => {
     switch (post.type) {
       case "milestone":
@@ -125,19 +124,6 @@ export function PostCard({ post, onLike, onRepost, onBookmark, onComment, onShar
             >
               <MessageCircle className="h-[18px] w-[18px]" />
               <span className="text-sm">{formatNumber(post.commentsCount)}</span>
-            </button>
-
-            <button
-              onClick={() => onRepost?.(post.id)}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors",
-                post.isReposted
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-surface-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-              )}
-            >
-              <Repeat2 className="h-[18px] w-[18px]" />
-              <span className="text-sm">{formatNumber(post.repostsCount)}</span>
             </button>
 
             <button

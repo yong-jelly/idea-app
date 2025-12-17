@@ -13,7 +13,6 @@ export interface ProjectUpdateRowProps {
   post: ProjectUpdatePost;
   onLike?: () => void;
   onComment?: () => void;
-  onRepost?: () => void;
   onBookmark?: () => void;
   onClick?: () => void;
   className?: string;
@@ -31,7 +30,6 @@ export function ProjectUpdateRow({
   post,
   onLike,
   onComment,
-  onRepost,
   onBookmark,
   onClick,
   className,
@@ -74,7 +72,6 @@ export function ProjectUpdateRow({
         interactions={post.interactions}
         onLike={onLike}
         onComment={onComment}
-        onRepost={onRepost}
         onBookmark={onBookmark}
         isAuthenticated={isAuthenticated}
         onSignUpPrompt={onSignUpPrompt}

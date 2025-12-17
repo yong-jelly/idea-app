@@ -47,10 +47,8 @@ const mockAuthorWithRole = {
 const mockInteractions = {
   likesCount: 156,
   commentsCount: 45,
-  repostsCount: 23,
   bookmarksCount: 67,
   isLiked: false,
-  isReposted: false,
   isBookmarked: false,
 };
 
@@ -94,7 +92,7 @@ const mockFeatureAcceptedPost: FeatureAcceptedPost = {
   projectId: "p3",
   projectTitle: "모바일 퍼즐 게임",
   featureTitle: "오프라인 모드 지원",
-  interactions: { ...mockInteractions, isReposted: true },
+  interactions: { ...mockInteractions, isLiked: true },
   createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
 };
 
@@ -286,7 +284,6 @@ export const TextPost: Story = {
       post={mockTextPost}
       onLike={() => console.log("Like")}
       onComment={() => console.log("Comment")}
-      onRepost={() => console.log("Repost")}
       onBookmark={() => console.log("Bookmark")}
     />
   ),

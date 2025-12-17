@@ -18,11 +18,9 @@ const demoPosts: Post[] = [
       "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&h=450&fit=crop",
     ],
     likesCount: 156,
-    repostsCount: 23,
     commentsCount: 45,
     bookmarksCount: 67,
     isLiked: false,
-    isReposted: false,
     isBookmarked: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
   },
@@ -48,11 +46,9 @@ const demoPosts: Post[] = [
       isJoined: true,
     },
     likesCount: 89,
-    repostsCount: 12,
     commentsCount: 28,
     bookmarksCount: 34,
     isLiked: true,
-    isReposted: false,
     isBookmarked: true,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
   },
@@ -78,11 +74,9 @@ const demoPosts: Post[] = [
       isJoined: true,
     },
     likesCount: 234,
-    repostsCount: 45,
     commentsCount: 67,
     bookmarksCount: 89,
     isLiked: false,
-    isReposted: true,
     isBookmarked: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
   },
@@ -107,11 +101,9 @@ const demoPosts: Post[] = [
       isJoined: true,
     },
     likesCount: 178,
-    repostsCount: 34,
     commentsCount: 23,
     bookmarksCount: 56,
     isLiked: true,
-    isReposted: false,
     isBookmarked: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
   },
@@ -137,11 +129,9 @@ const demoPosts: Post[] = [
       isJoined: false, // 팔로잉은 isJoined 체크 안함
     },
     likesCount: 312,
-    repostsCount: 78,
     commentsCount: 156,
     bookmarksCount: 45,
     isLiked: false,
-    isReposted: false,
     isBookmarked: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
   },
@@ -157,11 +147,9 @@ const demoPosts: Post[] = [
     type: "text",
     content: "바이브 코딩 시대가 정말 온 것 같아요.\n\nAI 덕분에 예전에는 몇 주 걸릴 작업이 하루 만에 끝나기도 하고... 인디 개발자로서 정말 흥분되는 시기입니다!\n\n여러분은 어떻게 생각하세요?",
     likesCount: 412,
-    repostsCount: 98,
     commentsCount: 186,
     bookmarksCount: 65,
     isLiked: false,
-    isReposted: false,
     isBookmarked: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
   },
@@ -187,11 +175,9 @@ const demoPosts: Post[] = [
       isJoined: false,
     },
     likesCount: 567,
-    repostsCount: 123,
     commentsCount: 89,
     bookmarksCount: 234,
     isLiked: true,
-    isReposted: true,
     isBookmarked: true,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(),
   },
@@ -218,11 +204,9 @@ const demoPosts: Post[] = [
       isJoined: false,
     },
     likesCount: 234,
-    repostsCount: 45,
     commentsCount: 67,
     bookmarksCount: 89,
     isLiked: false,
-    isReposted: false,
     isBookmarked: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
   },
@@ -248,11 +232,9 @@ const demoPosts: Post[] = [
       isJoined: true,
     },
     likesCount: 189,
-    repostsCount: 34,
     commentsCount: 56,
     bookmarksCount: 78,
     isLiked: false,
-    isReposted: false,
     isBookmarked: true,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
   },
@@ -272,11 +254,9 @@ const demoPosts: Post[] = [
       "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=400&fit=crop",
     ],
     likesCount: 145,
-    repostsCount: 67,
     commentsCount: 23,
     bookmarksCount: 89,
     isLiked: false,
-    isReposted: false,
     isBookmarked: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(),
   },
@@ -299,11 +279,9 @@ const demoPosts: Post[] = [
       isJoined: true,
     },
     likesCount: 78,
-    repostsCount: 12,
     commentsCount: 34,
     bookmarksCount: 23,
     isLiked: true,
-    isReposted: false,
     isBookmarked: false,
     createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
   },
@@ -325,11 +303,9 @@ const demoPosts: Post[] = [
       isJoined: false,
     },
     likesCount: 245,
-    repostsCount: 56,
     commentsCount: 42,
     bookmarksCount: 98,
     isLiked: false,
-    isReposted: false,
     isBookmarked: true,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
   },
@@ -339,9 +315,8 @@ interface PostStore extends FeedState {
   setActiveTab: (tab: FeedState["activeTab"]) => void;
   loadPosts: () => void;
   loadMore: () => void;
-  addPost: (post: Omit<Post, "id" | "createdAt" | "likesCount" | "repostsCount" | "commentsCount" | "bookmarksCount" | "isLiked" | "isReposted" | "isBookmarked">) => void;
+  addPost: (post: Omit<Post, "id" | "createdAt" | "likesCount" | "commentsCount" | "bookmarksCount" | "isLiked" | "isBookmarked">) => void;
   toggleLike: (postId: string) => void;
-  toggleRepost: (postId: string) => void;
   toggleBookmark: (postId: string) => void;
 }
 
@@ -377,11 +352,9 @@ export const usePostStore = create<PostStore>((set, get) => ({
       ...postData,
       id: Date.now().toString(),
       likesCount: 0,
-      repostsCount: 0,
       commentsCount: 0,
       bookmarksCount: 0,
       isLiked: false,
-      isReposted: false,
       isBookmarked: false,
       createdAt: new Date().toISOString(),
     };
@@ -396,20 +369,6 @@ export const usePostStore = create<PostStore>((set, get) => ({
               ...post,
               isLiked: !post.isLiked,
               likesCount: post.isLiked ? post.likesCount - 1 : post.likesCount + 1,
-            }
-          : post
-      ),
-    }));
-  },
-
-  toggleRepost: (postId) => {
-    set((state) => ({
-      posts: state.posts.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              isReposted: !post.isReposted,
-              repostsCount: post.isReposted ? post.repostsCount - 1 : post.repostsCount + 1,
             }
           : post
       ),

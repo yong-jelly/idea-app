@@ -17,10 +17,8 @@ export function convertToFeedPost(post: Post) {
   const interactions: ExtendedInteractions = {
     likesCount: post.likesCount,
     commentsCount: post.commentsCount,
-    repostsCount: post.repostsCount,
     bookmarksCount: post.bookmarksCount,
     isLiked: post.isLiked,
-    isReposted: post.isReposted,
     isBookmarked: post.isBookmarked,
   };
 

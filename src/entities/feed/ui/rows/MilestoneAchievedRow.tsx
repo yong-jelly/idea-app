@@ -13,7 +13,6 @@ export interface MilestoneAchievedRowProps {
   post: MilestoneAchievedPost;
   onLike?: () => void;
   onComment?: () => void;
-  onRepost?: () => void;
   onBookmark?: () => void;
   onClick?: () => void;
   className?: string;
@@ -31,7 +30,6 @@ export function MilestoneAchievedRow({
   post,
   onLike,
   onComment,
-  onRepost,
   onBookmark,
   onClick,
   className,
@@ -84,7 +82,6 @@ export function MilestoneAchievedRow({
         interactions={post.interactions}
         onLike={onLike}
         onComment={onComment}
-        onRepost={onRepost}
         onBookmark={onBookmark}
         isAuthenticated={isAuthenticated}
         onSignUpPrompt={onSignUpPrompt}

@@ -217,12 +217,13 @@ function CommentComposer({
               </Button>
             </>
           ) : (
-            <span
-              className="text-[11px] text-surface-300 dark:text-surface-600 px-2 py-1 rounded-md border border-dashed border-surface-200 dark:border-surface-700"
-              title="이미지 첨부 비활성화됨"
-            >
-              이미지 첨부 비활성화됨
-            </span>
+            // <span
+            //   className="text-[11px] text-surface-300 dark:text-surface-600 px-2 py-1 rounded-md border border-dashed border-surface-200 dark:border-surface-700"
+            //   title="이미지 첨부 비활성화됨"
+            // >
+            //   이미지 첨부 비활성화됨
+            // </span>
+            <></>
           )}
 
           {showCancel && onCancel && (
@@ -327,7 +328,11 @@ function CommentItem({
       <div className="py-4">
         <div className="flex gap-3">
           <div className={cn("shrink-0", isDeleted && "opacity-50 grayscale")}>
-            <Avatar fallback={comment.author.displayName} size="sm" />
+            <Avatar 
+              src={comment.author.avatarUrl} 
+              fallback={comment.author.displayName} 
+              size="sm" 
+            />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
@@ -579,7 +584,11 @@ export function CommentThread({
     <div className="space-y-6">
       {isAuthenticated ? (
         <div className="flex gap-3">
-          <Avatar fallback={currentUser?.displayName || "?"} size="sm" />
+          <Avatar 
+            src={currentUser?.avatarUrl} 
+            fallback={currentUser?.displayName || "?"} 
+            size="sm" 
+          />
           <div className="flex-1">
             <CommentComposer
               placeholder="의견을 남겨주세요..."

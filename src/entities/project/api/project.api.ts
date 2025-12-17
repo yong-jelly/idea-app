@@ -500,3 +500,288 @@ export async function fetchProjectDetail(
   }
 }
 
+/**
+ * 프로젝트 댓글 조회 결과
+ */
+export interface FetchProjectCommentsResult {
+  comments: any[]; // DB에서 반환된 댓글 데이터 (정규화 전)
+  error: Error | null;
+}
+
+/**
+ * 프로젝트 댓글 조회
+ * 
+ * @param projectId - 프로젝트 ID (post_id로 사용)
+ * @returns 댓글 목록 또는 에러
+ */
+export async function fetchProjectComments(
+  projectId: string
+): Promise<FetchProjectCommentsResult> {
+  try {
+    if (!projectId) {
+      return {
+        comments: [],
+        error: new Error("프로젝트 ID가 필요합니다"),
+      };
+    }
+
+    // 프로젝트 ID를 post_id로 사용하여 댓글 조회
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_fetch_comments", {
+        p_post_id: projectId,
+        p_limit: 200,
+        p_offset: 0,
+      });
+
+    if (error) {
+      console.error("프로젝트 댓글 조회 에러:", error);
+      return {
+        comments: [],
+        error: new Error(error.message || "댓글을 불러오는데 실패했습니다"),
+      };
+    }
+
+    return {
+      comments: data || [],
+      error: null,
+    };
+  } catch (err) {
+    console.error("프로젝트 댓글 조회 에러:", err);
+    return {
+      comments: [],
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 프로젝트 댓글 생성 결과
+ */
+export interface CreateProjectCommentResult {
+  comment: any | null;
+  error: Error | null;
+}
+
+/**
+ * 프로젝트 댓글 생성
+ * 
+ * @param projectId - 프로젝트 ID (post_id로 사용)
+ * @param content - 댓글 내용
+ * @param parentId - 부모 댓글 ID (답글인 경우)
+ * @param images - 이미지 URL 배열 (선택)
+ * @returns 생성된 댓글 또는 에러
+ */
+export async function createProjectComment(
+  projectId: string,
+  content: string,
+  parentId?: string,
+  images?: string[]
+): Promise<CreateProjectCommentResult> {
+  try {
+    if (!projectId || !content.trim()) {
+      return {
+        comment: null,
+        error: new Error("프로젝트 ID와 댓글 내용이 필요합니다"),
+      };
+    }
+
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_create_comment", {
+        p_post_id: projectId,
+        p_content: content.trim(),
+        p_parent_id: parentId || null,
+        p_images: images ? (images as any) : [],
+      });
+
+    if (error) {
+      console.error("프로젝트 댓글 생성 에러:", error);
+      return {
+        comment: null,
+        error: new Error(error.message || "댓글 작성에 실패했습니다"),
+      };
+    }
+
+    return {
+      comment: data,
+      error: null,
+    };
+  } catch (err) {
+    console.error("프로젝트 댓글 생성 에러:", err);
+    return {
+      comment: null,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 프로젝트 댓글 수정 결과
+ */
+export interface UpdateProjectCommentResult {
+  comment: any | null;
+  error: Error | null;
+}
+
+/**
+ * 프로젝트 댓글 수정
+ * 
+ * @param commentId - 댓글 ID
+ * @param content - 수정할 댓글 내용
+ * @param images - 이미지 URL 배열 (선택)
+ * @returns 수정된 댓글 또는 에러
+ */
+export async function updateProjectComment(
+  commentId: string,
+  content: string,
+  images?: string[]
+): Promise<UpdateProjectCommentResult> {
+  try {
+    if (!commentId || !content.trim()) {
+      return {
+        comment: null,
+        error: new Error("댓글 ID와 내용이 필요합니다"),
+      };
+    }
+
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_update_comment", {
+        p_comment_id: commentId,
+        p_content: content.trim(),
+        p_images: images ? (images as any) : null,
+      });
+
+    if (error) {
+      console.error("프로젝트 댓글 수정 에러:", error);
+      return {
+        comment: null,
+        error: new Error(error.message || "댓글 수정에 실패했습니다"),
+      };
+    }
+
+    return {
+      comment: data,
+      error: null,
+    };
+  } catch (err) {
+    console.error("프로젝트 댓글 수정 에러:", err);
+    return {
+      comment: null,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 프로젝트 댓글 삭제 결과
+ */
+export interface DeleteProjectCommentResult {
+  success: boolean;
+  error: Error | null;
+}
+
+/**
+ * 프로젝트 댓글 삭제
+ * 
+ * @param commentId - 댓글 ID
+ * @returns 삭제 성공 여부 또는 에러
+ */
+export async function deleteProjectComment(
+  commentId: string
+): Promise<DeleteProjectCommentResult> {
+  try {
+    if (!commentId) {
+      return {
+        success: false,
+        error: new Error("댓글 ID가 필요합니다"),
+      };
+    }
+
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_delete_comment", {
+        p_comment_id: commentId,
+      });
+
+    if (error) {
+      console.error("프로젝트 댓글 삭제 에러:", error);
+      return {
+        success: false,
+        error: new Error(error.message || "댓글 삭제에 실패했습니다"),
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error("프로젝트 댓글 삭제 에러:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 프로젝트 댓글 좋아요 토글 결과
+ */
+export interface ToggleProjectCommentLikeResult {
+  isLiked: boolean;
+  likesCount: number;
+  error: Error | null;
+}
+
+/**
+ * 프로젝트 댓글 좋아요 토글
+ * 
+ * @param commentId - 댓글 ID
+ * @returns 좋아요 상태 및 카운트 또는 에러
+ */
+export async function toggleProjectCommentLike(
+  commentId: string
+): Promise<ToggleProjectCommentLikeResult> {
+  try {
+    if (!commentId) {
+      return {
+        isLiked: false,
+        likesCount: 0,
+        error: new Error("댓글 ID가 필요합니다"),
+      };
+    }
+
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_toggle_comment_like", {
+        p_comment_id: commentId,
+      });
+
+    if (error) {
+      console.error("프로젝트 댓글 좋아요 토글 에러:", error);
+      return {
+        isLiked: false,
+        likesCount: 0,
+        error: new Error(error.message || "좋아요 처리에 실패했습니다"),
+      };
+    }
+
+    const result = data as { is_liked: boolean; likes_count: number };
+
+    return {
+      isLiked: result.is_liked,
+      likesCount: result.likes_count,
+      error: null,
+    };
+  } catch (err) {
+    console.error("프로젝트 댓글 좋아요 토글 에러:", err);
+    return {
+      isLiked: false,
+      likesCount: 0,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+

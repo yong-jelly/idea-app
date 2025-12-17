@@ -25,7 +25,7 @@ export function ProfilePage() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
   const { user: currentUser, isAuthenticated } = useUserStore();
-  const { posts, toggleLike, toggleRepost, toggleBookmark } = usePostStore();
+  const { posts, toggleLike, toggleBookmark } = usePostStore();
   const { projects, toggleProjectLike } = useProjectStore();
   const [activeTab, setActiveTab] = useState<ProfileTabType>("posts");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -79,7 +79,6 @@ export function ProfilePage() {
     const feedPost = convertToFeedPost(post);
     const handlers = {
       onLike: () => toggleLike(post.id),
-      onRepost: () => toggleRepost(post.id),
       onBookmark: () => toggleBookmark(post.id),
       onComment: () => navigate(`/${post.author.username}/status/${post.id}`),
       onClick: () => handlePostClick(post),

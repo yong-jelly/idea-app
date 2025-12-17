@@ -20,9 +20,7 @@ export interface BaseInteractions {
 }
 
 export interface ExtendedInteractions extends BaseInteractions {
-  repostsCount: number;
   bookmarksCount: number;
-  isReposted: boolean;
   isBookmarked: boolean;
 }
 

@@ -212,13 +212,6 @@ function CommentIcon({ className }: { className?: string }) {
   );
 }
 
-function RepostIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M3 8l3-3m0 0l3 3M6 5v9a2 2 0 002 2h4M17 12l-3 3m0 0l-3-3m3 3V6a2 2 0 00-2-2H8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 function HeartIcon({ className, filled }: { className?: string; filled?: boolean }) {
   return (
@@ -242,7 +235,6 @@ export interface InteractionButtonsProps {
   interactions: ExtendedInteractions;
   onLike?: () => void;
   onComment?: () => void;
-  onRepost?: () => void;
   onBookmark?: () => void;
   isAuthenticated?: boolean;
   onSignUpPrompt?: () => void;
@@ -252,7 +244,6 @@ export function InteractionButtons({
   interactions,
   onLike,
   onComment,
-  onRepost,
   onBookmark,
   isAuthenticated = true,
   onSignUpPrompt,
@@ -290,22 +281,6 @@ export function InteractionButtons({
         <HeartIcon className="h-[18px] w-[18px]" filled={interactions.isLiked} />
         <span className="text-[13px] tabular-nums">{formatNumber(interactions.likesCount)}</span>
       </button>
-
-      {/* 리포스트 (있는 경우) */}
-      {onRepost && (
-        <button
-          onClick={(e) => handleInteraction(e, onRepost, true)}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all",
-            interactions.isReposted
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-surface-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-          )}
-        >
-          <RepostIcon className="h-[18px] w-[18px]" />
-          <span className="text-[13px] tabular-nums">{formatNumber(interactions.repostsCount || 0)}</span>
-        </button>
-      )}
 
       {/* 북마크 */}
       <button

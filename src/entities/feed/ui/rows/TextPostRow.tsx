@@ -12,7 +12,6 @@ export interface TextPostRowProps {
   post: TextPost;
   onLike?: () => void;
   onComment?: () => void;
-  onRepost?: () => void;
   onBookmark?: () => void;
   onClick?: () => void;
   className?: string;
@@ -32,7 +31,6 @@ export function TextPostRow({
   post,
   onLike,
   onComment,
-  onRepost,
   onBookmark,
   onClick,
   className,
@@ -59,7 +57,6 @@ export function TextPostRow({
         interactions={post.interactions}
         onLike={onLike}
         onComment={onComment}
-        onRepost={onRepost}
         onBookmark={onBookmark}
         isAuthenticated={isAuthenticated}
         onSignUpPrompt={onSignUpPrompt}

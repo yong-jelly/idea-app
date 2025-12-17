@@ -16,11 +16,9 @@ export interface Post {
   /** 피드 출처 정보 */
   source?: FeedSourceInfo;
   likesCount: number;
-  repostsCount: number;
   commentsCount: number;
   bookmarksCount: number;
   isLiked: boolean;
-  isReposted: boolean;
   isBookmarked: boolean;
   createdAt: string;
 }

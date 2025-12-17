@@ -3,110 +3,30 @@ import { Link, useParams } from "react-router";
 import { ExternalLink, Share2, Bookmark, MessageSquare, Users, Github, Globe, Play, ChevronLeft, ChevronRight, Megaphone, Info } from "lucide-react";
 import { Button, Avatar } from "@/shared/ui";
 import { cn, formatNumber } from "@/shared/lib/utils";
-import { useProjectStore, CATEGORY_INFO, UpvoteCard, fetchProjectDetail, type Project } from "@/entities/project";
+import { useProjectStore, CATEGORY_INFO, UpvoteCard, fetchProjectDetail, type Project, fetchProjectComments, createProjectComment, updateProjectComment, deleteProjectComment, toggleProjectCommentLike } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { CommentThread, type CommentNode } from "@/shared/ui/comment";
+import { getProfileImageUrl } from "@/shared/lib/storage";
 
-// 댓글 타입 정의 (raw) - CommentThread에 맞춰 정규화해서 사용
-type RawProjectComment = {
+// DB에서 반환된 댓글 데이터 타입
+type RawCommentData = {
   id: string;
-  author: {
-    id: string;
-    username: string;
-    displayName: string;
-    avatar?: string;
-    isMaker?: boolean;
-    role?: string;
-  };
+  post_id: string;
+  parent_id: string | null;
+  author_id: number;
   content: string;
-  likesCount: number;
-  isLiked: boolean;
-  createdAt: string;
-  replies?: RawProjectComment[];
-  depth?: number;
-  parentId?: string;
-  images?: string[];
-  isDeleted?: boolean;
+  images: string[] | null;
+  link_preview: any | null;
+  depth: number;
+  likes_count: number;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string | null;
+  author_username: string;
+  author_display_name: string;
+  author_avatar_url: string | null;
+  is_liked: boolean;
 };
-
-// 더미 댓글 데이터
-const dummyComments: RawProjectComment[] = [
-  {
-    id: "c1",
-    author: {
-      id: "u1",
-      username: "indiemaker",
-      displayName: "인디메이커",
-      isMaker: true,
-    },
-    content:
-      "안녕하세요! 이 프로젝트를 만든 개발자입니다. 🎉\n\n많은 관심 부탁드립니다. 궁금한 점이 있으시면 언제든지 질문해주세요!",
-    likesCount: 12,
-    isLiked: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    replies: [
-      {
-        id: "c1-1",
-        author: {
-          id: "u2",
-          username: "devfan",
-          displayName: "개발팬",
-        },
-        content: "정말 멋진 프로젝트네요! 어떤 기술 스택을 사용하셨나요?",
-        likesCount: 5,
-        isLiked: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-        depth: 1,
-      },
-      {
-        id: "c1-2",
-        author: {
-          id: "u1",
-          username: "indiemaker",
-          displayName: "인디메이커",
-          isMaker: true,
-        },
-        content:
-          "@devfan 감사합니다! 프론트엔드는 React + TypeScript, 백엔드는 Node.js를 사용했습니다.",
-        likesCount: 3,
-        isLiked: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-        depth: 1,
-      },
-    ],
-    depth: 0,
-  },
-  {
-    id: "c2",
-    author: {
-      id: "u3",
-      username: "startup_hunter",
-      displayName: "스타트업헌터",
-    },
-    content:
-      "UI가 정말 깔끔하네요. 특히 다크모드 지원이 마음에 듭니다. 앱 출시 계획도 있으신가요?",
-    likesCount: 8,
-    isLiked: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    replies: [],
-    depth: 0,
-  },
-  {
-    id: "c3",
-    author: {
-      id: "u4",
-      username: "tech_reviewer",
-      displayName: "테크리뷰어",
-    },
-    content:
-      "API 문서화가 잘 되어있어서 연동하기 편했습니다. 다만 rate limit이 조금 낮은 것 같은데, 유료 플랜에서는 어떻게 되나요?",
-    likesCount: 4,
-    isLiked: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
-    replies: [],
-    depth: 0,
-  },
-];
 
 // 팀 멤버 타입
 interface TeamMember {
@@ -145,35 +65,77 @@ export function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const normalizeComments = (items: RawProjectComment[], depth = 0, parentId?: string): CommentNode[] =>
-    items.map((item) => {
-      const itemDepth = Number.isFinite(item.depth) && item.depth! >= 0 ? item.depth! : depth;
-      return {
-        id: item.id,
-        author: {
-          id: item.author.id,
-          username: item.author.username,
-          displayName: item.author.displayName,
-          avatarUrl: item.author.avatar,
-          role: item.author.isMaker ? "Maker" : item.author.role,
-        },
-        content: item.content,
-        parentId: item.parentId ?? parentId,
-        depth: itemDepth,
-        likesCount: item.likesCount,
-        isLiked: item.isLiked,
-        isDeleted: item.isDeleted,
-        images: item.images,
-        createdAt: item.createdAt,
-        updatedAt: (item as any).updatedAt,
-        replies: item.replies ? normalizeComments(item.replies, itemDepth + 1, item.id) : [],
-      };
-    });
-
-  const [comments, setComments] = useState<CommentNode[]>(normalizeComments(dummyComments));
+  const [comments, setComments] = useState<CommentNode[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // 프로젝트 상세 조회
+  // DB 댓글 데이터를 CommentNode로 변환
+  const normalizeComments = (rawComments: RawCommentData[], projectAuthorId: string): CommentNode[] => {
+    // 댓글을 트리 구조로 변환
+    const commentMap = new Map<string, CommentNode>();
+    const rootComments: CommentNode[] = [];
+
+    // 프로젝트 작성자 ID를 숫자로 변환 (비교를 위해)
+    const projectAuthorIdNum = Number(projectAuthorId);
+
+    // 1단계: 모든 댓글을 CommentNode로 변환
+    rawComments.forEach((raw) => {
+      const isProjectAuthor = raw.author_id === projectAuthorIdNum;
+      const comment: CommentNode = {
+        id: raw.id,
+        author: {
+          id: String(raw.author_id),
+          username: raw.author_username,
+          displayName: raw.author_display_name,
+          avatarUrl: raw.author_avatar_url ? getProfileImageUrl(raw.author_avatar_url, "sm") : undefined,
+          role: isProjectAuthor ? "Maker" : undefined,
+        },
+        content: raw.content,
+        parentId: raw.parent_id || undefined,
+        depth: raw.depth,
+        likesCount: raw.likes_count,
+        isLiked: raw.is_liked,
+        isDeleted: raw.is_deleted,
+        images: raw.images && raw.images.length > 0 ? raw.images : undefined,
+        createdAt: raw.created_at,
+        updatedAt: raw.updated_at || undefined,
+        replies: [],
+      };
+      commentMap.set(raw.id, comment);
+    });
+
+    // 2단계: 트리 구조 구성
+    commentMap.forEach((comment) => {
+      if (comment.parentId && commentMap.has(comment.parentId)) {
+        const parent = commentMap.get(comment.parentId)!;
+        if (!parent.replies) {
+          parent.replies = [];
+        }
+        parent.replies.push(comment);
+      } else {
+        rootComments.push(comment);
+      }
+    });
+
+    // 3단계: 정렬 (원댓글은 최신순, 답글은 오래된순)
+    const sortComments = (items: CommentNode[]): CommentNode[] => {
+      return items
+        .sort((a, b) => {
+          if (a.depth === 0 && b.depth === 0) {
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          }
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        })
+        .map((item) => ({
+          ...item,
+          replies: item.replies ? sortComments(item.replies) : [],
+        }));
+    };
+
+    return sortComments(rootComments);
+  };
+
+  // 프로젝트 상세 조회 및 댓글 로드
   useEffect(() => {
     if (!id) {
       setError("프로젝트 ID가 필요합니다");
@@ -198,8 +160,48 @@ export function ProjectDetailPage() {
       setIsLoading(false);
     };
 
+    const loadComments = async () => {
+      setIsLoadingComments(true);
+      const { comments: rawComments, error: commentsError } = await fetchProjectComments(id);
+
+      if (commentsError) {
+        console.error("댓글 조회 실패:", commentsError);
+        setIsLoadingComments(false);
+        return;
+      }
+
+      if (project) {
+        const normalized = normalizeComments(rawComments, project.author.id);
+        setComments(normalized);
+      }
+      setIsLoadingComments(false);
+    };
+
     loadProject();
+    loadComments();
   }, [id]);
+
+  // 프로젝트가 로드된 후 댓글 다시 로드
+  useEffect(() => {
+    if (project && id) {
+      const loadComments = async () => {
+        setIsLoadingComments(true);
+        const { comments: rawComments, error: commentsError } = await fetchProjectComments(id);
+
+        if (commentsError) {
+          console.error("댓글 조회 실패:", commentsError);
+          setIsLoadingComments(false);
+          return;
+        }
+
+        const normalized = normalizeComments(rawComments, project.author.id);
+        setComments(normalized);
+        setIsLoadingComments(false);
+      };
+
+      loadComments();
+    }
+  }, [project]);
 
   const categoryInfo = project ? CATEGORY_INFO[project.category] : null;
 
@@ -210,103 +212,113 @@ export function ProjectDetailPage() {
     ? [project.thumbnail]
     : [];
 
-  const handleAddComment = (content: string, _images: string[]) => {
-    if (!content.trim()) return;
-    const newComment: CommentNode = {
-      id: `c${Date.now()}`,
-      author: {
-        id: user?.id || "current",
-        username: user?.username || "guest",
-        displayName: user?.displayName || "게스트",
-        avatarUrl: user?.avatar,
-      },
-      content,
-      likesCount: 0,
-      isLiked: false,
-      depth: 0,
-      createdAt: new Date().toISOString(),
-      replies: [],
-    };
-    setComments((prev) => [...prev, newComment]);
+  const handleAddComment = async (content: string, images: string[]) => {
+    if (!content.trim() || !id || !project) return;
+
+    const { error } = await createProjectComment(id, content, undefined, images);
+
+    if (error) {
+      console.error("댓글 생성 실패:", error);
+      alert(error.message);
+      return;
+    }
+
+    // 댓글 목록 다시 로드
+    const { comments: rawComments, error: commentsError } = await fetchProjectComments(id);
+    if (!commentsError && rawComments) {
+      const normalized = normalizeComments(rawComments, project.author.id);
+      setComments(normalized);
+    }
   };
 
-  const handleReply = (parentId: string, content: string, _images: string[]) => {
-    const addReply = (items: CommentNode[], depth = 0): CommentNode[] =>
-      items.map((item) => {
-        const currentDepth = Number.isFinite(item.depth) && item.depth! >= 0 ? item.depth! : depth;
-        if (item.id === parentId) {
-          if (currentDepth >= COMMENT_MAX_DEPTH) return item;
-          const newReply: CommentNode = {
-            id: `reply-${Date.now()}`,
-            author: {
-              id: user?.id || "current",
-              username: user?.username || "guest",
-              displayName: user?.displayName || "게스트",
-              avatarUrl: user?.avatar,
-            },
-            content,
-            likesCount: 0,
-            isLiked: false,
-            depth: currentDepth + 1,
-            parentId,
-            createdAt: new Date().toISOString(),
-            replies: [],
-          };
-          return { ...item, replies: [...(item.replies || []), newReply] };
-        }
-        if (item.replies) {
-          return { ...item, replies: addReply(item.replies, currentDepth + 1) };
-        }
-        return item;
-      });
+  const handleReply = async (parentId: string, content: string, images: string[]) => {
+    if (!content.trim() || !id || !project) return;
 
-    setComments((prev) => addReply(prev));
+    const { error } = await createProjectComment(id, content, parentId, images);
+
+    if (error) {
+      console.error("답글 생성 실패:", error);
+      alert(error.message);
+      return;
+    }
+
+    // 댓글 목록 다시 로드
+    const { comments: rawComments, error: commentsError } = await fetchProjectComments(id);
+    if (!commentsError && rawComments) {
+      const normalized = normalizeComments(rawComments, project.author.id);
+      setComments(normalized);
+    }
   };
 
-  const handleLikeComment = (commentId: string) => {
-    const toggleLike = (items: CommentNode[]): CommentNode[] =>
+  const handleLikeComment = async (commentId: string) => {
+    const { isLiked, likesCount, error } = await toggleProjectCommentLike(commentId);
+
+    if (error) {
+      console.error("댓글 좋아요 토글 실패:", error);
+      alert(error.message);
+      return;
+    }
+
+    // 로컬 상태 업데이트
+    const updateLike = (items: CommentNode[]): CommentNode[] =>
       items.map((item) => {
         if (item.id === commentId) {
           return {
             ...item,
-            isLiked: !item.isLiked,
-            likesCount: item.isLiked ? item.likesCount - 1 : item.likesCount + 1,
+            isLiked,
+            likesCount,
           };
         }
         if (item.replies) {
-          return { ...item, replies: toggleLike(item.replies) };
+          return { ...item, replies: updateLike(item.replies) };
         }
         return item;
       });
-    setComments((prev) => toggleLike(prev));
+    setComments((prev) => updateLike(prev));
   };
 
-  const handleEditComment = (commentId: string, content: string, _images: string[]) => {
-    const update = (items: CommentNode[]): CommentNode[] =>
-      items.map((item) => {
-        if (item.id === commentId) {
-          return { ...item, content, updatedAt: new Date().toISOString() };
-        }
-        if (item.replies) {
-          return { ...item, replies: update(item.replies) };
-        }
-        return item;
-      });
-    setComments((prev) => update(prev));
+  const handleEditComment = async (commentId: string, content: string, images: string[]) => {
+    if (!content.trim()) return;
+
+    const { error } = await updateProjectComment(commentId, content, images);
+
+    if (error) {
+      console.error("댓글 수정 실패:", error);
+      alert(error.message);
+      return;
+    }
+
+    // 댓글 목록 다시 로드
+    if (id && project) {
+      const { comments: rawComments, error: commentsError } = await fetchProjectComments(id);
+      if (!commentsError && rawComments) {
+        const normalized = normalizeComments(rawComments, project.author.id);
+        setComments(normalized);
+      }
+    }
   };
 
-  const handleDeleteComment = (commentId: string) => {
-    const markDelete = (items: CommentNode[]): CommentNode[] =>
-      items.map((item) => {
-        if (item.id === commentId) {
-          return { ...item, isDeleted: true };
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm("댓글을 삭제하시겠습니까?")) return;
+
+    const { success, error } = await deleteProjectComment(commentId);
+
+    if (error) {
+      console.error("댓글 삭제 실패:", error);
+      alert(error.message);
+      return;
+    }
+
+    if (success) {
+      // 댓글 목록 다시 로드
+      if (id && project) {
+        const { comments: rawComments, error: commentsError } = await fetchProjectComments(id);
+        if (!commentsError && rawComments) {
+          const normalized = normalizeComments(rawComments, project.author.id);
+          setComments(normalized);
         }
-        if (item.replies) {
-          return { ...item, replies: markDelete(item.replies) };
-        }
-        return item;
-      });
-    setComments((prev) => markDelete(prev));
+      }
+    }
   };
 
   const countAllComments = (items: CommentNode[]): number =>
@@ -610,30 +622,37 @@ export function ProjectDetailPage() {
                     댓글 ({totalComments})
                   </h3>
 
-                  <div className="mb-6 p-4 rounded-xl bg-white dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-800">
-                    <CommentThread
-                      comments={comments}
-                      currentUser={
-                        user
-                          ? {
-                              id: user.id,
-                              username: user.username,
-                              displayName: user.displayName,
-                              avatarUrl: user.avatar,
-                            }
-                          : { id: "guest", displayName: "게스트" }
-                      }
-                      currentUserId={user?.id}
-                      maxDepth={COMMENT_MAX_DEPTH}
-                      enableAttachments={false}
-                      maxImages={0}
-                      onCreate={handleAddComment}
-                      onReply={handleReply}
-                      onLike={handleLikeComment}
-                      onEdit={handleEditComment}
-                      onDelete={handleDeleteComment}
-                    />
-                  </div>
+                  {isLoadingComments ? (
+                    <div className="mb-6 p-4 rounded-xl bg-white dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-800 text-center text-surface-500">
+                      댓글을 불러오는 중...
+                    </div>
+                  ) : (
+                    <div className="mb-6 p-4 rounded-xl bg-white dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-800">
+                      <CommentThread
+                        comments={comments}
+                        currentUser={
+                          user
+                            ? {
+                                id: user.id,
+                                username: user.username,
+                                displayName: user.displayName,
+                                avatarUrl: user.avatar ? getProfileImageUrl(user.avatar, "sm") : undefined,
+                              }
+                            : { id: "guest", displayName: "게스트" }
+                        }
+                        currentUserId={user?.id}
+                        maxDepth={COMMENT_MAX_DEPTH}
+                        enableAttachments={false}
+                        maxImages={0}
+                        isAuthenticated={!!user}
+                        onCreate={handleAddComment}
+                        onReply={handleReply}
+                        onLike={handleLikeComment}
+                        onEdit={handleEditComment}
+                        onDelete={handleDeleteComment}
+                      />
+                    </div>
+                  )}
                 </div>
               </>
             )}

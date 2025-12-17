@@ -6,7 +6,7 @@ import { useUserStore } from "@/entities/user";
  * 피드 인터랙션 액션들을 제공하는 훅
  */
 export function useFeedActions() {
-  const { toggleLike, toggleRepost, toggleBookmark } = usePostStore();
+  const { toggleLike, toggleBookmark } = usePostStore();
   const { addPoints } = useUserStore();
 
   const handleLike = useCallback((postId: string) => {
@@ -14,11 +14,6 @@ export function useFeedActions() {
     // 좋아요 시 포인트 지급 (데모)
     addPoints(1);
   }, [toggleLike, addPoints]);
-
-  const handleRepost = useCallback((postId: string) => {
-    toggleRepost(postId);
-    addPoints(2);
-  }, [toggleRepost, addPoints]);
 
   const handleBookmark = useCallback((postId: string) => {
     toggleBookmark(postId);
@@ -44,7 +39,6 @@ export function useFeedActions() {
 
   return {
     handleLike,
-    handleRepost,
     handleBookmark,
     handleComment,
     handleShare,

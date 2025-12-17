@@ -27,10 +27,8 @@ function convertToFeedPost(post: ReturnType<typeof usePostStore>["posts"][0]) {
   const interactions: ExtendedInteractions = {
     likesCount: post.likesCount,
     commentsCount: post.commentsCount,
-    repostsCount: post.repostsCount,
     bookmarksCount: post.bookmarksCount,
     isLiked: post.isLiked,
-    isReposted: post.isReposted,
     isBookmarked: post.isBookmarked,
   };
 
@@ -75,7 +73,7 @@ function convertToFeedPost(post: ReturnType<typeof usePostStore>["posts"][0]) {
 
 export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
   const navigate = useNavigate();
-  const { posts, isLoading, hasMore, loadMore, toggleLike, toggleRepost, toggleBookmark } = usePostStore();
+  const { posts, isLoading, hasMore, loadMore, toggleLike, toggleBookmark } = usePostStore();
   const { isAuthenticated } = useUserStore();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [isIntersecting, setIsIntersecting] = useState(false);
@@ -116,7 +114,6 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
     const feedPost = convertToFeedPost(post);
     const handlers = {
       onLike: () => toggleLike(post.id),
-      onRepost: () => toggleRepost(post.id),
       onBookmark: () => toggleBookmark(post.id),
       onComment: () => navigate(`/${post.author.username}/status/${post.id}`),
       onClick: () => handlePostClick(post),
