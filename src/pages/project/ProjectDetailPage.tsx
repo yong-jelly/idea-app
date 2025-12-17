@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router";
 import { ExternalLink, Share2, Bookmark, MessageSquare, Users, Github, Globe, Play, ChevronLeft, ChevronRight, Megaphone, Info } from "lucide-react";
 import { Button, Avatar } from "@/shared/ui";
 import { cn, formatNumber } from "@/shared/lib/utils";
-import { useProjectStore, CATEGORY_INFO, UpvoteCard } from "@/entities/project";
+import { useProjectStore, CATEGORY_INFO, UpvoteCard, fetchProjectDetail, type Project } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { CommentThread, type CommentNode } from "@/shared/ui/comment";
 
@@ -137,11 +137,14 @@ const COMMENT_MAX_DEPTH = 3;
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { projects, toggleProjectLike } = useProjectStore();
+  const { toggleProjectLike } = useProjectStore();
   const { user } = useUserStore();
   const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "team">(
     "overview"
   );
+  const [project, setProject] = useState<Project | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const normalizeComments = (items: RawProjectComment[], depth = 0, parentId?: string): CommentNode[] =>
     items.map((item) => {
       const itemDepth = Number.isFinite(item.depth) && item.depth! >= 0 ? item.depth! : depth;
@@ -170,16 +173,42 @@ export function ProjectDetailPage() {
   const [comments, setComments] = useState<CommentNode[]>(normalizeComments(dummyComments));
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // 프로젝트 찾기 (더미)
-  const project = projects[0]; // 임시로 첫 번째 프로젝트 사용
+  // 프로젝트 상세 조회
+  useEffect(() => {
+    if (!id) {
+      setError("프로젝트 ID가 필요합니다");
+      setIsLoading(false);
+      return;
+    }
+
+    const loadProject = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      const { overview, error: fetchError } = await fetchProjectDetail(id);
+
+      if (fetchError) {
+        console.error("프로젝트 상세 조회 실패:", fetchError);
+        setError(fetchError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      setProject(overview.project);
+      setIsLoading(false);
+    };
+
+    loadProject();
+  }, [id]);
+
   const categoryInfo = project ? CATEGORY_INFO[project.category] : null;
 
-  // 더미 갤러리 이미지
-  const galleryImages = [
-    "https://picsum.photos/seed/proj1/800/450",
-    "https://picsum.photos/seed/proj2/800/450",
-    "https://picsum.photos/seed/proj3/800/450",
-  ];
+  // 갤러리 이미지 (프로젝트의 gallery_images 사용, 없으면 썸네일 사용)
+  const galleryImages = project?.galleryImages && project.galleryImages.length > 0
+    ? project.galleryImages
+    : project?.thumbnail
+    ? [project.thumbnail]
+    : [];
 
   const handleAddComment = (content: string, _images: string[]) => {
     if (!content.trim()) return;
@@ -284,10 +313,18 @@ export function ProjectDetailPage() {
     items.reduce((acc, c) => acc + 1 + (c.replies ? countAllComments(c.replies) : 0), 0);
   const totalComments = countAllComments(comments);
 
-  if (!project) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <p className="text-surface-500">프로젝트를 찾을 수 없습니다.</p>
+        <p className="text-surface-500">프로젝트를 불러오는 중...</p>
+      </div>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <p className="text-surface-500">{error || "프로젝트를 찾을 수 없습니다."}</p>
       </div>
     );
   }

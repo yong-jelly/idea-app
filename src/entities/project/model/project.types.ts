@@ -13,6 +13,7 @@ export interface Project {
   techStack: string[];
   author: Pick<User, "id" | "username" | "displayName" | "avatar">;
   thumbnail?: string;
+  galleryImages?: string[]; // 갤러리 이미지 배열
   repositoryUrl?: string;
   demoUrl?: string;
   androidStoreUrl?: string;

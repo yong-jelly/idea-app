@@ -1,20 +1,27 @@
+-- =====================================================
 -- Storage 버킷 생성 및 RLS 정책 설정
+-- =====================================================
+-- 
 -- 프로필 이미지 업로드를 위한 user-images 버킷 설정
-
+-- 
+-- 실행 방법:
+--   psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:ZNDqDunnaydr0aFQ@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" -f docs/sql/006_storage_bucket_setup.sql
+-- 
 -- =====================================================
 -- 1. 버킷 생성
 -- =====================================================
 
--- 버킷 생성 (이미 존재하면 무시)
+-- 버킷 생성 (이미 존재하면 public으로 업데이트)
+-- 중요: Image Transformations 기능을 사용하려면 버킷을 공개(public: true)로 설정해야 합니다
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
   '1dd-user-images',
   '1dd-user-images',
-  false,                    -- 비공개 버킷
+  true,                     -- 공개 버킷 (Image Transformations 사용 필수)
   5242880,                  -- 5MB 제한
   ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']  -- 지원 형식
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET public = true;
 
 -- =====================================================
 -- 2. RLS 정책 설정
@@ -104,8 +111,15 @@ WHERE id = '1dd-user-images';
  *   - 원본은 하나만 저장
  *   - 표시 시 필요한 크기로 on-the-fly 리사이즈
  *   - getPublicUrl()에 transform 옵션 전달
+ *   - 중요: Image Transformations를 사용하려면 버킷을 공개(public: true)로 설정해야 함
+ *   - 비공개 버킷에서는 /render/image/public/ API가 작동하지 않아 400 에러 발생
  * 
  * 예시:
  *   getImageUrl(filePath, { width: 100, height: 100, resize: 'cover', quality: 85 })
+ * 
+ * 보안 고려사항:
+ *   - 버킷이 공개이지만 RLS 정책으로 업로드/삭제 권한 제어
+ *   - 인증된 사용자만 자신의 폴더에 업로드/삭제 가능
+ *   - 모든 사용자는 이미지를 읽을 수 있음 (프로필 이미지이므로 적절함)
  */
 

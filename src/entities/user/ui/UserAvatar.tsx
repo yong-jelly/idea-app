@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { Avatar } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
+import { getProfileImageUrl } from "@/shared/lib/storage";
 import type { User } from "../model/user.types";
 
 export interface UserAvatarProps {
@@ -23,7 +24,7 @@ export function UserAvatar({
   const content = (
     <div className={cn("flex items-center gap-2", className)}>
       <Avatar
-        src={user.avatar}
+        src={user.avatar ? getProfileImageUrl(user.avatar, size) : undefined}
         alt={user.displayName}
         fallback={user.displayName}
         size={size}

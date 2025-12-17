@@ -7,6 +7,7 @@ import { useUserStore } from "@/entities/user";
 import { useUIStore } from "@/shared/config/ui.store";
 import { SignUpModal } from "@/pages/auth";
 import { supabase } from "@/shared/lib/supabase";
+import { getProfileImageUrl } from "@/shared/lib/storage";
 
 const navigation = [
   { name: "피드", href: "/" },
@@ -123,7 +124,7 @@ export function Header() {
                   className="flex items-center gap-2 rounded-full p-0.5 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
                 >
                   <Avatar
-                    src={user.avatar}
+                    src={user.avatar ? getProfileImageUrl(user.avatar, "sm") : undefined}
                     alt={user.displayName}
                     fallback={user.displayName}
                     size="sm"

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, KeyboardEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   ArrowLeft,
@@ -15,37 +15,41 @@ import {
 } from "lucide-react";
 import { Button, Input, Textarea } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
+import { useUserStore } from "@/entities/user";
+import { createProject } from "@/entities/project";
+import type { ProjectCategory } from "@/entities/project";
 
 const CATEGORIES = [
-  { id: "productivity", label: "생산성" },
-  { id: "game", label: "게임" },
-  { id: "web", label: "웹" },
-  { id: "mobile", label: "모바일 앱" },
-  { id: "desktop", label: "데스크탑" },
-  { id: "ai", label: "AI/ML" },
-  { id: "social", label: "소셜" },
-  { id: "education", label: "교육" },
-  { id: "entertainment", label: "엔터테인먼트" },
-  { id: "finance", label: "금융" },
-  { id: "health", label: "건강/운동" },
-  { id: "lifestyle", label: "라이프스타일" },
-  { id: "devtool", label: "개발 도구" },
-  { id: "utility", label: "유틸리티" },
-  { id: "design", label: "디자인" },
-  { id: "music", label: "음악/오디오" },
-  { id: "news", label: "뉴스" },
-  { id: "shopping", label: "쇼핑" },
-  { id: "travel", label: "여행" },
+  { id: "game", label: "게임", mappedCategory: "game" as ProjectCategory },
+  { id: "web", label: "웹", mappedCategory: "web" as ProjectCategory },
+  { id: "mobile", label: "모바일 앱", mappedCategory: "mobile" as ProjectCategory },
+  { id: "ai", label: "AI/ML", mappedCategory: "ai" as ProjectCategory },
+  { id: "devtool", label: "개발 도구", mappedCategory: "tool" as ProjectCategory },
+  { id: "utility", label: "유틸리티", mappedCategory: "tool" as ProjectCategory },
+  { id: "productivity", label: "생산성", mappedCategory: "tool" as ProjectCategory },
+  { id: "desktop", label: "데스크탑", mappedCategory: "tool" as ProjectCategory },
+  { id: "opensource", label: "오픈소스", mappedCategory: "opensource" as ProjectCategory },
+  { id: "social", label: "소셜", mappedCategory: "web" as ProjectCategory },
+  { id: "education", label: "교육", mappedCategory: "web" as ProjectCategory },
+  { id: "entertainment", label: "엔터테인먼트", mappedCategory: "web" as ProjectCategory },
+  { id: "finance", label: "금융", mappedCategory: "web" as ProjectCategory },
+  { id: "health", label: "건강/운동", mappedCategory: "mobile" as ProjectCategory },
+  { id: "lifestyle", label: "라이프스타일", mappedCategory: "mobile" as ProjectCategory },
+  { id: "design", label: "디자인", mappedCategory: "tool" as ProjectCategory },
+  { id: "music", label: "음악/오디오", mappedCategory: "web" as ProjectCategory },
+  { id: "news", label: "뉴스", mappedCategory: "web" as ProjectCategory },
+  { id: "shopping", label: "쇼핑", mappedCategory: "web" as ProjectCategory },
+  { id: "travel", label: "여행", mappedCategory: "mobile" as ProjectCategory },
 ];
-
-const MAX_CATEGORIES = 3;
 
 interface ProjectFormData {
   title: string;
-  description: string;
-  categories: string[];
-  iconFile: File | null;
-  iconPreview: string;
+  shortDescription: string;
+  fullDescription: string;
+  category: string; // 카테고리 ID
+  techStack: string[]; // 태그 배열
+  thumbnailFile: File | null;
+  thumbnailPreview: string;
   screenshots: Array<{ file: File; preview: string }>;
   repositoryUrl: string;
   demoUrl: string;
@@ -56,14 +60,19 @@ interface ProjectFormData {
 
 export function CreateProjectPage() {
   const navigate = useNavigate();
+  const { user } = useUserStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showUrls, setShowUrls] = useState(false);
+  const [techStackInput, setTechStackInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<ProjectFormData>({
     title: "",
-    description: "",
-    categories: [],
-    iconFile: null,
-    iconPreview: "",
+    shortDescription: "",
+    fullDescription: "",
+    category: "",
+    techStack: [],
+    thumbnailFile: null,
+    thumbnailPreview: "",
     screenshots: [],
     repositoryUrl: "",
     demoUrl: "",
@@ -76,22 +85,32 @@ export function CreateProjectPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const toggleCategory = (categoryId: string) => {
-    const isSelected = formData.categories.includes(categoryId);
-    if (isSelected) {
-      updateField("categories", formData.categories.filter((id) => id !== categoryId));
-    } else if (formData.categories.length < MAX_CATEGORIES) {
-      updateField("categories", [...formData.categories, categoryId]);
+  const handleCategorySelect = (categoryId: string) => {
+    updateField("category", categoryId);
+  };
+
+  const handleTechStackKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && techStackInput.trim()) {
+      e.preventDefault();
+      const newTag = techStackInput.trim();
+      if (!formData.techStack.includes(newTag) && formData.techStack.length < 10) {
+        updateField("techStack", [...formData.techStack, newTag]);
+        setTechStackInput("");
+      }
     }
   };
 
-  const handleIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const removeTechStackTag = (tag: string) => {
+    updateField("techStack", formData.techStack.filter((t) => t !== tag));
+  };
+
+  const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
-        updateField("iconFile", file);
-        updateField("iconPreview", reader.result as string);
+        updateField("thumbnailFile", file);
+        updateField("thumbnailPreview", reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -118,21 +137,64 @@ export function CreateProjectPage() {
     }));
   };
 
-  const removeIcon = () => {
-    updateField("iconFile", null);
-    updateField("iconPreview", "");
+  const removeThumbnail = () => {
+    updateField("thumbnailFile", null);
+    updateField("thumbnailPreview", "");
   };
 
   const handleSubmit = async () => {
-    if (!formData.title.trim() || !formData.description.trim()) return;
-    
+    if (!user) {
+      setError("로그인이 필요합니다");
+      return;
+    }
+
+    if (!formData.title.trim() || !formData.shortDescription.trim() || !formData.category) {
+      setError("필수 항목을 모두 입력해주세요");
+      return;
+    }
+
+    setError(null);
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSubmitting(false);
-    navigate("/project/1");
+
+    try {
+      // 카테고리 매핑
+      const categoryInfo = CATEGORIES.find((c) => c.id === formData.category);
+      if (!categoryInfo) {
+        throw new Error("유효하지 않은 카테고리입니다");
+      }
+
+      const { projectId, error: createError } = await createProject(
+        {
+          title: formData.title.trim(),
+          short_description: formData.shortDescription.trim(),
+          full_description: formData.fullDescription.trim() || undefined,
+          category: categoryInfo.mappedCategory,
+          tech_stack: formData.techStack,
+          repository_url: formData.repositoryUrl.trim() || undefined,
+          demo_url: formData.demoUrl.trim() || undefined,
+          android_store_url: formData.androidStoreUrl.trim() || undefined,
+          ios_store_url: formData.iosStoreUrl.trim() || undefined,
+          mac_store_url: formData.macStoreUrl.trim() || undefined,
+          // author_id는 API에서 자동으로 현재 로그인한 사용자로 설정됨
+        },
+        formData.thumbnailFile,
+        formData.screenshots.map((s) => s.file)
+      );
+
+      if (createError || !projectId) {
+        throw createError || new Error("프로젝트 생성에 실패했습니다");
+      }
+
+      // 성공 시 프로젝트 페이지로 이동
+      navigate(`/project/${projectId}`);
+    } catch (err) {
+      console.error("프로젝트 생성 에러:", err);
+      setError(err instanceof Error ? err.message : "프로젝트 생성에 실패했습니다");
+      setIsSubmitting(false);
+    }
   };
 
-  const isValid = formData.title.trim() && formData.description.trim();
+  const isValid = formData.title.trim() && formData.shortDescription.trim() && formData.category;
 
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
@@ -213,21 +275,21 @@ export function CreateProjectPage() {
 
             <div className="divide-y divide-surface-100 dark:divide-surface-800">
               <div className="flex flex-col gap-5 px-6 py-5 md:flex-row">
-                {/* 대표 이미지 (아이콘) */}
+                {/* 대표 이미지 (썸네일) */}
                 <div className="flex-shrink-0">
                   <label className="mb-2 block text-sm font-medium text-surface-700 dark:text-surface-300">
-                    앱 아이콘
+                    프로젝트 썸네일
                   </label>
-                  {formData.iconPreview ? (
+                  {formData.thumbnailPreview ? (
                     <div className="group relative">
                       <img
-                        src={formData.iconPreview}
-                        alt="App icon"
+                        src={formData.thumbnailPreview}
+                        alt="Project thumbnail"
                         className="h-24 w-24 rounded-2xl border border-surface-200 object-cover shadow-sm dark:border-surface-600"
                       />
                       <button
                         type="button"
-                        onClick={removeIcon}
+                        onClick={removeThumbnail}
                         className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -240,7 +302,7 @@ export function CreateProjectPage() {
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={handleIconUpload}
+                        onChange={handleThumbnailUpload}
                         className="hidden"
                       />
                     </label>
@@ -264,15 +326,30 @@ export function CreateProjectPage() {
                 </div>
               </div>
 
-              <div className="px-6 py-5">
+              <div className="px-6 py-5 space-y-5">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                    프로젝트 설명 <span className="text-red-500">*</span>
+                    짧은 설명 <span className="text-red-500">*</span>
                   </label>
                   <Textarea
-                    value={formData.description}
-                    onChange={(e) => updateField("description", e.target.value)}
-                    placeholder="프로젝트에 대해 자유롭게 설명해주세요. 어떤 문제를 해결하나요? 누구를 위한 서비스인가요?"
+                    value={formData.shortDescription}
+                    onChange={(e) => updateField("shortDescription", e.target.value)}
+                    placeholder="프로젝트를 한 줄로 요약해주세요 (예: 머신러닝을 활용한 자동 코드 리뷰 도구)"
+                    className="min-h-20 resize-none text-base leading-relaxed"
+                    maxLength={200}
+                  />
+                  <p className="text-xs text-surface-400">
+                    {formData.shortDescription.length}/200
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                    상세 설명
+                  </label>
+                  <Textarea
+                    value={formData.fullDescription}
+                    onChange={(e) => updateField("fullDescription", e.target.value)}
+                    placeholder="프로젝트에 대해 자세히 설명해주세요. 어떤 문제를 해결하나요? 누구를 위한 서비스인가요? 주요 기능은 무엇인가요?"
                     className="min-h-32 resize-none text-base leading-relaxed"
                   />
                 </div>
@@ -282,44 +359,29 @@ export function CreateProjectPage() {
 
           {/* 카테고리 */}
           <div className="rounded-xl border border-surface-200 bg-white p-6 shadow-sm dark:border-surface-800 dark:bg-surface-900">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">
-                  카테고리
-                </h3>
-                <p className="text-sm text-surface-500 dark:text-surface-400">
-                  프로젝트를 설명하는 주제를 선택하세요 (최대 3개)
-                </p>
-              </div>
-              <span
-                className={cn(
-                  "text-xs rounded-full px-3 py-1 font-semibold",
-                  formData.categories.length === MAX_CATEGORIES
-                    ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200"
-                    : "bg-surface-100 text-surface-500 dark:bg-surface-800 dark:text-surface-300"
-                )}
-              >
-                {formData.categories.length}/{MAX_CATEGORIES}
-              </span>
+            <div className="space-y-1 mb-4">
+              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">
+                카테고리 <span className="text-red-500">*</span>
+              </h3>
+              <p className="text-sm text-surface-500 dark:text-surface-400">
+                프로젝트를 설명하는 주제를 선택하세요
+              </p>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               {CATEGORIES.map((category) => {
-                const isSelected = formData.categories.includes(category.id);
-                const isDisabled = !isSelected && formData.categories.length >= MAX_CATEGORIES;
+                const isSelected = formData.category === category.id;
 
                 return (
                   <button
                     key={category.id}
                     type="button"
-                    onClick={() => toggleCategory(category.id)}
-                    disabled={isDisabled}
+                    onClick={() => handleCategorySelect(category.id)}
                     className={cn(
                       "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm transition-all",
                       isSelected
                         ? "border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300"
-                        : "border-surface-200 bg-white text-surface-600 hover:border-surface-300 hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300 dark:hover:border-surface-600",
-                      isDisabled && "cursor-not-allowed opacity-40"
+                        : "border-surface-200 bg-white text-surface-600 hover:border-surface-300 hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300 dark:hover:border-surface-600"
                     )}
                   >
                     <span className="text-surface-400">#</span>
@@ -328,6 +390,47 @@ export function CreateProjectPage() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* 기술 스택 */}
+          <div className="rounded-xl border border-surface-200 bg-white p-6 shadow-sm dark:border-surface-800 dark:bg-surface-900">
+            <div className="space-y-1 mb-4">
+              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">
+                기술 스택
+              </h3>
+              <p className="text-sm text-surface-500 dark:text-surface-400">
+                사용한 기술을 입력하세요 (Enter로 추가, 최대 10개)
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Input
+                value={techStackInput}
+                onChange={(e) => setTechStackInput(e.target.value)}
+                onKeyDown={handleTechStackKeyDown}
+                placeholder="예: React, TypeScript, Node.js"
+                className="h-11 text-base"
+              />
+              {formData.techStack.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {formData.techStack.map((tag) => (
+                    <div
+                      key={tag}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-surface-200 bg-surface-50 px-3 py-1.5 text-sm dark:border-surface-700 dark:bg-surface-800"
+                    >
+                      <span>{tag}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeTechStackTag(tag)}
+                        className="flex h-4 w-4 items-center justify-center rounded-full hover:bg-surface-200 dark:hover:bg-surface-700"
+                      >
+                        <X className="h-3 w-3 text-surface-400" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -463,6 +566,13 @@ export function CreateProjectPage() {
             )}
           </div>
         </div>
+
+        {/* 에러 메시지 */}
+        {error && (
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-6 py-4 dark:border-red-800 dark:bg-red-950/20">
+            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+          </div>
+        )}
 
         {/* 최하단 CTA */}
         <div className="mt-8 rounded-xl border border-surface-200 bg-white px-6 py-5 shadow-sm dark:border-surface-800 dark:bg-surface-900">

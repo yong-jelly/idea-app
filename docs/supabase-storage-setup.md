@@ -4,16 +4,20 @@
 
 프로필 이미지 업로드를 위해 `1dd-user-images` 버킷을 생성해야 합니다.
 
+**중요**: Image Transformations 기능을 사용하려면 버킷을 **공개(Public)**로 설정해야 합니다.
+
 ### Supabase 대시보드에서 생성
 
 1. Supabase 대시보드 접속
 2. **Storage** 메뉴 클릭
 3. **New bucket** 클릭
 4. 버킷 이름: `1dd-user-images`
-5. **Public bucket**: 체크 해제 (비공개)
+5. **Public bucket**: ✅ **체크** (공개 버킷으로 설정)
 6. **Create bucket** 클릭
 
 ### RLS 정책 설정
+
+**참고**: 버킷이 공개(Public)로 설정되어 있어도, RLS 정책을 통해 업로드/삭제 권한을 제어할 수 있습니다. 읽기는 공개로 허용되지만, 업로드와 삭제는 인증된 사용자만 자신의 폴더에 대해 수행할 수 있습니다.
 
 버킷 생성 후 다음 RLS 정책을 추가합니다:
 
@@ -55,17 +59,17 @@ USING (bucket_id = '1dd-user-images');
 ### psql로 버킷 생성 및 RLS 정책 설정
 
 ```bash
-# 버킷 생성
+# 버킷 생성 (public: true로 설정)
 psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:ZNDqDunnaydr0aFQ@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" -c "
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
   '1dd-user-images',
   '1dd-user-images',
-  false,
+  true,
   5242880,
   ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET public = true;
 "
 
 # RLS 정책 설정
@@ -155,9 +159,26 @@ const customUrl = getImageUrl(filePath, {
 });
 ```
 
+## 중요 사항
+
+### 버킷 공개 설정
+
+- **Image Transformations 기능을 사용하려면 버킷을 공개(Public)로 설정해야 합니다**
+- 비공개(Private) 버킷에서는 `/render/image/public/` API가 작동하지 않아 400 에러가 발생합니다
+- 버킷이 공개여도 RLS 정책을 통해 업로드/삭제 권한을 제어할 수 있습니다
+
+### 보안 고려사항
+
+- 버킷이 공개이므로 누구나 이미지를 읽을 수 있습니다
+- 하지만 업로드와 삭제는 RLS 정책에 의해 제한됩니다:
+  - 인증된 사용자만 업로드 가능
+  - 자신의 폴더(`{auth_id}/images/profile/`)에만 업로드 가능
+  - 자신의 폴더의 파일만 삭제 가능
+
 ## 제한 사항
 
 - 파일 크기: 최대 5MB
 - 지원 형식: JPEG, PNG, WebP, GIF
 - Image Transformations: Pro 플랜 이상 필요 (무료 플랜에서는 사용 불가)
+- 버킷 설정: Image Transformations 사용 시 반드시 공개(Public) 버킷이어야 함
 

@@ -1,32 +1,68 @@
-import { Link } from "react-router";
-import { ChevronRight } from "lucide-react";
-import { Button } from "@/shared/ui";
-import { useProjectStore } from "@/entities/project";
+import { useEffect, useState } from "react";
+import { useProjectStore, fetchProjects, type Project } from "@/entities/project";
 import { ProjectListItem } from "@/entities/project/ui/ProjectListItem";
 
 export function ExplorePage() {
-  const { projects, toggleProjectLike } = useProjectStore();
+  const { toggleProjectLike } = useProjectStore();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 섹션별 분류
-  const featuredProjects = projects.filter((p) => p.featured);
-  const trendingProjects = projects.slice().sort((a, b) => b.likesCount - a.likesCount);
-  const recentProjects = projects.slice().sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  // 전체 프로젝트 조회
+  useEffect(() => {
+    const loadProjects = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      const { projects: fetchedProjects, error: fetchError } = await fetchProjects({
+        featured: undefined, // 전체 프로젝트 조회
+        limit: 50,
+        orderBy: "created_at",
+        orderDirection: "desc",
+      });
+
+      if (fetchError) {
+        console.error("프로젝트 목록 조회 실패:", fetchError);
+        setError(fetchError.message);
+      } else {
+        setProjects(fetchedProjects);
+      }
+
+      setIsLoading(false);
+    };
+
+    loadProjects();
+  }, []);
+
+  // TODO: 인기 프로젝트 섹션 (커뮤니티 구현 후)
+  // const trendingProjects = projects.slice().sort((a, b) => b.likesCount - a.likesCount);
+
+  // TODO: 최신 프로젝트 섹션 (커뮤니티 구현 후)
+  // const recentProjects = projects.slice().sort((a, b) => 
+  //   new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  // );
 
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
       <div className="mx-auto max-w-5xl">
-        {/* Featured Section */}
-        {featuredProjects.length > 0 && (
-          <section>
-            <div className="px-4 pt-6 pb-3">
-              <h2 className="text-lg font-bold text-surface-900 dark:text-surface-50">
-                주목할 프로젝트
-              </h2>
+        {/* 전체 프로젝트 섹션 */}
+        <section>
+          <div className="px-4 pt-6 pb-3">
+            <h2 className="text-lg font-bold text-surface-900 dark:text-surface-50">
+              프로젝트
+            </h2>
+          </div>
+          {isLoading ? (
+            <div className="px-4 py-8 text-center text-surface-500 dark:text-surface-400">
+              프로젝트를 불러오는 중...
             </div>
+          ) : error ? (
+            <div className="px-4 py-8 text-center text-red-500 dark:text-red-400">
+              {error}
+            </div>
+          ) : projects.length > 0 ? (
             <div className="divide-y divide-surface-100 dark:divide-surface-800/60">
-              {featuredProjects.map((project, index) => (
+              {projects.map((project, index) => (
                 <ProjectListItem
                   key={project.id}
                   project={project}
@@ -35,11 +71,15 @@ export function ExplorePage() {
                 />
               ))}
             </div>
-          </section>
-        )}
+          ) : (
+            <div className="px-4 py-8 text-center text-surface-500 dark:text-surface-400">
+              프로젝트가 없습니다.
+            </div>
+          )}
+        </section>
 
-        {/* Trending Section */}
-        <section>
+        {/* TODO: 인기 프로젝트 섹션 (커뮤니티 구현 후 추가) */}
+        {/* <section>
           <div className="px-4 pt-8 pb-3 flex items-center justify-between">
             <h2 className="text-lg font-bold text-surface-900 dark:text-surface-50">
               인기 프로젝트
@@ -61,10 +101,10 @@ export function ExplorePage() {
               />
             ))}
           </div>
-        </section>
+        </section> */}
 
-        {/* Newsletter CTA */}
-        <div className="mx-4 my-8 flex items-center gap-4 rounded-xl bg-surface-50 dark:bg-surface-900 p-4 ring-1 ring-surface-200/60 dark:ring-surface-800">
+        {/* TODO: Newsletter CTA (구현 예정) */}
+        {/* <div className="mx-4 my-8 flex items-center gap-4 rounded-xl bg-surface-50 dark:bg-surface-900 p-4 ring-1 ring-surface-200/60 dark:ring-surface-800">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white dark:bg-surface-800 ring-1 ring-surface-200 dark:ring-surface-700">
             <span className="text-xl">📬</span>
           </div>
@@ -76,10 +116,10 @@ export function ExplorePage() {
           <Button variant="outline" size="sm">
             구독하기
           </Button>
-        </div>
+        </div> */}
 
-        {/* Recent Section */}
-        <section>
+        {/* TODO: 최신 프로젝트 섹션 (커뮤니티 구현 후 추가) */}
+        {/* <section>
           <div className="px-4 pt-4 pb-3 flex items-center justify-between">
             <h2 className="text-lg font-bold text-surface-900 dark:text-surface-50">
               최신 프로젝트
@@ -101,14 +141,14 @@ export function ExplorePage() {
               />
             ))}
           </div>
-        </section>
+        </section> */}
 
-        {/* More Button */}
-        <div className="px-4 py-8">
+        {/* TODO: 모든 프로젝트 보기 버튼 (전체 목록 페이지 구현 후) */}
+        {/* <div className="px-4 py-8">
           <Button variant="outline" className="w-full">
             모든 프로젝트 보기
           </Button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

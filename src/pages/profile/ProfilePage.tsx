@@ -14,6 +14,7 @@ import {
   MilestoneAchievedRow,
   FeatureAcceptedRow,
 } from "@/entities/feed";
+import { getProfileImageUrl } from "@/shared/lib/storage";
 
 // 분리된 모듈 import
 import type { ProfileTabType } from "./profile-page/types";
@@ -168,7 +169,7 @@ export function ProfilePage() {
           <div className="mt-6 mx-1 rounded-xl border border-surface-200 bg-white p-3 dark:border-surface-800 dark:bg-surface-900">
             <div className="flex items-center gap-3">
               <Avatar
-                src={profile.avatar}
+                src={profile.avatar ? getProfileImageUrl(profile.avatar, "md") : undefined}
                 alt={profile.displayName}
                 fallback={profile.displayName}
                 size="md"
@@ -311,7 +312,7 @@ export function ProfilePage() {
         <div className="lg:hidden px-4 py-3 border-b border-surface-100 dark:border-surface-800">
           <div className="flex items-start justify-between mb-2">
             <Avatar
-              src={profile.avatar}
+              src={profile.avatar ? getProfileImageUrl(profile.avatar, "lg") : undefined}
               alt={profile.displayName}
               fallback={profile.displayName}
               size="lg"

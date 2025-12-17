@@ -9,6 +9,9 @@
 --   - ProfileEditModal에서 프로필 수정 시 호출
 --   - 프론트엔드: supabase.schema('odd').rpc('v1_update_user_profile', {...})
 -- 
+-- 실행 방법:
+--   psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:ZNDqDunnaydr0aFQ@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" -f docs/sql/005_v1_update_user_profile.sql
+-- 
 -- =====================================================
 -- 1. 테이블 스키마 업데이트
 -- =====================================================

@@ -4,6 +4,7 @@ import { Button, Card, Avatar, Textarea, Badge } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
 import { usePostStore, type PostType } from "@/entities/post";
+import { getProfileImageUrl } from "@/shared/lib/storage";
 
 const MAX_LENGTH = 280;
 
@@ -84,7 +85,7 @@ export function PostComposer({ projectId, projectTitle, variant = "inline", onSu
   const composerContent = (
     <div className="flex gap-3">
       <Avatar
-        src={user.avatar}
+        src={user.avatar ? getProfileImageUrl(user.avatar, "md") : undefined}
         alt={user.displayName}
         fallback={user.displayName}
         size="md"

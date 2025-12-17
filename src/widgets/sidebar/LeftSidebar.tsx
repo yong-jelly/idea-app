@@ -5,6 +5,7 @@ import { cn } from "@/shared/lib/utils";
 import { Button, Avatar } from "@/shared/ui";
 import { useUserStore } from "@/entities/user";
 import { PostComposerModal } from "@/features/feed";
+import { getProfileImageUrl } from "@/shared/lib/storage";
 
 const navigation = [
   { name: "홈", href: "/", icon: Home },
@@ -91,7 +92,7 @@ export function LeftSidebar() {
           >
             <div className="flex items-center gap-3">
               <Avatar
-                src={user.avatar}
+                src={user.avatar ? getProfileImageUrl(user.avatar, "md") : undefined}
                 alt={user.displayName}
                 fallback={user.displayName}
                 size="md"
