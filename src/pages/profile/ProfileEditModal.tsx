@@ -4,6 +4,11 @@ import { Camera, Link as LinkIcon, Github, Twitter, X, ArrowLeft } from "lucide-
 import { Button, Input, Textarea, Avatar } from "@/shared/ui";
 import { useUserStore } from "@/entities/user";
 import { supabase } from "@/shared/lib/supabase";
+import {
+  uploadProfileImage,
+  deleteProfileImage,
+  getProfileImageUrl,
+} from "@/shared/lib/storage";
 
 export interface ProfileEditModalProps {
   open: boolean;
@@ -38,7 +43,9 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
   const [links, setLinks] = useState(getLinksFromUser());
 
   const [previewAvatar, setPreviewAvatar] = useState<string | undefined>(user?.avatar);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // ESC 키로 닫기
   useEffect(() => {
@@ -70,8 +77,14 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
         twitter: user.twitter || "",
         avatar: user.avatar || "",
       });
-      setPreviewAvatar(user.avatar);
+      // avatar_url이 있으면 Storage 경로로 간주하고 리사이즈된 URL 사용
+      setPreviewAvatar(
+        user.avatar
+          ? getProfileImageUrl(user.avatar, "xl")
+          : undefined
+      );
       setLinks(getLinksFromUser());
+      setSelectedFile(null);
     }
   }, [user, open]);
 
@@ -95,19 +108,30 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
         return;
       }
 
+      // 파일 선택 시 미리보기만 표시 (업로드는 저장 시 수행)
       const reader = new FileReader();
       reader.onload = (event) => {
         const result = event.target?.result as string;
         setPreviewAvatar(result);
-        setFormData((prev) => ({ ...prev, avatar: result }));
+        setSelectedFile(file);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleRemoveAvatar = () => {
+  const handleRemoveAvatar = async () => {
+    // 기존 이미지가 있으면 삭제
+    if (user?.avatar && !selectedFile) {
+      const { error } = await deleteProfileImage(user.avatar);
+      if (error) {
+        console.error("이미지 삭제 에러:", error);
+        // 삭제 실패해도 UI는 업데이트
+      }
+    }
+
     setPreviewAvatar(undefined);
     setFormData((prev) => ({ ...prev, avatar: "" }));
+    setSelectedFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -119,9 +143,57 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
       return;
     }
 
+    if (!user?.id) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+
     setIsLoading(true);
+    setIsUploadingImage(selectedFile !== null);
 
     try {
+      let avatarPath: string | null = null;
+
+      // 새 이미지가 선택된 경우 업로드
+      if (selectedFile) {
+        setIsUploadingImage(true);
+        
+        // Supabase Auth에서 현재 사용자의 auth_id 가져오기
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !authUser) {
+          alert("로그인이 필요합니다.");
+          setIsLoading(false);
+          setIsUploadingImage(false);
+          return;
+        }
+
+        const { path, error: uploadError } = await uploadProfileImage(
+          selectedFile,
+          authUser.id // auth_id (UUID) 사용
+        );
+
+        if (uploadError) {
+          alert(`이미지 업로드 실패: ${uploadError.message}`);
+          setIsLoading(false);
+          setIsUploadingImage(false);
+          return;
+        }
+
+        avatarPath = path;
+
+        // 기존 이미지가 있으면 삭제
+        if (user.avatar && user.avatar !== avatarPath) {
+          await deleteProfileImage(user.avatar);
+        }
+      } else if (!previewAvatar && user.avatar) {
+        // 이미지가 제거된 경우 (preview가 없고 기존 이미지가 있음)
+        await deleteProfileImage(user.avatar);
+        avatarPath = ""; // 빈 문자열로 전달하여 DB에서 null로 처리
+      } else if (previewAvatar && user.avatar) {
+        // 기존 이미지 유지
+        avatarPath = user.avatar;
+      }
+
       // links 객체 생성 (빈 값 제거)
       const linksData: Record<string, string> = {};
       if (links.website.trim()) linksData.website = links.website.trim();
@@ -129,15 +201,14 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
       if (links.twitter.trim()) linksData.twitter = links.twitter.trim();
 
       // Supabase API 호출
-      // bio가 빈 문자열이면 빈 문자열로 전달 (DB 함수에서 null로 변환)
-      // bio를 삭제하려면 빈 문자열을 전달해야 함
       const bioValue = formData.bio.trim();
       
       const { data: updatedUser, error } = await supabase
         .schema("odd")
         .rpc("v1_update_user_profile", {
           p_display_name: formData.displayName.trim(),
-          p_bio: bioValue, // 빈 문자열도 그대로 전달 (DB에서 null로 처리)
+          p_bio: bioValue,
+          p_avatar_url: avatarPath !== null ? avatarPath : undefined,
           p_links: Object.keys(linksData).length > 0 ? linksData : null,
         });
 
@@ -145,25 +216,29 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
         console.error("프로필 업데이트 에러:", error);
         alert(`프로필 업데이트 실패: ${error.message}`);
         setIsLoading(false);
+        setIsUploadingImage(false);
         return;
       }
 
-      // UserStore 업데이트
+      // UserStore 업데이트 (리사이즈된 URL 사용)
       updateUser({
         displayName: updatedUser.display_name || "",
         bio: updatedUser.bio || undefined,
         website: linksData.website || undefined,
         github: linksData.github || undefined,
         twitter: linksData.twitter || undefined,
-        avatar: updatedUser.avatar_url || undefined,
+        avatar: updatedUser.avatar_url || undefined, // Storage 경로 저장
       });
 
       setIsLoading(false);
+      setIsUploadingImage(false);
+      setSelectedFile(null);
       onOpenChange(false);
     } catch (err) {
       console.error("프로필 업데이트 에러:", err);
       alert("프로필 업데이트 중 오류가 발생했습니다.");
       setIsLoading(false);
+      setIsUploadingImage(false);
     }
   };
 
@@ -176,8 +251,11 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
       twitter: user?.twitter || "",
       avatar: user?.avatar || "",
     });
-    setPreviewAvatar(user?.avatar);
+    setPreviewAvatar(
+      user?.avatar ? getProfileImageUrl(user.avatar, "xl") : undefined
+    );
     setLinks(getLinksFromUser());
+    setSelectedFile(null);
     onOpenChange(false);
   };
 
@@ -211,11 +289,11 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
             <Button 
               size="sm" 
               onClick={handleSubmit} 
-              disabled={isLoading}
-              isLoading={isLoading}
+              disabled={isLoading || isUploadingImage}
+              isLoading={isLoading || isUploadingImage}
               className="rounded-full"
             >
-              저장
+              {isUploadingImage ? "이미지 업로드 중..." : isLoading ? "저장 중..." : "저장"}
             </Button>
           </header>
 
@@ -232,21 +310,32 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
                     size="xl"
                     className="h-24 w-24"
                   />
-                  <button
-                    type="button"
-                    onClick={handleAvatarClick}
-                    className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 hover:opacity-100 transition-opacity"
-                  >
-                    <Camera className="h-6 w-6 text-white" />
-                  </button>
-                  {previewAvatar && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveAvatar}
-                      className="absolute -top-1 -right-1 p-1 rounded-full bg-surface-900 text-white hover:bg-surface-700 transition-colors"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
+                  {!isUploadingImage && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleAvatarClick}
+                        disabled={isLoading}
+                        className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 hover:opacity-100 transition-opacity disabled:opacity-0"
+                      >
+                        <Camera className="h-6 w-6 text-white" />
+                      </button>
+                      {previewAvatar && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveAvatar}
+                          disabled={isLoading}
+                          className="absolute -top-1 -right-1 p-1 rounded-full bg-surface-900 text-white hover:bg-surface-700 transition-colors disabled:opacity-50"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </>
+                  )}
+                  {isUploadingImage && (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
+                    </div>
                   )}
                 </div>
                 <input
@@ -254,14 +343,16 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
+                  disabled={isLoading || isUploadingImage}
                   className="hidden"
                 />
                 <button
                   type="button"
                   onClick={handleAvatarClick}
-                  className="mt-2 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                  disabled={isLoading || isUploadingImage}
+                  className="mt-2 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  이미지 변경
+                  {selectedFile ? "이미지 선택됨" : "이미지 변경"}
                 </button>
               </div>
 
