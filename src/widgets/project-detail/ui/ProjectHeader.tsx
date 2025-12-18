@@ -37,8 +37,8 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-50">
-                {project.title}
-              </h1>
+              {project.title}
+            </h1>
               {isAuthor && (
                 <Link to={`/project/${project.id}/edit`}>
                   <Button

@@ -9,11 +9,12 @@ import {
   ChevronUp,
   CheckCircle2,
 } from "lucide-react";
-import { Button, Avatar, Badge, Card, CardContent } from "@/shared/ui";
+import { Avatar, Badge, Card, CardContent } from "@/shared/ui";
 import { CommentThread } from "@/shared/ui/comment";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
 import { supabase } from "@/shared/lib/supabase";
+import { getProfileImageUrl } from "@/shared/lib/storage";
 import type { DevPost } from "../types";
 import { useDevFeedComments } from "../tabs/hooks/useDevFeedComments";
 import { LoginModal } from "@/pages/auth";
@@ -134,7 +135,13 @@ export function DevPostCard({ post, projectAuthorId, onEdit, onDelete, onToggleP
   };
 
   return (
-    <Card className={cn(post.isPinned && "ring-2 ring-primary-200 dark:ring-primary-800")}>
+    <Card 
+      variant="bordered"
+      className={cn(
+        "border-surface-200/80 dark:border-surface-800 shadow-none",
+        post.isPinned && "ring-2 ring-primary-200 dark:ring-primary-800"
+      )}
+    >
       <CardContent className="p-0">
         {/* Post Header */}
         <div
@@ -366,50 +373,37 @@ export function DevPostCard({ post, projectAuthorId, onEdit, onDelete, onToggleP
         {/* Expanded Comments Section */}
         {isExpanded && (
           <div className="border-t border-surface-100 dark:border-surface-800">
-            <div className="px-4 py-4">
-              {isLoadingComments ? (
-                <div className="py-8 text-center text-surface-500">
-                  댓글을 불러오는 중...
-                </div>
-              ) : (
-                <>
-                  <CommentThread
-                    comments={comments}
-                    currentUser={
-                      user
-                        ? {
-                            id: user.id,
-                            username: user.username,
-                            displayName: user.displayName,
-                          }
-                        : { id: "guest", displayName: "게스트" }
-                    }
-                    currentUserId={user?.id}
-                    maxDepth={2}
-                    enableAttachments={true}
-                    maxImages={3}
-                    isAuthenticated={!!user}
-                    onSignUpPrompt={() => setShowLoginModal(true)}
-                    onCreate={handleAddComment}
-                    onReply={handleReply}
-                    onLike={handleLikeComment}
-                    onEdit={handleEditComment}
-                    onDelete={handleDeleteComment}
-                  />
-                  {hasMoreComments && (
-                    <div className="mt-4 text-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleLoadMoreComments}
-                        disabled={isLoadingMoreComments}
-                      >
-                        {isLoadingMoreComments ? "로딩 중..." : "댓글 더 보기"}
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
+            <div className="p-4 rounded-xl bg-white dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-800">
+              <CommentThread
+                comments={comments}
+                currentUser={
+                  user
+                    ? {
+                        id: user.id,
+                        username: user.username,
+                        displayName: user.displayName,
+                        avatarUrl: user.avatar
+                          ? getProfileImageUrl(user.avatar, "sm")
+                          : undefined,
+                      }
+                    : { id: "guest", displayName: "게스트" }
+                }
+                currentUserId={user?.id}
+                maxDepth={2}
+                enableAttachments={true}
+                maxImages={3}
+                isAuthenticated={!!user}
+                onSignUpPrompt={() => setShowLoginModal(true)}
+                onCreate={handleAddComment}
+                onReply={handleReply}
+                onLike={handleLikeComment}
+                onEdit={handleEditComment}
+                onDelete={handleDeleteComment}
+                hasMore={hasMoreComments}
+                isLoadingMore={isLoadingMoreComments}
+                onLoadMore={handleLoadMoreComments}
+                isLoadingComments={isLoadingComments}
+              />
             </div>
           </div>
         )}

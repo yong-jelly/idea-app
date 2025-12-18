@@ -15,6 +15,7 @@ import { getProfileImageUrl, getImageUrl } from "@/shared/lib/storage";
 import { uploadCommentImages } from "@/shared/lib/storage";
 import { toggleProjectCommentLike, updateProjectComment, deleteProjectComment } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
+import { ensureMinDelay, type MinLoadingDelay } from "@/shared/lib/utils";
 
 // DB에서 반환된 댓글 데이터 타입
 type RawCommentData = {
@@ -53,6 +54,8 @@ interface UseDevFeedCommentsOptions {
   projectAuthorId: string;
   isAuthenticated: boolean;
   onSignUpPrompt: () => void;
+  /** 최소 로딩 지연 시간 (기본값: { min: 800, max: 1500 }) */
+  minLoadingDelay?: MinLoadingDelay | null;
 }
 
 /**
@@ -86,6 +89,7 @@ export function useDevFeedComments({
   projectAuthorId,
   isAuthenticated,
   onSignUpPrompt,
+  minLoadingDelay = { min: 800, max: 1500 },
 }: UseDevFeedCommentsOptions) {
   const { user } = useUserStore();
   const [comments, setComments] = useState<CommentNode[]>([]);
@@ -161,6 +165,8 @@ export function useDevFeedComments({
   const loadComments = async (offset: number = 0, append: boolean = false) => {
     if (!postId) return;
 
+    const startTime = Date.now();
+
     if (!append) {
       setIsLoadingComments(true);
     } else {
@@ -207,6 +213,11 @@ export function useDevFeedComments({
         offset,
         has_more: false,
       };
+
+      // 최소 지연 시간 보장
+      if (minLoadingDelay && !append) {
+        await ensureMinDelay(startTime, minLoadingDelay);
+      }
 
       const normalized = normalizeComments(rawComments, projectAuthorId);
 

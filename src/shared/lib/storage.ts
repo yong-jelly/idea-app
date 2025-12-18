@@ -297,7 +297,7 @@ export function getProjectImageUrl(
 /**
  * 포스트 이미지 업로드
  * 
- * @param files - 업로드할 파일 배열 (최대 3개)
+ * @param files - 업로드할 파일 배열 (최대 5개)
  * @param userId - 사용자 ID (auth.uid())
  * @param postId - 포스트 ID
  * @returns 업로드된 파일 경로 배열
@@ -312,8 +312,8 @@ export async function uploadPostImages(
       return { paths: [], error: null };
     }
 
-    if (files.length > 3) {
-      return { paths: [], error: new Error("이미지는 최대 3개까지 업로드 가능합니다") };
+    if (files.length > 5) {
+      return { paths: [], error: new Error("이미지는 최대 5개까지 업로드 가능합니다") };
     }
 
     const paths: string[] = [];

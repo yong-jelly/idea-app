@@ -5,7 +5,7 @@
  * - 공지사항, 업데이트, 투표 타입 지원
  * - 상단 고정 기능
  * - 투표 기능 (최소 2개, 최대 5개 옵션)
- * - 이미지 첨부 기능 (최대 3개)
+ * - 이미지 첨부 기능 (최대 5개)
  * - DevPostCard 컴포넌트를 사용하여 포스트 표시
  * - 댓글 시스템 (이미지 첨부 지원)
  * 
@@ -23,12 +23,13 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { Button, Card, CardContent, Textarea, Input } from "@/shared/ui";
-import { cn } from "@/shared/lib/utils";
+import { cn, ensureMinDelay } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
 import { fetchProjectDetail, type Project } from "@/entities/project";
 import { supabase } from "@/shared/lib/supabase";
 import { getProfileImageUrl, getImageUrl, uploadPostImages } from "@/shared/lib/storage";
 import { DevPostCard } from "../components/DevPostCard";
+import { DevPostCardSkeleton } from "../components/DevPostCardSkeleton";
 import type { DevPost, VoteOption } from "../types";
 import { POST_TYPE_INFO } from "../constants";
 
@@ -149,7 +150,7 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
     title: "",
     content: "",
     isPinned: false,
-    images: [] as File[], // File 객체
+    images: [] as Array<{ file: File | null; preview: string }>, // 기존 이미지는 file이 null, preview는 URL
     voteOptions: ["", ""] as string[],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -259,6 +260,8 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
     const fetchPosts = async () => {
       setPostOffset(0);
       setIsLoadingPosts(true);
+      
+      const startTime = Date.now();
 
       try {
         const { data, error } = await supabase
@@ -284,6 +287,11 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
           setIsLoadingPosts(false);
           return;
         }
+
+        // 최소 로딩 지연 시간 보장 (0.3~0.7초)
+        await ensureMinDelay(startTime, { min: 300, max: 700 });
+
+        if (isCancelled) return;
 
         const projectAuthorId: string = project.author.id;
         const devPosts: DevPost[] = data.map((row: any) =>
@@ -352,12 +360,17 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
 
     if (post) {
       setEditingPost(post);
+      // 기존 이미지를 preview로 설정 (file은 null)
+      const existingImages = (post.images || []).map((url) => ({
+        file: null as File | null,
+        preview: url,
+      }));
       setFormData({
         type: post.type as "announcement" | "update" | "vote",
         title: post.title,
         content: post.content,
         isPinned: post.isPinned || false,
-        images: [],
+        images: existingImages,
         voteOptions: post.voteOptions?.map(opt => opt.text) || ["", ""],
       });
     } else {
@@ -376,19 +389,36 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
 
   /**
    * 이미지 업로드 핸들러
-   * 최대 3개까지 업로드 가능
+   * 최대 5개까지 업로드 가능
    */
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
     
-    const remainingSlots = 3 - formData.images.length;
+    const MAX_IMAGES = 5;
+    const remainingSlots = MAX_IMAGES - formData.images.length;
+    
+    if (remainingSlots <= 0) {
+      alert(`최대 ${MAX_IMAGES}개까지 추가할 수 있습니다.`);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+    
     const filesToProcess = Array.from(files).slice(0, remainingSlots);
     
-    setFormData((prev) => ({
-      ...prev,
-      images: [...prev.images, ...filesToProcess].slice(0, 3),
-    }));
+    // 새 파일들을 preview와 함께 추가
+    filesToProcess.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setFormData((prev) => ({
+          ...prev,
+          images: [...prev.images, { file, preview: reader.result as string }].slice(0, MAX_IMAGES),
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
     
     // Reset input
     if (fileInputRef.current) {
@@ -438,12 +468,23 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
 
       if (editingPost) {
         // 포스트 수정
-        let imagePaths: string[] = [];
+        // 기존 이미지 URL 유지 (file이 null인 경우)
+        const existingImageUrls = formData.images
+          .filter((img) => img.file === null)
+          .map((img) => img.preview);
         
-        // 이미지가 있으면 업로드
-        if (formData.images.length > 0) {
+        // 새로 업로드할 이미지 파일만 필터링
+        const newImageFiles = formData.images
+          .filter((img) => img.file !== null)
+          .map((img) => img.file as File);
+        
+        let allImagePaths: string[] = [...existingImageUrls];
+        
+        // 새 이미지가 있으면 업로드
+        if (newImageFiles.length > 0) {
+          setIsUploadingImages(true);
           const { paths, error: uploadError } = await uploadPostImages(
-            formData.images,
+            newImageFiles,
             authUser.id,
             editingPost.id
           );
@@ -455,7 +496,8 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
             return;
           }
 
-          imagePaths = paths;
+          // 기존 이미지 URL과 새로 업로드한 경로를 합침
+          allImagePaths = [...existingImageUrls, ...paths];
         }
 
         const { error } = await supabase
@@ -464,7 +506,7 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
             p_post_id: editingPost.id,
             p_title: formData.title.trim(),
             p_content: formData.content.trim(),
-            p_images: imagePaths.length > 0 ? imagePaths : null,
+            p_images: allImagePaths.length > 0 ? allImagePaths : null,
             p_is_pinned: formData.isPinned,
             p_vote_options: formData.type === "vote" ? formData.voteOptions.filter(opt => opt.trim()) : null,
           });
@@ -499,9 +541,15 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
         }
 
         // 포스트 생성 후 실제 포스트 ID로 이미지 업로드
-        if (formData.images.length > 0 && postId) {
+        // 새 포스트 생성 시에는 모든 이미지가 File 객체
+        const newImageFiles = formData.images
+          .filter((img) => img.file !== null)
+          .map((img) => img.file as File);
+        
+        if (newImageFiles.length > 0 && postId) {
+          setIsUploadingImages(true);
           const { paths, error: uploadError } = await uploadPostImages(
-            formData.images,
+            newImageFiles,
             authUser.id,
             postId
           );
@@ -923,9 +971,11 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
 
       {/* 포스트 목록 */}
       {isLoadingPosts ? (
-        // 탭 변경 시 로딩 중: 탭은 유지하고 포스트 영역에만 로딩 표시
-        <div className="flex items-center justify-center py-12">
-          <p className="text-surface-500">로딩 중...</p>
+        // 탭 변경 시 로딩 중: 스켈레톤 UI 표시
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <DevPostCardSkeleton key={index} />
+          ))}
         </div>
       ) : sortedPosts.length === 0 ? (
         <Card>
@@ -1170,34 +1220,25 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
                   {/* 이미지 업로드 */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                      이미지 (최대 3개)
+                      이미지 (최대 5개)
                     </label>
-                    
-                    {/* 수정 모드일 때 보조 메시지 */}
-                    {editingPost && editingPost.images && editingPost.images.length > 0 && (
-                      <p className="text-xs text-surface-500 dark:text-surface-400">
-                        새 이미지를 업로드하시면 기존 이미지가 모두 삭제되고 새 이미지로 교체됩니다.
-                      </p>
-                    )}
                     
                     {/* 이미지 미리보기 */}
                     {formData.images.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {formData.images.map((file, index) => {
-                          const imageUrl = URL.createObjectURL(file);
+                        {formData.images.map((image, index) => {
+                          // preview는 이미 DataURL 또는 URL로 생성되어 있음
+                          // URL.createObjectURL을 사용하지 않아도 됨
                           return (
                             <div key={index} className="relative">
                               <img
-                                src={imageUrl}
+                                src={image.preview}
                                 alt={`첨부 이미지 ${index + 1}`}
                                 className="h-24 w-24 rounded-lg object-cover border border-surface-200 dark:border-surface-700"
                               />
                               <button
                                 type="button"
-                                onClick={() => {
-                                  URL.revokeObjectURL(imageUrl);
-                                  removeImage(index);
-                                }}
+                                onClick={() => removeImage(index)}
                                 className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-surface-900 text-white flex items-center justify-center hover:bg-rose-500 transition-colors"
                                 disabled={isSubmitting || isUploadingImages}
                               >
@@ -1210,7 +1251,7 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
                     )}
                     
                     {/* 이미지 업로드 버튼 */}
-                    {formData.images.length < 3 && (
+                    {formData.images.length < 5 && (
                       <>
                         <input
                           ref={fileInputRef}
@@ -1228,7 +1269,7 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
                           disabled={isSubmitting || isUploadingImages}
                         >
                           <ImageIcon className="h-5 w-5" />
-                          <span className="text-sm">이미지 추가 ({formData.images.length}/3)</span>
+                          <span className="text-sm">이미지 추가 ({formData.images.length}/5)</span>
                         </button>
                       </>
                     )}
