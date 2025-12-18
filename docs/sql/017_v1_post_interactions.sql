@@ -212,3 +212,4 @@ GRANT EXECUTE ON FUNCTION odd.v1_toggle_post_bookmark TO authenticated;
 COMMENT ON FUNCTION odd.v1_toggle_post_like IS '포스트에 좋아요를 토글하는 함수. 트리거를 통해 자동으로 likes_count가 동기화됩니다.';
 COMMENT ON FUNCTION odd.v1_toggle_post_bookmark IS '포스트에 북마크를 토글하는 함수. 트리거를 통해 자동으로 bookmarks_count가 동기화됩니다.';
 
+

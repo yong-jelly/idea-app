@@ -127,3 +127,4 @@ export const dummyTopSupporters: TopSupporter[] = [];
 export const dummyClaimedRewards: ClaimedRewardHistory[] = [];
 export const dummyChangelog: ChangelogEntry[] = [];
 
+

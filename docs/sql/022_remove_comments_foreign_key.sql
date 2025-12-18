@@ -40,3 +40,4 @@ END $$;
 
 COMMENT ON COLUMN odd.tbl_comments.post_id IS '포스트 ID 또는 프로젝트 ID (tbl_posts.id 또는 projects.id 참조, 외래키 제약조건 없음)';
 
+

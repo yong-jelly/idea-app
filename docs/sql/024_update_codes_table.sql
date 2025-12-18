@@ -60,3 +60,4 @@ ON CONFLICT (code_type, code_value) DO NOTHING;
 
 COMMENT ON TABLE odd.tbl_codes IS '모든 코드 타입을 통합 관리하는 테이블. 커뮤니티 공지 및 피드백 시스템 코드 포함';
 
+

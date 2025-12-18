@@ -120,3 +120,4 @@ COMMENT ON COLUMN odd.tbl_codes.sort_order IS '정렬 순서';
 COMMENT ON COLUMN odd.tbl_codes.created_at IS '생성일시';
 COMMENT ON COLUMN odd.tbl_codes.updated_at IS '수정일시';
 
+

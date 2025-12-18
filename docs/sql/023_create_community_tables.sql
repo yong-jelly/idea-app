@@ -474,3 +474,4 @@ COMMENT ON COLUMN odd.tbl_feedback_votes.id IS '고유 ID';
 COMMENT ON COLUMN odd.tbl_feedback_votes.feedback_id IS '피드백 ID (tbl_feedbacks.id 참조)';
 COMMENT ON COLUMN odd.tbl_feedback_votes.user_id IS '투표한 사용자 ID (tbl_users.id 참조)';
 
+
