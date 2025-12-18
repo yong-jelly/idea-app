@@ -11,4 +11,6 @@ export { Select, type SelectProps } from "./Select";
 export { Separator, type SeparatorProps } from "./Separator";
 export { Skeleton, type SkeletonProps } from "./Skeleton";
 export { SignUpPromptModal, type SignUpPromptModalProps } from "./SignUpPromptModal";
+export { CommentsLoading } from "./CommentsLoading";
+export { ProjectsLoading } from "./ProjectsLoading";
 

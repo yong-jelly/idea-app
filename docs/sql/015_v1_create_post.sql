@@ -204,3 +204,4 @@ GRANT EXECUTE ON FUNCTION odd.v1_create_post TO authenticated;
 COMMENT ON FUNCTION odd.v1_create_post IS '포스트를 생성하는 함수. 현재 로그인한 사용자가 작성자가 됩니다.';
 
 
+

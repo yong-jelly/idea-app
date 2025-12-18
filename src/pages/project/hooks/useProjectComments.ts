@@ -35,11 +35,15 @@ interface CommentPagination {
   hasMore: boolean;
 }
 
+import { ensureMinDelay, type MinLoadingDelay } from "@/shared/lib/utils";
+
 interface UseProjectCommentsOptions {
   projectId: string;
   projectAuthorId: string;
   isAuthenticated: boolean;
   onSignUpPrompt: () => void;
+  /** 최소 로딩 지연 시간 (기본값: { min: 800, max: 1500 }) */
+  minLoadingDelay?: MinLoadingDelay | null;
 }
 
 export function useProjectComments({
@@ -47,6 +51,7 @@ export function useProjectComments({
   projectAuthorId,
   isAuthenticated,
   onSignUpPrompt,
+  minLoadingDelay = { min: 800, max: 1500 },
 }: UseProjectCommentsOptions) {
   const [comments, setComments] = useState<CommentNode[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -121,6 +126,8 @@ export function useProjectComments({
   const loadComments = async (offset: number = 0, append: boolean = false) => {
     if (!projectId) return;
 
+    const startTime = Date.now();
+
     if (!append) {
       setIsLoadingComments(true);
     } else {
@@ -141,6 +148,9 @@ export function useProjectComments({
       }
       return;
     }
+
+    // 최소 지연 시간 보장
+    await ensureMinDelay(startTime, minLoadingDelay);
 
     const normalized = normalizeComments(rawComments, projectAuthorId);
 

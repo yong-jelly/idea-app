@@ -1,16 +1,31 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useProjectStore, fetchProjects, type Project } from "@/entities/project";
 import { ProjectListItem } from "@/entities/project/ui/ProjectListItem";
+import { ProjectsLoading } from "@/shared/ui/ProjectsLoading";
+import { ensureMinDelay, type MinLoadingDelay } from "@/shared/lib/utils";
 
-export function ExplorePage() {
+interface ExplorePageProps {
+  /** 최소 로딩 지연 시간 (기본값: { min: 300, max: 1000 }) */
+  minLoadingDelay?: MinLoadingDelay | null;
+}
+
+export function ExplorePage({ minLoadingDelay }: ExplorePageProps = {}) {
   const { toggleProjectLike } = useProjectStore();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // minLoadingDelay를 메모이제이션하여 무한 루프 방지
+  // ExplorePage는 0.8초 ~ 1.5초 지연 시간 사용
+  const delayConfig = useMemo(
+    () => minLoadingDelay ?? { min: 800, max: 1500 },
+    [minLoadingDelay]
+  );
+
   // 전체 프로젝트 조회
   useEffect(() => {
     const loadProjects = async () => {
+      const startTime = Date.now();
       setIsLoading(true);
       setError(null);
 
@@ -28,11 +43,14 @@ export function ExplorePage() {
         setProjects(fetchedProjects);
       }
 
+      // 최소 지연 시간 보장
+      await ensureMinDelay(startTime, delayConfig);
+
       setIsLoading(false);
     };
 
     loadProjects();
-  }, []);
+  }, []); // 의존성 배열을 비워서 마운트 시 한 번만 실행
 
   // TODO: 인기 프로젝트 섹션 (커뮤니티 구현 후)
   // const trendingProjects = projects.slice().sort((a, b) => b.likesCount - a.likesCount);
@@ -53,9 +71,7 @@ export function ExplorePage() {
             </h2>
           </div>
           {isLoading ? (
-            <div className="px-4 py-8 text-center text-surface-500 dark:text-surface-400">
-              프로젝트를 불러오는 중...
-            </div>
+            <ProjectsLoading count={5} />
           ) : error ? (
             <div className="px-4 py-8 text-center text-red-500 dark:text-red-400">
               {error}

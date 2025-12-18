@@ -397,3 +397,4 @@ COMMENT ON COLUMN odd.tbl_mentions.is_read IS '읽음 여부 (알림용)';
 COMMENT ON COLUMN odd.tbl_mentions.created_at IS '생성일시';
 
 
+

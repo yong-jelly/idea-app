@@ -276,3 +276,4 @@ GRANT EXECUTE ON FUNCTION odd.v1_fetch_feed TO anon;
 COMMENT ON FUNCTION odd.v1_fetch_feed IS '피드 포스트 목록을 조회하는 함수. 필터링, 정렬, 페이지네이션을 지원하며 작성자 정보와 현재 사용자의 인터랙션 상태도 함께 반환합니다.';
 
 
+

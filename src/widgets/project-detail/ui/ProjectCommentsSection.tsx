@@ -60,43 +60,38 @@ export function ProjectCommentsSection({
         </Button>
       </div>
 
-      {isLoadingComments ? (
-        <div className="mb-6 p-4 rounded-xl bg-white dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-800 text-center text-surface-500">
-          댓글을 불러오는 중...
-        </div>
-      ) : (
-        <div className="mb-6 p-4 rounded-xl bg-white dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-800">
-          <CommentThread
-            comments={comments}
-            currentUser={
-              currentUser
-                ? {
-                    id: currentUser.id,
-                    username: currentUser.username,
-                    displayName: currentUser.displayName,
-                    avatarUrl: currentUser.avatar
-                      ? getProfileImageUrl(currentUser.avatar, "sm")
-                      : undefined,
-                  }
-                : { id: "guest", displayName: "게스트" }
-            }
-            currentUserId={currentUser?.id}
-            maxDepth={maxDepth}
-            enableAttachments={false}
-            maxImages={0}
-            isAuthenticated={isAuthenticated}
-            onSignUpPrompt={onSignUpPrompt}
-            onCreate={onCreate}
-            onReply={onReply}
-            onLike={onLike}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            hasMore={hasMore}
-            isLoadingMore={isLoadingMore}
-            onLoadMore={onLoadMore}
-          />
-        </div>
-      )}
+      <div className="mb-6 p-4 rounded-xl bg-white dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-800">
+        <CommentThread
+          comments={comments}
+          currentUser={
+            currentUser
+              ? {
+                  id: currentUser.id,
+                  username: currentUser.username,
+                  displayName: currentUser.displayName,
+                  avatarUrl: currentUser.avatar
+                    ? getProfileImageUrl(currentUser.avatar, "sm")
+                    : undefined,
+                }
+              : { id: "guest", displayName: "게스트" }
+          }
+          currentUserId={currentUser?.id}
+          maxDepth={maxDepth}
+          enableAttachments={false}
+          maxImages={0}
+          isAuthenticated={isAuthenticated}
+          onSignUpPrompt={onSignUpPrompt}
+          onCreate={onCreate}
+          onReply={onReply}
+          onLike={onLike}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={onLoadMore}
+          isLoadingComments={isLoadingComments}
+        />
+      </div>
     </div>
   );
 }

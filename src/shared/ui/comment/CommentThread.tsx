@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Reply, ThumbsUp, Edit, Trash2, ChevronDown, ChevronUp, ImageIcon, Send, X } from "lucide-react";
 
 import { Avatar, Badge, Button, Separator, Textarea } from "@/shared/ui";
+import { CommentsLoading } from "@/shared/ui/CommentsLoading";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
 
 /**
@@ -57,6 +58,8 @@ export interface CommentThreadProps {
   hasMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void | Promise<void>;
+  /** 댓글 목록 로딩 중 여부 */
+  isLoadingComments?: boolean;
 }
 
 // SQL 함수에서 depth >= 2일 때 에러 발생하므로, 기본값은 2로 설정
@@ -77,6 +80,7 @@ interface ComposerProps {
   enableAttachments: boolean;
   maxImages: number;
   maxLength?: number;
+  disabled?: boolean;
 }
 
 /**
@@ -95,6 +99,7 @@ function CommentComposer({
   enableAttachments,
   maxImages,
   maxLength = DEFAULT_MAX_COMMENT_LENGTH,
+  disabled = false,
 }: ComposerProps) {
   const [content, setContent] = useState(initialContent);
   const [images, setImages] = useState<string[]>(initialImages);
@@ -107,7 +112,7 @@ function CommentComposer({
   const isOverLimit = currentLength > maxLength;
 
   const handleSubmit = useCallback(async () => {
-    if (!content.trim() && images.length === 0 || isSubmitting || isOverLimit) return;
+    if (!content.trim() && images.length === 0 || isSubmitting || isOverLimit || disabled) return;
     setIsSubmitting(true);
     const maybePromise = onSubmit(content.trim(), images) as unknown;
     if (maybePromise && typeof (maybePromise as any).then === "function") {
@@ -116,7 +121,7 @@ function CommentComposer({
     setContent("");
     setImages([]);
     setIsSubmitting(false);
-  }, [content, images, isSubmitting, isOverLimit, onSubmit]);
+  }, [content, images, isSubmitting, isOverLimit, disabled, onSubmit]);
   
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
@@ -126,6 +131,7 @@ function CommentComposer({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (disabled) return;
     const isSubmitKey = (e.metaKey || e.ctrlKey) && e.key === "Enter";
     if (isSubmitKey) {
       e.preventDefault();
@@ -177,12 +183,14 @@ function CommentComposer({
           placeholder={displayPlaceholder}
           className={cn(
             "min-h-[80px] text-sm pr-16",
-            isOverLimit && "border-rose-300 dark:border-rose-700 focus:border-rose-500 dark:focus:border-rose-500"
+            isOverLimit && "border-rose-300 dark:border-rose-700 focus:border-rose-500 dark:focus:border-rose-500",
+            disabled && "opacity-60 cursor-not-allowed"
           )}
           autoFocus={autoFocus}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           maxLength={maxLength}
+          disabled={disabled}
         />
         <div className={cn(
           "absolute bottom-2 right-2 text-[10px] font-medium transition-colors",
@@ -246,9 +254,9 @@ function CommentComposer({
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(
                   "text-surface-600 hover:text-primary-500 border-dashed px-3",
-                  hasReachedLimit && "opacity-60 cursor-not-allowed"
+                  (hasReachedLimit || disabled) && "opacity-60 cursor-not-allowed"
                 )}
-                disabled={hasReachedLimit}
+                disabled={hasReachedLimit || disabled}
               >
                 <ImageIcon className="h-4 w-4 mr-1" />
                 <span className="text-xs">
@@ -271,7 +279,7 @@ function CommentComposer({
               취소
             </Button>
           )}
-          <Button size="sm" onClick={handleSubmit} disabled={(!content.trim() && images.length === 0) || isSubmitting || isOverLimit}>
+          <Button size="sm" onClick={handleSubmit} disabled={(!content.trim() && images.length === 0) || isSubmitting || isOverLimit || disabled}>
             <Send className={cn("h-3.5 w-3.5 mr-1", isSubmitting && "animate-spin")} />
             {isSubmitting ? "전송 중..." : "작성"}
           </Button>
@@ -657,6 +665,7 @@ export function CommentThread({
   hasMore = false,
   isLoadingMore = false,
   onLoadMore,
+  isLoadingComments = false,
 }: CommentThreadProps) {
   const sortByRecent = useCallback((items: CommentNode[]): CommentNode[] => {
     return [...items]
@@ -685,6 +694,7 @@ export function CommentThread({
               enableAttachments={enableAttachments}
               maxImages={maxImages}
               maxLength={DEFAULT_MAX_COMMENT_LENGTH}
+              disabled={isLoadingComments}
             />
           </div>
         </div>
@@ -696,7 +706,9 @@ export function CommentThread({
 
       <Separator />
 
-      {orderedComments.length > 0 ? (
+      {isLoadingComments ? (
+        <CommentsLoading minHeight={300} skeletonCount={3} />
+      ) : orderedComments.length > 0 ? (
         <>
           <div className="divide-y divide-surface-100 dark:divide-surface-800">
             {orderedComments.map((comment) => (

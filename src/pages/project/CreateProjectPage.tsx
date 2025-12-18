@@ -2,13 +2,16 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useUserStore } from "@/entities/user";
 import { createProject } from "@/entities/project";
-import { CreateProjectHeader } from "./components/CreateProjectHeader";
-import { BasicInfoSection } from "./components/BasicInfoSection";
-import { CategorySection, CATEGORIES } from "./components/CategorySection";
-import { TechStackSection } from "./components/TechStackSection";
-import { MediaSection } from "./components/MediaSection";
-import { UrlSection } from "./components/UrlSection";
-import { SubmitSection } from "./components/SubmitSection";
+import {
+  CreateProjectHeader,
+  BasicInfoSection,
+  CategorySection,
+  CATEGORIES,
+  TechStackSection,
+  MediaSection,
+  UrlSection,
+  SubmitSection,
+} from "@/features/project-create";
 
 interface ProjectFormData {
   title: string;
