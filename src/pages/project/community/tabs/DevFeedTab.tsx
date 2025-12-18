@@ -190,6 +190,8 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
       setIsLoadingPosts(true);
     }
 
+    const startTime = Date.now();
+
     try {
       const { data, error } = await supabase
         .schema("odd")
@@ -208,6 +210,20 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
         return;
       }
 
+      // 프로젝트 정보가 필요하므로 먼저 로드되어야 함
+      if (!project || !project.author.id) {
+        if (!append) {
+          setIsLoadingPosts(false);
+        }
+        return;
+      }
+
+      // 최소 로딩 지연 시간 보장 (0.3~0.7초) - 탭 이동 시에만 적용
+      // 데이터가 없을 때도 지연을 적용하여 일관된 UX 제공
+      if (!append) {
+        await ensureMinDelay(startTime, { min: 300, max: 700 });
+      }
+
       if (!data || data.length === 0) {
         if (append) {
           setHasMorePosts(false);
@@ -215,14 +231,6 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
           setPosts([]);
           setHasMorePosts(false);
         }
-        if (!append) {
-          setIsLoadingPosts(false);
-        }
-        return;
-      }
-
-      // 프로젝트 정보가 필요하므로 먼저 로드되어야 함
-      if (!project || !project.author.id) {
         if (!append) {
           setIsLoadingPosts(false);
         }
@@ -255,67 +263,9 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
   useEffect(() => {
     if (!projectId || !project?.id) return;
 
-    let isCancelled = false;
-
-    const fetchPosts = async () => {
-      setPostOffset(0);
-      setIsLoadingPosts(true);
-      
-      const startTime = Date.now();
-
-      try {
-        const { data, error } = await supabase
-          .schema("odd")
-          .rpc("v1_fetch_community_posts", {
-            p_project_id: projectId,
-            p_post_type: filter === "all" ? null : filter,
-            p_limit: POSTS_PER_PAGE,
-            p_offset: 0,
-          });
-
-        if (isCancelled) return;
-
-        if (error) {
-          console.error("포스트 조회 실패:", error);
-          setIsLoadingPosts(false);
-          return;
-        }
-
-        if (!data || data.length === 0) {
-          setPosts([]);
-          setHasMorePosts(false);
-          setIsLoadingPosts(false);
-          return;
-        }
-
-        // 최소 로딩 지연 시간 보장 (0.3~0.7초)
-        await ensureMinDelay(startTime, { min: 300, max: 700 });
-
-        if (isCancelled) return;
-
-        const projectAuthorId: string = project.author.id;
-        const devPosts: DevPost[] = data.map((row: any) =>
-          convertPostToDevPost(row, projectAuthorId)
-        );
-
-        setPosts(devPosts);
-        setPostOffset(devPosts.length);
-        setHasMorePosts(devPosts.length === POSTS_PER_PAGE);
-      } catch (err) {
-        console.error("포스트 조회 에러:", err);
-      } finally {
-        if (!isCancelled) {
-          setIsLoadingPosts(false);
-        }
-      }
-    };
-
-    fetchPosts();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [projectId, project?.id, filter]);
+    setPostOffset(0);
+    loadPosts(0, false);
+  }, [projectId, project?.id, filter, loadPosts]);
 
   // 필터링된 포스트 목록
   const filteredPosts = filter === "all" 

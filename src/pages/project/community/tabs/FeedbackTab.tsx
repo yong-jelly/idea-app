@@ -8,7 +8,7 @@
  * - 필터링 기능 (전체, 기능 요청, 버그, 개선 제안)
  * - 페이징 지원 (30개씩)
  */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import {
@@ -24,12 +24,13 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { Button, Badge, Textarea, Card, CardContent, Input } from "@/shared/ui";
-import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
+import { cn, formatNumber, formatRelativeTime, ensureMinDelay } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
 import { supabase } from "@/shared/lib/supabase";
 import { getProfileImageUrl, getImageUrl, uploadPostImages } from "@/shared/lib/storage";
 import type { UserFeedback } from "../types";
 import { FEEDBACK_TYPE_INFO, FEEDBACK_STATUS_INFO } from "../constants";
+import { FeedbackCardSkeleton } from "../components/FeedbackCardSkeleton";
 
 interface FeedbackTabProps {
   projectId: string;
@@ -86,7 +87,7 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
   const [hasMoreFeedbacks, setHasMoreFeedbacks] = useState(false);
   
   // 필터 및 모달 상태
-  const [filter, setFilter] = useState<"all" | "bug" | "feature" | "improvement">("all");
+  const [filter, setFilter] = useState<"all" | "bug" | "feature" | "improvement" | "question">("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFeedback, setEditingFeedback] = useState<UserFeedback | null>(null);
   const [formData, setFormData] = useState({
@@ -99,12 +100,14 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
   const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   // 피드백 목록 로드 (페이징 지원)
-  const loadFeedbacks = async (offset: number = 0, append: boolean = false) => {
+  const loadFeedbacks = useCallback(async (offset: number = 0, append: boolean = false) => {
     if (!projectId) return;
 
     if (!append) {
       setIsLoadingFeedbacks(true);
     }
+
+    const startTime = Date.now();
 
     try {
       const { data, error } = await supabase
@@ -123,6 +126,12 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
           setIsLoadingFeedbacks(false);
         }
         return;
+      }
+
+      // 최소 로딩 지연 시간 보장 (0.3~0.7초) - 탭 이동 시에만 적용
+      // 데이터가 없을 때도 지연을 적용하여 일관된 UX 제공
+      if (!append) {
+        await ensureMinDelay(startTime, { min: 300, max: 700 });
       }
 
       if (!data || data.length === 0) {
@@ -157,7 +166,7 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
         setIsLoadingFeedbacks(false);
       }
     }
-  };
+  }, [projectId, filter]);
 
   // 프로젝트 ID와 필터가 변경되면 피드백 로드
   useEffect(() => {
@@ -165,7 +174,7 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
       setFeedbackOffset(0);
       loadFeedbacks(0, false);
     }
-  }, [projectId, filter]);
+  }, [projectId, filter, loadFeedbacks]);
 
   // 필터링된 피드백 목록
   const filteredFeedbacks = filter === "all" 
@@ -425,20 +434,12 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
     await loadFeedbacks(feedbackOffset, true);
   };
 
-  if (isLoadingFeedbacks) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-surface-500">로딩 중...</p>
-      </div>
-    );
-  }
-
   return (
     <div>
       {/* 필터 및 액션 버튼 */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex gap-2">
-          {(["all", "feature", "bug", "improvement"] as const).map((f) => (
+          {(["all", "feature", "bug", "improvement", "question"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -460,7 +461,14 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
       </div>
 
       {/* 피드백 목록 */}
-      {filteredFeedbacks.length === 0 ? (
+      {isLoadingFeedbacks ? (
+        // 탭 변경 시 로딩 중: 스켈레톤 UI 표시
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <FeedbackCardSkeleton key={index} />
+          ))}
+        </div>
+      ) : filteredFeedbacks.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <MessageSquareText className="h-10 w-10 mx-auto mb-3 text-surface-300 dark:text-surface-600" />
@@ -632,7 +640,7 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
                       타입 <span className="text-red-500">*</span>
                     </label>
                     <div className="flex flex-wrap gap-2">
-                      {(["feature", "bug", "improvement"] as const).map((type) => {
+                      {(["feature", "bug", "improvement", "question"] as const).map((type) => {
                         const info = FEEDBACK_TYPE_INFO[type];
                         const Icon = info.icon;
                         return (
@@ -644,7 +652,7 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
                             className={cn(
                               "flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-colors",
                               formData.type === type
-                                ? cn(info.color, info.color.includes("rose") ? "border-rose-300 dark:border-rose-700" : info.color.includes("amber") ? "border-amber-300 dark:border-amber-700" : "border-primary-300 dark:border-primary-700")
+                                ? cn(info.color, info.color.includes("rose") ? "border-rose-300 dark:border-rose-700" : info.color.includes("amber") ? "border-amber-300 dark:border-amber-700" : info.color.includes("blue") ? "border-blue-300 dark:border-blue-700" : "border-primary-300 dark:border-primary-700")
                                 : "border-transparent bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700"
                             )}
                           >

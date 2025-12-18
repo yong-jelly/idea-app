@@ -27,13 +27,14 @@ import {
 } from "lucide-react";
 import { Button, Avatar, Badge, Textarea, Card, CardContent, Separator } from "@/shared/ui";
 import { CommentThread } from "@/shared/ui/comment";
-import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
+import { cn, formatNumber, formatRelativeTime, ensureMinDelay } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
 import { supabase } from "@/shared/lib/supabase";
 import { getProfileImageUrl, getImageUrl } from "@/shared/lib/storage";
 import { fetchProjectDetail } from "@/entities/project";
 import { useDevFeedComments } from "./community/tabs/hooks/useDevFeedComments";
 import { LoginModal } from "@/pages/auth";
+import { FeedbackDetailSkeleton } from "./feedback/components/FeedbackDetailSkeleton";
 
 // ========== 타입 정의 ==========
 
@@ -533,9 +534,13 @@ export function FeedbackDetailPage() {
   useEffect(() => {
     if (!feedbackId) return;
 
+    let isCancelled = false;
+
     const loadFeedback = async () => {
       setIsLoading(true);
       setError(null);
+
+      const startTime = Date.now();
 
       try {
         const { data, error: fetchError } = await supabase
@@ -543,6 +548,8 @@ export function FeedbackDetailPage() {
           .rpc("v1_fetch_feedback_detail", {
             p_post_id: feedbackId,
           });
+
+        if (isCancelled) return;
 
         if (fetchError) {
           throw new Error(fetchError.message || "피드백을 불러오는데 실패했습니다");
@@ -552,18 +559,30 @@ export function FeedbackDetailPage() {
           throw new Error("피드백을 찾을 수 없습니다");
         }
 
+        // 최소 로딩 지연 시간 보장 (0.3~0.7초)
+        await ensureMinDelay(startTime, { min: 300, max: 700 });
+
+        if (isCancelled) return;
+
         const feedbackData = convertRowToFeedback(data[0]);
         setFeedback(feedbackData);
         setOriginalFeedback(feedbackData);
       } catch (err) {
+        if (isCancelled) return;
         console.error("피드백 조회 에러:", err);
         setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다");
       } finally {
-        setIsLoading(false);
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadFeedback();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [feedbackId]);
 
   // 변경사항 있는지 확인
@@ -613,11 +632,7 @@ export function FeedbackDetailPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <p className="text-surface-500">피드백을 불러오는 중...</p>
-      </div>
-    );
+    return <FeedbackDetailSkeleton />;
   }
 
   if (error || !feedback) {
