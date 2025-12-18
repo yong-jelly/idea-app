@@ -12,6 +12,7 @@ import {
   PostDetailPage,
   ExplorePage,
   CreateProjectPage,
+  EditProjectPage,
   SupportPage,
   FeatureRequestsPage,
   ProjectDetailPage,
@@ -78,6 +79,17 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <CreateProjectPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        // 보호된 라우트: 프로젝트 수정 페이지
+        // 비회원이 접근하면 ProtectedRoute 컴포넌트가 메인 피드(/)로 리다이렉트합니다.
+        // 세션 토큰이 없는 경우 접근이 차단됩니다.
+        path: "project/:id/edit",
+        element: (
+          <ProtectedRoute>
+            <EditProjectPage />
           </ProtectedRoute>
         ),
       },

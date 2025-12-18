@@ -1,7 +1,8 @@
 export * from "./model/project.types";
 export { useProjectStore } from "./model/project.store";
 export { 
-  createProject, 
+  createProject,
+  updateProject,
   fetchProjects,
   fetchProjectDetail,
   fetchProjectComments,
@@ -11,6 +12,8 @@ export {
   toggleProjectCommentLike,
   type CreateProjectData, 
   type CreateProjectResult,
+  type UpdateProjectData,
+  type UpdateProjectResult,
   type FetchProjectsOptions,
   type FetchProjectsResult,
   type FetchProjectDetailResult,

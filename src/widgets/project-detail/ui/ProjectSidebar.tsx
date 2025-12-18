@@ -158,12 +158,12 @@ export function ProjectSidebar({
                 {categoryInfo?.icon} {categoryInfo?.name}
               </span>
             </div>
-            <div className="flex items-center justify-between">
+            {/* <div className="flex items-center justify-between">
               <span className="text-surface-500 dark:text-surface-400">마일스톤</span>
               <span className="font-medium text-emerald-600 dark:text-emerald-400">
                 2/3 완료
               </span>
-            </div>
+            </div> */}
             {project.demoUrl && (
               <a
                 href={project.demoUrl}

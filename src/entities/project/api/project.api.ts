@@ -212,6 +212,191 @@ export async function createProject(
 }
 
 /**
+ * 프로젝트 수정 시 데이터베이스에 저장할 데이터 타입
+ */
+export interface UpdateProjectData {
+  title?: string;
+  short_description?: string;
+  full_description?: string;
+  category?: ProjectCategory;
+  tech_stack?: string[]; // JSON 배열로 저장
+  thumbnail?: string; // Storage 경로 또는 URL
+  gallery_images?: string[]; // Storage 경로 배열 (JSON으로 저장)
+  repository_url?: string;
+  demo_url?: string;
+  android_store_url?: string;
+  ios_store_url?: string;
+  mac_store_url?: string;
+}
+
+/**
+ * 프로젝트 수정 결과
+ */
+export interface UpdateProjectResult {
+  success: boolean;
+  error: Error | null;
+}
+
+/**
+ * 프로젝트 수정
+ * 
+ * @param projectId - 수정할 프로젝트 ID
+ * @param data - 프로젝트 데이터
+ * @param thumbnailFile - 썸네일 파일 (선택, 새로 업로드하는 경우)
+ * @param screenshotFiles - 갤러리 이미지 파일 배열 (선택, 새로 업로드하는 경우)
+ * @returns 수정 성공 여부 또는 에러
+ */
+export async function updateProject(
+  projectId: string,
+  data: UpdateProjectData,
+  thumbnailFile?: File | null,
+  screenshotFiles?: File[]
+): Promise<UpdateProjectResult> {
+  try {
+    if (!projectId) {
+      return {
+        success: false,
+        error: new Error("프로젝트 ID가 필요합니다"),
+      };
+    }
+
+    // 현재 로그인한 사용자의 auth_id 확인
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return {
+        success: false,
+        error: new Error("로그인이 필요합니다"),
+      };
+    }
+
+    // auth_id로 사용자 정보 조회
+    const { data: dbUser, error: userError } = await supabase
+      .schema("odd")
+      .from("tbl_users")
+      .select("id")
+      .eq("auth_id", authUser.id)
+      .single();
+
+    if (userError || !dbUser) {
+      console.error("사용자 조회 에러:", userError);
+      return {
+        success: false,
+        error: new Error("사용자 정보를 찾을 수 없습니다"),
+      };
+    }
+
+    // 프로젝트 소유자 확인
+    const { data: project, error: projectError } = await supabase
+      .schema("odd")
+      .from("projects")
+      .select("author_id")
+      .eq("id", projectId)
+      .single();
+
+    if (projectError || !project) {
+      return {
+        success: false,
+        error: new Error("프로젝트를 찾을 수 없습니다"),
+      };
+    }
+
+    if (project.author_id !== dbUser.id) {
+      return {
+        success: false,
+        error: new Error("프로젝트를 수정할 권한이 없습니다"),
+      };
+    }
+
+    // 1. 이미지 업로드 (새로 업로드하는 경우)
+    let thumbnailPath: string | undefined = data.thumbnail;
+    // 기존 이미지 URL 유지 (data.gallery_images에 기존 이미지 URL이 있음)
+    let galleryImagePaths: string[] = data.gallery_images || [];
+
+    // 썸네일 업로드
+    if (thumbnailFile) {
+      const { path, error: uploadError } = await uploadProjectThumbnail(
+        thumbnailFile,
+        authUser.id,
+        projectId
+      );
+
+      if (uploadError) {
+        console.error("썸네일 업로드 에러:", uploadError);
+        return {
+          success: false,
+          error: new Error("썸네일 업로드에 실패했습니다"),
+        };
+      }
+      thumbnailPath = path;
+    }
+
+    // 갤러리 이미지 업로드 (기존 이미지와 합치기)
+    if (screenshotFiles && screenshotFiles.length > 0) {
+      const { paths, error: uploadError } = await uploadProjectScreenshots(
+        screenshotFiles,
+        authUser.id,
+        projectId
+      );
+
+      if (uploadError) {
+        console.error("갤러리 이미지 업로드 에러:", uploadError);
+        return {
+          success: false,
+          error: new Error("갤러리 이미지 업로드에 실패했습니다"),
+        };
+      }
+      // 기존 이미지 URL과 새로 업로드한 경로를 합침
+      galleryImagePaths = [...galleryImagePaths, ...paths];
+    }
+
+    // 2. 프로젝트 데이터 업데이트
+    const updateData: any = {};
+    
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.short_description !== undefined) updateData.short_description = data.short_description;
+    if (data.full_description !== undefined) updateData.full_description = data.full_description || null;
+    if (data.category !== undefined) updateData.category = data.category;
+    if (data.tech_stack !== undefined) updateData.tech_stack = data.tech_stack;
+    if (thumbnailPath !== undefined) updateData.thumbnail = thumbnailPath;
+    // gallery_images는 항상 업데이트 (기존 이미지 + 새 이미지 합친 배열)
+    if (data.gallery_images !== undefined || galleryImagePaths.length > 0) {
+      updateData.gallery_images = galleryImagePaths;
+    }
+    if (data.repository_url !== undefined) updateData.repository_url = data.repository_url || null;
+    if (data.demo_url !== undefined) updateData.demo_url = data.demo_url || null;
+    if (data.android_store_url !== undefined) updateData.android_store_url = data.android_store_url || null;
+    if (data.ios_store_url !== undefined) updateData.ios_store_url = data.ios_store_url || null;
+    if (data.mac_store_url !== undefined) updateData.mac_store_url = data.mac_store_url || null;
+
+    const { error: updateError } = await supabase
+      .schema("odd")
+      .from("projects")
+      .update(updateData)
+      .eq("id", projectId)
+      .eq("author_id", dbUser.id); // 소유자 확인을 위해 추가 조건
+
+    if (updateError) {
+      console.error("프로젝트 수정 에러:", updateError);
+      return {
+        success: false,
+        error: new Error(updateError.message || "프로젝트 수정에 실패했습니다"),
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error("프로젝트 수정 에러:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
  * 프로젝트 목록 조회 옵션
  */
 export interface FetchProjectsOptions {

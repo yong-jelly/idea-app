@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router";
 import { useUserStore } from "@/entities/user";
-import { createProject } from "@/entities/project";
+import { updateProject, fetchProjectDetail, type Project } from "@/entities/project";
 import {
-  CreateProjectHeader,
+  EditProjectHeader,
   BasicInfoSection,
   CategorySection,
   CATEGORIES,
@@ -29,11 +29,14 @@ interface ProjectFormData {
   macStoreUrl: string;
 }
 
-export function CreateProjectPage() {
+export function EditProjectPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const { user } = useUserStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState<ProjectFormData>({
     title: "",
     shortDescription: "",
@@ -49,6 +52,73 @@ export function CreateProjectPage() {
     iosStoreUrl: "",
     macStoreUrl: "",
   });
+
+  // 프로젝트 데이터 로드
+  useEffect(() => {
+    if (!id) {
+      setError("프로젝트 ID가 필요합니다");
+      setIsLoading(false);
+      return;
+    }
+
+    const loadProject = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      const { overview, error: fetchError } = await fetchProjectDetail(id);
+
+      if (fetchError || !overview.project) {
+        console.error("프로젝트 조회 실패:", fetchError);
+        setError(fetchError?.message || "프로젝트를 찾을 수 없습니다");
+        setIsLoading(false);
+        return;
+      }
+
+      const loadedProject = overview.project;
+
+      // 작성자 확인
+      if (!user || user.id !== loadedProject.author.id) {
+        setError("프로젝트를 수정할 권한이 없습니다");
+        setIsLoading(false);
+        return;
+      }
+
+      setProject(loadedProject);
+
+      // 카테고리 ID 찾기 (mappedCategory로 역매핑)
+      const categoryId = CATEGORIES.find(
+        (c) => c.mappedCategory === loadedProject.category
+      )?.id || "";
+
+      // 기존 이미지들을 preview로 설정
+      const thumbnailPreview = loadedProject.thumbnail || "";
+      const screenshotPreviews: Array<{ file: File; preview: string }> = 
+        (loadedProject.galleryImages || []).map((url) => ({
+          file: null as any, // 기존 이미지는 File 객체가 없음
+          preview: url,
+        }));
+
+      setFormData({
+        title: loadedProject.title,
+        shortDescription: loadedProject.shortDescription,
+        fullDescription: loadedProject.fullDescription || "",
+        category: categoryId,
+        techStack: loadedProject.techStack || [],
+        thumbnailFile: null,
+        thumbnailPreview,
+        screenshots: screenshotPreviews,
+        repositoryUrl: loadedProject.repositoryUrl || "",
+        demoUrl: loadedProject.demoUrl || "",
+        androidStoreUrl: loadedProject.androidStoreUrl || "",
+        iosStoreUrl: loadedProject.iosStoreUrl || "",
+        macStoreUrl: loadedProject.macStoreUrl || "",
+      });
+
+      setIsLoading(false);
+    };
+
+    loadProject();
+  }, [id, user]);
 
   const updateField = <K extends keyof ProjectFormData>(field: K, value: ProjectFormData[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -106,7 +176,7 @@ export function CreateProjectPage() {
   };
 
   const handleSubmit = async () => {
-    if (!user) {
+    if (!user || !id) {
       setError("로그인이 필요합니다");
       return;
     }
@@ -126,7 +196,18 @@ export function CreateProjectPage() {
         throw new Error("유효하지 않은 카테고리입니다");
       }
 
-      const { projectId, error: createError } = await createProject(
+      // 새로 업로드할 스크린샷 파일만 필터링 (기존 이미지는 file이 null)
+      const newScreenshotFiles = formData.screenshots
+        .filter((s) => s.file !== null)
+        .map((s) => s.file);
+
+      // 기존 이미지 URL 유지 (file이 null인 경우)
+      const existingImageUrls = formData.screenshots
+        .filter((s) => s.file === null)
+        .map((s) => s.preview);
+
+      const { success, error: updateError } = await updateProject(
+        id,
         {
           title: formData.title.trim(),
           short_description: formData.shortDescription.trim(),
@@ -138,21 +219,22 @@ export function CreateProjectPage() {
           android_store_url: formData.androidStoreUrl.trim() || undefined,
           ios_store_url: formData.iosStoreUrl.trim() || undefined,
           mac_store_url: formData.macStoreUrl.trim() || undefined,
-          // author_id는 API에서 자동으로 현재 로그인한 사용자로 설정됨
+          // 기존 이미지 URL 유지 (새 파일이 없는 경우)
+          gallery_images: existingImageUrls.length > 0 ? existingImageUrls : undefined,
         },
         formData.thumbnailFile,
-        formData.screenshots.map((s) => s.file)
+        newScreenshotFiles.length > 0 ? newScreenshotFiles : undefined
       );
 
-      if (createError || !projectId) {
-        throw createError || new Error("프로젝트 생성에 실패했습니다");
+      if (!success || updateError) {
+        throw updateError || new Error("프로젝트 수정에 실패했습니다");
       }
 
       // 성공 시 프로젝트 페이지로 이동
-      navigate(`/project/${projectId}`);
+      navigate(`/project/${id}`);
     } catch (err) {
-      console.error("프로젝트 생성 에러:", err);
-      setError(err instanceof Error ? err.message : "프로젝트 생성에 실패했습니다");
+      console.error("프로젝트 수정 에러:", err);
+      setError(err instanceof Error ? err.message : "프로젝트 수정에 실패했습니다");
       setIsSubmitting(false);
     }
   };
@@ -161,10 +243,26 @@ export function CreateProjectPage() {
     formData.title.trim() && formData.shortDescription.trim() && formData.category
   );
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <p className="text-surface-500">프로젝트를 불러오는 중...</p>
+      </div>
+    );
+  }
+
+  if (error && !project) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <p className="text-surface-500">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
       <div className="mx-auto max-w-5xl px-4 pb-16 pt-6">
-        <CreateProjectHeader />
+        {id && <EditProjectHeader projectId={id} />}
 
         {/* 폼 컨텐츠 */}
         <div className="space-y-6">
@@ -210,6 +308,7 @@ export function CreateProjectPage() {
             onAndroidStoreUrlChange={(value) => updateField("androidStoreUrl", value)}
             onIosStoreUrlChange={(value) => updateField("iosStoreUrl", value)}
             onMacStoreUrlChange={(value) => updateField("macStoreUrl", value)}
+            defaultOpen={true}
           />
         </div>
 
@@ -224,8 +323,10 @@ export function CreateProjectPage() {
           isValid={isValid}
           isSubmitting={isSubmitting}
           onSubmit={handleSubmit}
+          mode="edit"
         />
       </div>
     </div>
   );
 }
+

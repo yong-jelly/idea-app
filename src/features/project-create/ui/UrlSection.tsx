@@ -14,6 +14,7 @@ interface UrlSectionProps {
   onAndroidStoreUrlChange: (value: string) => void;
   onIosStoreUrlChange: (value: string) => void;
   onMacStoreUrlChange: (value: string) => void;
+  defaultOpen?: boolean; // 기본적으로 열려있을지 여부
 }
 
 export function UrlSection({
@@ -27,8 +28,9 @@ export function UrlSection({
   onAndroidStoreUrlChange,
   onIosStoreUrlChange,
   onMacStoreUrlChange,
+  defaultOpen = false,
 }: UrlSectionProps) {
-  const [showUrls, setShowUrls] = useState(false);
+  const [showUrls, setShowUrls] = useState(defaultOpen);
 
   return (
     <div className="rounded-xl border border-surface-200 bg-white p-6 shadow-sm dark:border-surface-800 dark:bg-surface-900">

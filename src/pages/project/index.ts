@@ -1,6 +1,9 @@
 // 프로젝트 생성 페이지 - 새 프로젝트를 등록하는 페이지
 export { CreateProjectPage } from "./CreateProjectPage";
 
+// 프로젝트 수정 페이지 - 기존 프로젝트를 수정하는 페이지
+export { EditProjectPage } from "./EditProjectPage";
+
 // 프로젝트 지원 페이지 - 프로젝트 후원 및 지원 기능을 제공하는 페이지
 export { SupportPage } from "./SupportPage";
 
