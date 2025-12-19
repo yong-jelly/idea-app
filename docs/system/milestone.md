@@ -154,6 +154,16 @@ import { TaskRow } from "@/entities/project";
 
 ## 진행률 계산
 
+진행률은 `getMilestoneProgress` 유틸리티 함수를 사용하여 계산됩니다.
+
+```typescript
+import { getMilestoneProgress } from "@/pages/project/community/utils/milestone.utils";
+
+const progress = getMilestoneProgress(milestone);
+// 0-100 사이의 정수 값 반환
+```
+
+**구현:**
 ```typescript
 const progress = totalTasks > 0 
   ? Math.round((closedIssuesCount / (openIssuesCount + closedIssuesCount)) * 100) 
@@ -164,13 +174,24 @@ const progress = totalTasks > 0
 
 ## D-day 표시 규칙
 
-| 상황 | 표시 |
-|------|------|
-| 기한 초과 | 빨간색, "N일 지남" |
-| 오늘 마감 | "오늘" |
-| 기한 남음 | "D-N" |
-| 기한 없음 | 표시 안 함 |
-| 완료된 항목 | 표시 안 함 |
+D-day 레이블은 `getMilestoneDueLabel` 유틸리티 함수를 사용하여 생성됩니다.
+
+```typescript
+import { getMilestoneDueLabel } from "@/pages/project/community/utils/milestone.utils";
+
+const dueLabel = getMilestoneDueLabel(milestone.dueDate, milestone.status);
+// null (기한 없음 또는 완료됨) 또는 { label: string, isOverdue: boolean }
+```
+
+**표시 규칙:**
+
+| 상황 | 표시 | 반환값 |
+|------|------|--------|
+| 기한 초과 | 빨간색, "N일 지남" | `{ label: "N일 지남", isOverdue: true }` |
+| 오늘 마감 | "오늘" | `{ label: "오늘", isOverdue: false }` |
+| 기한 남음 | "D-N" | `{ label: "D-N", isOverdue: false }` |
+| 기한 없음 | 표시 안 함 | `null` |
+| 완료된 항목 | 표시 안 함 | `null` |
 
 ---
 
@@ -207,14 +228,24 @@ src/
 ├── entities/project/
 │   ├── model/
 │   │   └── project.types.ts    # Milestone, MilestoneTask 타입
-│   └── ui/
-│       ├── MilestoneRow.tsx    # 마일스톤 Row 컴포넌트
-│       ├── TaskRow.tsx         # 태스크 Row 컴포넌트
-│       └── MilestoneRows.stories.tsx  # 스토리북
+│   ├── ui/
+│   │   ├── MilestoneRow.tsx    # 마일스톤 Row 컴포넌트
+│   │   ├── TaskRow.tsx         # 태스크 Row 컴포넌트
+│   │   └── MilestoneRows.stories.tsx  # 스토리북
+│   └── api/
+│       └── project.api.ts      # 마일스톤 API 함수들
 ├── pages/project/
-│   ├── ProjectCommunityPage.tsx  # 마일스톤 탭 포함
-│   └── MilestoneDetailPage.tsx   # 마일스톤 상세 페이지
+│   ├── community/
+│   │   ├── index.tsx                 # 커뮤니티 메인 페이지 (마일스톤 탭 포함)
+│   │   ├── tabs/
+│   │   │   └── MilestonesTab.tsx     # 마일스톤 탭 컴포넌트
+│   │   ├── utils/
+│   │   │   └── milestone.utils.ts     # 진행률 계산, 기한 레이블 유틸리티
+│   │   └── types.ts                   # 타입 정의
+│   ├── milestone/
+│   │   └── components/                # 마일스톤 상세 페이지 컴포넌트들
+│   └── MilestoneDetailPage.tsx        # 마일스톤 상세 페이지
 └── app/router/
-    └── index.tsx               # 라우팅 설정
+    └── index.tsx                      # 라우팅 설정
 ```
 

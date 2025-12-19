@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import {
   Megaphone,
@@ -16,20 +16,14 @@ import { MilestonesTab } from "./tabs/MilestonesTab";
 import { DevFeedTab } from "./tabs/DevFeedTab";
 import { FeedbackTab } from "./tabs/FeedbackTab";
 import { ChangelogTab } from "./tabs/ChangelogTab";
+import { RewardsTab } from "./tabs/RewardsTab";
 import { CommunityPageSkeleton } from "./components/CommunityPageSkeleton";
-// TODO: RewardsTab 분리 후 import
-// import { RewardsTab } from "./tabs/RewardsTab";
-
-// 임시: 원본 파일에서 import (나중에 분리)
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import {
-  RewardsTab,
   dummyRewards,
   dummyPointRules,
   dummyTopSupporters,
   dummyClaimedRewards,
-} from "../ProjectCommunityPage";
+} from "./data";
 
 export function ProjectCommunityPage() {
   const { id, tab } = useParams<{ id: string; tab?: string }>();

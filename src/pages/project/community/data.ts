@@ -1,5 +1,5 @@
 // 더미 데이터 (개발용)
-import type { DevPost, UserFeedback, ChangelogEntry, TopSupporter, ClaimedRewardHistory } from "./types";
+import type { DevPost, UserFeedback, ChangelogEntry, TopSupporter, ClaimedRewardHistory, PostComment } from "./types";
 import type { Milestone, Reward, PointRule } from "@/entities/project";
 
 export const dummyDevPosts: DevPost[] = [
@@ -19,7 +19,60 @@ export const dummyDevPosts: DevPost[] = [
     isLiked: false,
     commentsCount: 23,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    comments: [],
+    comments: [
+      {
+        id: "c1",
+        author: { id: "u3", username: "early_adopter", displayName: "얼리어답터" },
+        content: "드디어! 베타 테스트 신청은 어디서 하나요? 🙋‍♂️",
+        likesCount: 12,
+        isLiked: true,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 20).toISOString(),
+        replies: [
+          {
+            id: "c1-r1",
+            author: { id: "u1", username: "indiemaker", displayName: "인디메이커", role: "Founder" },
+            content: "@얼리어답터 설정 > 베타 프로그램에서 신청하실 수 있습니다! 감사합니다 🙏",
+            likesCount: 8,
+            isLiked: false,
+            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(),
+          },
+          {
+            id: "c1-r2",
+            author: { id: "u3", username: "early_adopter", displayName: "얼리어답터" },
+            content: "감사합니다! 바로 신청했어요 ✨",
+            likesCount: 3,
+            isLiked: false,
+            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 17).toISOString(),
+          },
+        ],
+      },
+      {
+        id: "c2",
+        author: { id: "u4", username: "tech_lover", displayName: "테크러버" },
+        content: "새로운 AI 기능이 기대됩니다! 어떤 모델을 사용하셨나요?",
+        likesCount: 7,
+        isLiked: false,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 15).toISOString(),
+        replies: [
+          {
+            id: "c2-r1",
+            author: { id: "u2", username: "dev_kim", displayName: "김개발", role: "Developer" },
+            content: "GPT-4 기반의 커스텀 모델을 사용했습니다. 응답 속도와 정확도를 최적화했어요!",
+            likesCount: 15,
+            isLiked: true,
+            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 14).toISOString(),
+          },
+        ],
+      },
+      {
+        id: "c3",
+        author: { id: "u5", username: "beta_tester", displayName: "베타테스터" },
+        content: "UI 개선 너무 좋아요! 특히 다크모드가 눈이 편해졌어요 👀",
+        likesCount: 21,
+        isLiked: false,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 10).toISOString(),
+      },
+    ],
   },
   {
     id: "dp2",
@@ -36,7 +89,78 @@ export const dummyDevPosts: DevPost[] = [
     isLiked: false,
     commentsCount: 5,
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-    comments: [],
+    comments: [
+      {
+        id: "c4",
+        author: { id: "u6", username: "night_owl", displayName: "야행성개발자" },
+        content: "새벽 2시라니... 제 코딩 타임인데 😅 그래도 감사합니다!",
+        likesCount: 34,
+        isLiked: true,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 45).toISOString(),
+        replies: [
+          {
+            id: "c4-r1",
+            author: { id: "u1", username: "indiemaker", displayName: "인디메이커", role: "Founder" },
+            content: "죄송해요 😅 가능한 빨리 끝내겠습니다!",
+            likesCount: 5,
+            isLiked: false,
+            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 44).toISOString(),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "dp3",
+    type: "discussion",
+    title: "다음 기능 투표: 어떤 기능을 먼저 개발할까요?",
+    content: "다음 업데이트에 추가할 기능을 고민 중입니다. 1) 다크모드 지원 2) 모바일 앱 3) API 확장. 여러분의 의견을 들려주세요!",
+    author: {
+      id: "u2",
+      username: "dev_kim",
+      displayName: "김개발",
+      role: "Developer",
+    },
+    likesCount: 67,
+    isLiked: true,
+    commentsCount: 89,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
+    comments: [
+      {
+        id: "c5",
+        author: { id: "u7", username: "mobile_first", displayName: "모바일퍼스트" },
+        content: "모바일 앱이요! 출퇴근길에 쓰고 싶어요 📱",
+        likesCount: 45,
+        isLiked: false,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 70).toISOString(),
+        replies: [
+          {
+            id: "c5-r1",
+            author: { id: "u8", username: "dark_theme", displayName: "다크모드매니아" },
+            content: "저는 다크모드가 더 급해요! 눈이 아파요 😭",
+            likesCount: 38,
+            isLiked: true,
+            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 68).toISOString(),
+          },
+          {
+            id: "c5-r2",
+            author: { id: "u9", username: "api_developer", displayName: "API개발자" },
+            content: "API 확장 부탁드려요! 자동화하고 싶은 게 많습니다",
+            likesCount: 29,
+            isLiked: false,
+            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 65).toISOString(),
+          },
+        ],
+      },
+      {
+        id: "c6",
+        author: { id: "u2", username: "dev_kim", displayName: "김개발", role: "Developer" },
+        content: "투표 결과를 정리하면: 다크모드 45%, 모바일 앱 35%, API 확장 20% 입니다! 다크모드부터 진행할게요 🌙",
+        likesCount: 89,
+        isLiked: true,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 50).toISOString(),
+      },
+    ],
   },
   {
     id: "dp4",
@@ -119,12 +243,205 @@ export const dummyFeedback: UserFeedback[] = [
   },
 ];
 
-// 더미 데이터는 원본 파일에서 가져오거나 여기에 추가
-export const dummyMilestones: Milestone[] = [];
-export const dummyRewards: Reward[] = [];
-export const dummyPointRules: PointRule[] = [];
-export const dummyTopSupporters: TopSupporter[] = [];
-export const dummyClaimedRewards: ClaimedRewardHistory[] = [];
+export const dummyMilestones: Milestone[] = [
+  {
+    id: "m1",
+    projectId: "1",
+    title: "v1.0 - MVP 출시",
+    description: "핵심 기능을 포함한 최소 기능 제품 출시. 사용자 인증, 기본 CRUD, UI 디자인 완성.",
+    dueDate: "2024-10-01",
+    status: "closed",
+    openIssuesCount: 0,
+    closedIssuesCount: 5,
+    tasks: [
+      { id: "t1-1", milestoneId: "m1", title: "사용자 인증 시스템 구현", status: "done", createdAt: "2024-08-01T00:00:00Z", completedAt: "2024-08-15T00:00:00Z" },
+      { id: "t1-2", milestoneId: "m1", title: "기본 CRUD API 개발", status: "done", createdAt: "2024-08-01T00:00:00Z", completedAt: "2024-08-20T00:00:00Z" },
+      { id: "t1-3", milestoneId: "m1", title: "메인 UI 디자인", status: "done", createdAt: "2024-08-05T00:00:00Z", completedAt: "2024-09-01T00:00:00Z" },
+      { id: "t1-4", milestoneId: "m1", title: "반응형 레이아웃 적용", status: "done", createdAt: "2024-08-10T00:00:00Z", completedAt: "2024-09-10T00:00:00Z" },
+      { id: "t1-5", milestoneId: "m1", title: "배포 환경 설정", status: "done", createdAt: "2024-09-15T00:00:00Z", completedAt: "2024-09-28T00:00:00Z" },
+    ],
+    createdAt: "2024-08-01T00:00:00Z",
+    updatedAt: "2024-09-28T00:00:00Z",
+    closedAt: "2024-09-28T00:00:00Z",
+  },
+  {
+    id: "m2",
+    projectId: "1",
+    title: "v1.5 - 베타 테스트",
+    description: "1000명의 베타 테스터와 함께 제품 검증. 피드백 시스템 구축 및 버그 수정.",
+    dueDate: "2024-12-15",
+    status: "open",
+    openIssuesCount: 3,
+    closedIssuesCount: 4,
+    tasks: [
+      { id: "t2-1", milestoneId: "m2", title: "베타 테스터 모집 페이지", status: "done", createdAt: "2024-09-01T00:00:00Z", completedAt: "2024-09-15T00:00:00Z" },
+      { id: "t2-2", milestoneId: "m2", title: "피드백 수집 시스템 구축", status: "done", createdAt: "2024-09-10T00:00:00Z", completedAt: "2024-10-01T00:00:00Z" },
+      { id: "t2-3", milestoneId: "m2", title: "버그 리포트 기능", status: "done", createdAt: "2024-09-20T00:00:00Z", completedAt: "2024-10-15T00:00:00Z" },
+      { id: "t2-4", milestoneId: "m2", title: "성능 모니터링 대시보드", status: "done", createdAt: "2024-10-01T00:00:00Z", completedAt: "2024-11-01T00:00:00Z" },
+      { id: "t2-5", milestoneId: "m2", title: "주요 버그 수정 (5건)", status: "todo", createdAt: "2024-11-01T00:00:00Z" },
+      { id: "t2-6", milestoneId: "m2", title: "사용자 피드백 반영", status: "todo", createdAt: "2024-11-15T00:00:00Z" },
+      { id: "t2-7", milestoneId: "m2", title: "베타 종료 보고서 작성", status: "todo", createdAt: "2024-12-01T00:00:00Z" },
+    ],
+    createdAt: "2024-09-01T00:00:00Z",
+    updatedAt: "2024-12-01T00:00:00Z",
+  },
+  {
+    id: "m3",
+    projectId: "1",
+    title: "v2.0 - 정식 출시",
+    description: "모든 기능이 완성된 정식 버전 출시. AI 기능 추가, 성능 최적화, 다국어 지원.",
+    dueDate: "2025-03-01",
+    status: "open",
+    openIssuesCount: 5,
+    closedIssuesCount: 1,
+    tasks: [
+      { id: "t3-1", milestoneId: "m3", title: "AI 추천 시스템 설계", status: "done", createdAt: "2024-10-01T00:00:00Z", completedAt: "2024-11-01T00:00:00Z" },
+      { id: "t3-2", milestoneId: "m3", title: "AI 모델 학습 및 배포", status: "todo", createdAt: "2024-11-01T00:00:00Z" },
+      { id: "t3-3", milestoneId: "m3", title: "다국어 지원 (영어, 일본어)", status: "todo", createdAt: "2024-11-15T00:00:00Z" },
+      { id: "t3-4", milestoneId: "m3", title: "성능 최적화 (로딩 50% 감소)", status: "todo", createdAt: "2024-12-01T00:00:00Z" },
+      { id: "t3-5", milestoneId: "m3", title: "마케팅 랜딩 페이지", status: "todo", createdAt: "2024-12-15T00:00:00Z" },
+      { id: "t3-6", milestoneId: "m3", title: "프로덕션 배포 및 모니터링", status: "todo", createdAt: "2025-01-01T00:00:00Z" },
+    ],
+    createdAt: "2024-10-01T00:00:00Z",
+    updatedAt: "2024-11-15T00:00:00Z",
+  },
+  {
+    id: "m4",
+    projectId: "1",
+    title: "v0.9 - 프로토타입",
+    description: "초기 프로토타입 버전. 컨셉 검증 및 초기 사용자 피드백 수집.",
+    dueDate: "2024-07-15",
+    status: "closed",
+    openIssuesCount: 0,
+    closedIssuesCount: 3,
+    tasks: [
+      { id: "t4-1", milestoneId: "m4", title: "와이어프레임 제작", status: "done", createdAt: "2024-06-01T00:00:00Z", completedAt: "2024-06-15T00:00:00Z" },
+      { id: "t4-2", milestoneId: "m4", title: "프로토타입 개발", status: "done", createdAt: "2024-06-15T00:00:00Z", completedAt: "2024-07-01T00:00:00Z" },
+      { id: "t4-3", milestoneId: "m4", title: "초기 사용자 인터뷰 (10명)", status: "done", createdAt: "2024-07-01T00:00:00Z", completedAt: "2024-07-10T00:00:00Z" },
+    ],
+    createdAt: "2024-06-01T00:00:00Z",
+    updatedAt: "2024-07-10T00:00:00Z",
+    closedAt: "2024-07-10T00:00:00Z",
+  },
+];
+
+export const dummyRewards: Reward[] = [
+  {
+    id: "r1",
+    projectId: "1",
+    title: "얼리버드 서포터 쿠폰",
+    description: "프로젝트 초기 지원자를 위한 20% 할인 쿠폰",
+    pointsRequired: 100,
+    quantity: 500,
+    claimedCount: 342,
+    type: "redeem_code",
+    codePrefix: "EARLY2024",
+    isActive: true,
+    createdAt: "2024-01-01T00:00:00Z",
+  },
+  {
+    id: "r2",
+    projectId: "1",
+    title: "iOS 베타 테스트 참여권",
+    description: "TestFlight를 통해 앱을 미리 체험해보세요",
+    pointsRequired: 300,
+    quantity: 50,
+    claimedCount: 23,
+    type: "beta_access",
+    platform: "ios",
+    accessUrl: "https://testflight.apple.com/join/xxxxx",
+    isActive: true,
+    createdAt: "2024-06-01T00:00:00Z",
+  },
+  {
+    id: "r3",
+    projectId: "1",
+    title: "프리미엄 1개월 이용권",
+    description: "프리미엄 기능을 1개월간 무료로 이용",
+    pointsRequired: 500,
+    quantity: 100,
+    claimedCount: 78,
+    type: "redeem_code",
+    codePrefix: "PREMIUM",
+    expiresAt: "2025-03-31T23:59:59Z",
+    isActive: true,
+    createdAt: "2024-03-01T00:00:00Z",
+  },
+  {
+    id: "r4",
+    projectId: "1",
+    title: "Android 베타 테스트",
+    description: "Play Store 내부 테스트 프로그램 참여",
+    pointsRequired: 300,
+    quantity: -1, // 무제한
+    claimedCount: 156,
+    type: "beta_access",
+    platform: "android",
+    accessUrl: "https://play.google.com/apps/testing/xxxxx",
+    isActive: true,
+    createdAt: "2024-06-15T00:00:00Z",
+  },
+  {
+    id: "r5",
+    projectId: "1",
+    title: "한정판 굿즈 세트",
+    description: "스티커, 티셔츠, 머그컵 등 굿즈 세트",
+    pointsRequired: 2000,
+    quantity: 50,
+    claimedCount: 48,
+    type: "physical",
+    isActive: true,
+    createdAt: "2024-02-01T00:00:00Z",
+  },
+  {
+    id: "r6",
+    projectId: "1",
+    title: "디지털 아트워크 팩",
+    description: "프로젝트 컨셉 아트 & 배경화면 모음",
+    pointsRequired: 150,
+    quantity: -1,
+    claimedCount: 89,
+    type: "digital",
+    isActive: true,
+    createdAt: "2024-04-01T00:00:00Z",
+  },
+];
+
+export const dummyPointRules: PointRule[] = [
+  { id: "pr1", projectId: "1", activityType: "daily_checkin", points: 10, maxPerDay: 1, description: "매일 출석체크", isActive: true },
+  { id: "pr2", projectId: "1", activityType: "weekly_streak", points: 50, description: "7일 연속 출석 보너스", isActive: true },
+  { id: "pr3", projectId: "1", activityType: "feedback_submit", points: 30, maxPerDay: 3, description: "피드백 제출", isActive: true },
+  { id: "pr4", projectId: "1", activityType: "feedback_accepted", points: 100, description: "피드백 채택 시 추가 보너스", isActive: true },
+  { id: "pr5", projectId: "1", activityType: "bug_report", points: 50, maxPerDay: 5, description: "버그 신고", isActive: true },
+  { id: "pr6", projectId: "1", activityType: "feature_vote", points: 5, maxPerDay: 10, description: "기능 투표", isActive: true },
+  { id: "pr7", projectId: "1", activityType: "comment", points: 5, maxPerDay: 10, description: "댓글 작성", isActive: true },
+  { id: "pr8", projectId: "1", activityType: "share", points: 20, maxPerDay: 3, description: "SNS 공유", isActive: true },
+];
+
+export const dummyTopSupporters: TopSupporter[] = [
+  { rank: 1, user: { id: "u1", username: "power_user", displayName: "파워유저" }, points: 2850, feedbackCount: 45, joinedAt: "2024-01-15" },
+  { rank: 2, user: { id: "u2", username: "bug_master", displayName: "버그마스터" }, points: 2340, feedbackCount: 38, joinedAt: "2024-02-01" },
+  { rank: 3, user: { id: "u3", username: "feedback_king", displayName: "피드백킹" }, points: 1890, feedbackCount: 52, joinedAt: "2024-01-20" },
+  { rank: 4, user: { id: "u4", username: "early_bird", displayName: "얼리버드" }, points: 1650, feedbackCount: 28, joinedAt: "2024-01-10" },
+  { rank: 5, user: { id: "u5", username: "active_dev", displayName: "활발한개발자" }, points: 1420, feedbackCount: 22, joinedAt: "2024-03-05" },
+];
+
+export const dummyClaimedRewards: ClaimedRewardHistory[] = [
+  {
+    id: "cr1",
+    reward: dummyRewards[0],
+    code: "EARLY2024-ABC123",
+    claimedAt: "2024-11-15T10:30:00Z",
+    isUsed: false,
+  },
+  {
+    id: "cr2",
+    reward: dummyRewards[5],
+    claimedAt: "2024-10-20T14:20:00Z",
+    isUsed: true,
+  },
+];
+
 export const dummyChangelog: ChangelogEntry[] = [];
 
 

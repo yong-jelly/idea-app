@@ -249,7 +249,15 @@ src/
 │       ├── FeedbackRow.tsx           # 피드백 Row 컴포넌트
 │       └── FeedbackRows.stories.tsx  # 스토리북
 ├── pages/project/
-│   ├── ProjectCommunityPage.tsx      # 피드백 탭 포함
+│   ├── community/
+│   │   ├── index.tsx                 # 커뮤니티 메인 페이지 (피드백 탭 포함)
+│   │   ├── tabs/
+│   │   │   └── FeedbackTab.tsx       # 피드백 탭 컴포넌트
+│   │   ├── components/
+│   │   │   └── FeedbackCardSkeleton.tsx  # 피드백 스켈레톤
+│   │   ├── types.ts                  # 타입 정의
+│   │   ├── constants.ts              # 상수 정의
+│   │   └── utils/                     # 유틸리티 함수들
 │   └── FeedbackDetailPage.tsx        # 피드백 상세 페이지
 └── app/router/
     └── index.tsx                     # 라우팅 설정
@@ -259,6 +267,19 @@ src/
 
 ## 댓글 깊이 제한 로직
 
+댓글 시스템은 최대 3 depth까지 지원하며, 댓글 정규화는 `normalizeComments` 유틸리티 함수를 사용합니다.
+
+```typescript
+import { normalizeComments, countAllComments } from "@/pages/project/community/utils/comment.utils";
+
+// 댓글 배열을 CommentNode 형식으로 정규화
+const comments = normalizeComments(postComments, 0);
+
+// 모든 댓글 개수 계산 (대댓글 포함)
+const totalComments = countAllComments(comments);
+```
+
+**답글 버튼 표시 조건:**
 ```typescript
 const MAX_COMMENT_DEPTH = 3;
 
@@ -275,7 +296,20 @@ const canReply = comment.depth < MAX_COMMENT_DEPTH - 1;
 - 각 피드백에 1인 1표
 - 투표 취소 가능
 - 투표수 높은 피드백 우선 표시 (기본 정렬)
-- 투표수는 formatNumber로 축약 표시 (예: 1.2K)
+- 투표수는 `formatNumber`로 축약 표시 (예: 1.2K)
+
+**투표 옵션 업데이트:**
+투표 관련 로직은 `updateVoteOptions` 유틸리티 함수를 사용할 수 있습니다.
+
+```typescript
+import { updateVoteOptions } from "@/pages/project/community/utils/vote.utils";
+
+const { options, totalVotes } = updateVoteOptions(
+  voteOptions,
+  selectedOptionId,
+  previousOptionId
+);
+```
 
 ---
 
