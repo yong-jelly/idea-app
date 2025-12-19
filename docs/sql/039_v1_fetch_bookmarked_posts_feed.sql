@@ -1,26 +1,25 @@
 -- =====================================================
--- odd.v1_fetch_unified_feed: 통합 피드 조회 함수
+-- odd.v1_fetch_bookmarked_posts_feed: 북마크한 포스트 피드 조회 함수
 -- =====================================================
 -- 
--- 메인 피드의 홈 영역에 표시할 모든 피드를 통합하여 조회합니다.
--- 커뮤니티 공지, 피드백, 프로젝트 생성 정보, 프로젝트 타임라인 포스트를 포함합니다.
+-- 사용자가 북마크한 포스트의 피드를 조회합니다.
+-- 일반 포스트, 커뮤니티 공지, 피드백, 프로젝트 생성 정보를 포함하며
 -- 모든 피드를 시간순으로 정렬하여 반환합니다.
 -- 
 -- 사용 위치:
---   - FeedPage의 홈 탭에서 통합 피드 조회 시 호출
---   - 프론트엔드: supabase.schema('odd').rpc('v1_fetch_unified_feed', {...})
+--   - BookmarksPage에서 북마크한 포스트 피드 조회 시 호출
+--   - 프론트엔드: supabase.schema('odd').rpc('v1_fetch_bookmarked_posts_feed', {...})
 -- 
 -- 실행 방법:
---   psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:ZNDqDunnaydr0aFQ@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" -f docs/sql/034_v1_fetch_unified_feed.sql
+--   psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:ZNDqDunnaydr0aFQ@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" -f docs/sql/039_v1_fetch_bookmarked_posts_feed.sql
 -- 
 -- =====================================================
--- 1. 통합 피드 조회 함수
+-- 1. 북마크한 포스트 피드 조회 함수
 -- =====================================================
 
--- 기존 함수 삭제 (필드 변경 시 필요)
-DROP FUNCTION IF EXISTS odd.v1_fetch_unified_feed(integer, integer);
+DROP FUNCTION IF EXISTS odd.v1_fetch_bookmarked_posts_feed(integer, integer);
 
-CREATE OR REPLACE FUNCTION odd.v1_fetch_unified_feed(
+CREATE OR REPLACE FUNCTION odd.v1_fetch_bookmarked_posts_feed(
     p_limit integer DEFAULT 50,
     p_offset integer DEFAULT 0
 )
@@ -70,7 +69,7 @@ SET search_path = odd, public
 STABLE
 AS $$
 /*
- * 함수 설명: 메인 피드의 홈 영역에 표시할 모든 피드를 통합하여 조회합니다.
+ * 함수 설명: 사용자가 북마크한 포스트의 피드를 조회합니다.
  *           일반 포스트, 커뮤니티 공지, 피드백, 프로젝트 생성 정보를 포함하며
  *           모든 피드를 시간순으로 정렬하여 반환합니다.
  * 
@@ -79,25 +78,31 @@ AS $$
  *   - p_offset: 페이지네이션 오프셋 (기본값: 0)
  * 
  * 반환값:
- *   - 통합 피드 목록 (작성자 정보, 인터랙션 상태, 피드 타입별 추가 정보 포함)
+ *   - 북마크한 포스트의 피드 목록 (작성자 정보, 인터랙션 상태, 피드 타입별 추가 정보 포함)
  * 
  * 보안:
  *   - SECURITY DEFINER: 함수 소유자 권한으로 실행
- *   - 공개 조회이므로 인증 없이도 접근 가능 (RLS 정책에 따라)
- *   - 현재 사용자 정보는 auth.uid()로 조회 (인증되지 않은 경우 NULL)
+ *   - 인증된 사용자만 접근 가능
+ *   - 현재 로그인한 사용자의 북마크 목록만 반환
  */
 DECLARE
     v_auth_id uuid;
     v_user_id bigint;
 BEGIN
-    -- 현재 로그인한 사용자 확인 (인증되지 않은 경우 NULL)
+    -- 현재 로그인한 사용자 확인
     v_auth_id := auth.uid();
     
-    -- auth_id로 사용자 ID 조회 (인증되지 않은 경우 NULL)
-    IF v_auth_id IS NOT NULL THEN
-        SELECT u.id INTO v_user_id
-        FROM odd.tbl_users u
-        WHERE u.auth_id = v_auth_id;
+    IF v_auth_id IS NULL THEN
+        RAISE EXCEPTION '로그인이 필요합니다';
+    END IF;
+    
+    -- auth_id로 사용자 ID 조회
+    SELECT u.id INTO v_user_id
+    FROM odd.tbl_users u
+    WHERE u.auth_id = v_auth_id;
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION '사용자 정보를 찾을 수 없습니다';
     END IF;
     
     -- limit 최대값 제한
@@ -115,9 +120,15 @@ BEGIN
         RAISE EXCEPTION 'offset은 0 이상이어야 합니다';
     END IF;
     
-    -- 통합 피드 조회 쿼리 (UNION ALL 사용)
+    -- 북마크한 포스트 피드 조회 쿼리 (UNION ALL 사용)
     RETURN QUERY
-    WITH unified_posts AS (
+    WITH bookmarked_posts AS (
+        -- 북마크한 포스트 ID 목록
+        SELECT pb.post_id
+        FROM odd.tbl_post_bookmarks pb
+        WHERE pb.user_id = v_user_id
+    ),
+    unified_posts AS (
         -- 1. 일반 포스트 (text, project_update, milestone, feature_accepted)
         SELECT 
             p.id,
@@ -144,18 +155,11 @@ BEGIN
             u.display_name AS author_display_name,
             u.avatar_url AS author_avatar_url,
             u.user_type AS author_user_type,
-            CASE WHEN v_user_id IS NOT NULL THEN
-                EXISTS (
-                    SELECT 1 FROM odd.tbl_post_likes pl
-                    WHERE pl.post_id = p.id AND pl.user_id = v_user_id
-                )
-            ELSE false END AS is_liked,
-            CASE WHEN v_user_id IS NOT NULL THEN
-                EXISTS (
-                    SELECT 1 FROM odd.tbl_post_bookmarks pb
-                    WHERE pb.post_id = p.id AND pb.user_id = v_user_id
-                )
-            ELSE false END AS is_bookmarked,
+            EXISTS (
+                SELECT 1 FROM odd.tbl_post_likes pl
+                WHERE pl.post_id = p.id AND pl.user_id = v_user_id
+            ) AS is_liked,
+            true AS is_bookmarked,  -- 북마크한 포스트이므로 항상 true
             NULL::text AS title,
             NULL::text AS post_type,
             NULL::text AS feedback_type,
@@ -166,6 +170,7 @@ BEGIN
             NULL::uuid AS voted_option_id
         FROM odd.tbl_posts p
         INNER JOIN odd.tbl_users u ON p.author_id = u.id
+        INNER JOIN bookmarked_posts bp ON p.id = bp.post_id
         LEFT JOIN odd.projects prj ON p.project_id = prj.id
         WHERE 
             p.is_deleted = false
@@ -206,18 +211,11 @@ BEGIN
             u.display_name AS author_display_name,
             u.avatar_url AS author_avatar_url,
             u.user_type AS author_user_type,
-            CASE WHEN v_user_id IS NOT NULL THEN
-                EXISTS (
-                    SELECT 1 FROM odd.tbl_post_likes pl
-                    WHERE pl.post_id = p.id AND pl.user_id = v_user_id
-                )
-            ELSE false END AS is_liked,
-            CASE WHEN v_user_id IS NOT NULL THEN
-                EXISTS (
-                    SELECT 1 FROM odd.tbl_post_bookmarks pb
-                    WHERE pb.post_id = p.id AND pb.user_id = v_user_id
-                )
-            ELSE false END AS is_bookmarked,
+            EXISTS (
+                SELECT 1 FROM odd.tbl_post_likes pl
+                WHERE pl.post_id = p.id AND pl.user_id = v_user_id
+            ) AS is_liked,
+            true AS is_bookmarked,  -- 북마크한 포스트이므로 항상 true
             pa.title,
             pa.post_type,
             NULL::text AS feedback_type,
@@ -240,7 +238,7 @@ BEGIN
                 ELSE NULL::jsonb
             END AS vote_options,
             CASE 
-                WHEN pa.post_type = 'vote' AND v_user_id IS NOT NULL THEN
+                WHEN pa.post_type = 'vote' THEN
                     (SELECT pvr.vote_option_id 
                      FROM odd.tbl_post_vote_responses pvr
                      WHERE pvr.post_id = p.id AND pvr.user_id = v_user_id
@@ -250,6 +248,7 @@ BEGIN
         FROM odd.tbl_posts p
         INNER JOIN odd.tbl_users u ON p.author_id = u.id
         INNER JOIN odd.tbl_post_announcements pa ON p.id = pa.post_id
+        INNER JOIN bookmarked_posts bp ON p.id = bp.post_id
         LEFT JOIN odd.tbl_post_votes pv ON p.id = pv.post_id AND pa.post_type = 'vote'
         LEFT JOIN odd.projects prj ON p.project_id = prj.id
         WHERE 
@@ -290,34 +289,26 @@ BEGIN
             u.display_name AS author_display_name,
             u.avatar_url AS author_avatar_url,
             u.user_type AS author_user_type,
-            CASE WHEN v_user_id IS NOT NULL THEN
-                EXISTS (
-                    SELECT 1 FROM odd.tbl_post_likes pl
-                    WHERE pl.post_id = p.id AND pl.user_id = v_user_id
-                )
-            ELSE false END AS is_liked,
-            CASE WHEN v_user_id IS NOT NULL THEN
-                EXISTS (
-                    SELECT 1 FROM odd.tbl_post_bookmarks pb
-                    WHERE pb.post_id = p.id AND pb.user_id = v_user_id
-                )
-            ELSE false END AS is_bookmarked,
+            EXISTS (
+                SELECT 1 FROM odd.tbl_post_likes pl
+                WHERE pl.post_id = p.id AND pl.user_id = v_user_id
+            ) AS is_liked,
+            true AS is_bookmarked,  -- 북마크한 포스트이므로 항상 true
             f.title,
             NULL::text AS post_type,
             f.feedback_type,
             f.status AS feedback_status,
             f.votes_count AS feedback_votes_count,
-            CASE WHEN v_user_id IS NOT NULL THEN
-                EXISTS (
-                    SELECT 1 FROM odd.tbl_feedback_votes fv
-                    WHERE fv.feedback_id = f.id AND fv.user_id = v_user_id
-                )
-            ELSE false END AS is_feedback_voted,
+            EXISTS (
+                SELECT 1 FROM odd.tbl_feedback_votes fv
+                WHERE fv.feedback_id = f.id AND fv.user_id = v_user_id
+            ) AS is_feedback_voted,
             NULL::jsonb AS vote_options,
             NULL::uuid AS voted_option_id
         FROM odd.tbl_posts p
         INNER JOIN odd.tbl_users u ON p.author_id = u.id
         INNER JOIN odd.tbl_feedbacks f ON p.id = f.post_id
+        INNER JOIN bookmarked_posts bp ON p.id = bp.post_id
         LEFT JOIN odd.projects prj ON p.project_id = prj.id
         WHERE 
             p.is_deleted = false
@@ -325,13 +316,13 @@ BEGIN
     )
     SELECT * FROM unified_posts
     ORDER BY 
-        created_at DESC  -- 시간순 정렬 (메인 피드에서는 고정 무시)
+        created_at DESC  -- 시간순 정렬
     LIMIT p_limit
     OFFSET p_offset;
 
 EXCEPTION
     WHEN OTHERS THEN
-        RAISE EXCEPTION 'Error in v1_fetch_unified_feed: %', SQLERRM;
+        RAISE EXCEPTION 'Error in v1_fetch_bookmarked_posts_feed: %', SQLERRM;
 END;
 $$;
 
@@ -339,13 +330,12 @@ $$;
 -- 2. 권한 부여
 -- =====================================================
 
--- 공개 조회이므로 모든 사용자가 접근 가능
-GRANT EXECUTE ON FUNCTION odd.v1_fetch_unified_feed TO authenticated;
-GRANT EXECUTE ON FUNCTION odd.v1_fetch_unified_feed TO anon;
+-- 인증된 사용자만 접근 가능
+GRANT EXECUTE ON FUNCTION odd.v1_fetch_bookmarked_posts_feed TO authenticated;
 
 -- =====================================================
 -- 3. 코멘트 추가
 -- =====================================================
 
-COMMENT ON FUNCTION odd.v1_fetch_unified_feed IS '메인 피드의 홈 영역에 표시할 모든 피드를 통합하여 조회하는 함수. 일반 포스트, 커뮤니티 공지, 피드백, 프로젝트 생성 정보를 시간순으로 정렬하여 반환합니다.';
+COMMENT ON FUNCTION odd.v1_fetch_bookmarked_posts_feed IS '사용자가 북마크한 포스트의 피드를 조회하는 함수. 일반 포스트, 커뮤니티 공지, 피드백, 프로젝트 생성 정보를 시간순으로 정렬하여 반환합니다.';
 

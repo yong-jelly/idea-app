@@ -8,7 +8,7 @@
  * source_type_code는 'project.community'를 사용합니다.
  */
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { CommentNode } from "@/shared/ui/comment";
 import { supabase } from "@/shared/lib/supabase";
 import { getProfileImageUrl, getImageUrl } from "@/shared/lib/storage";
@@ -162,7 +162,7 @@ export function useDevFeedComments({
   };
 
   // 댓글 로드 함수 (페이징 지원)
-  const loadComments = async (offset: number = 0, append: boolean = false) => {
+  const loadComments = useCallback(async (offset: number = 0, append: boolean = false) => {
     if (!postId) return;
 
     const startTime = Date.now();
@@ -246,7 +246,7 @@ export function useDevFeedComments({
         setIsLoadingMoreComments(false);
       }
     }
-  };
+  }, [postId, projectAuthorId, minLoadingDelay]);
 
   // data URL을 File로 변환하는 헬퍼 함수
   const dataURLtoFile = (dataURL: string, filename: string): File => {
@@ -683,7 +683,13 @@ export function useDevFeedComments({
     await loadComments(0, false);
   };
 
-  // 자동 로드 제거 - 확장될 때만 수동으로 로드
+  // postId가 변경될 때 댓글 자동 로드
+  useEffect(() => {
+    if (postId && projectAuthorId) {
+      setCommentOffset(0);
+      loadComments(0, false);
+    }
+  }, [postId, projectAuthorId, loadComments]);
 
   // 삭제된 댓글을 제외한 실제 댓글 개수
   const totalComments = commentPagination 

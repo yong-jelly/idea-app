@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useUserStore } from "@/entities/user";
-import { createProject } from "@/entities/project";
+import { createProject, useProjectStore } from "@/entities/project";
+
+// store 직접 접근용 (이벤트 핸들러 내부에서 사용)
+const getProjectStore = () => useProjectStore.getState();
 import {
   CreateProjectHeader,
   BasicInfoSection,
@@ -147,6 +150,11 @@ export function CreateProjectPage() {
       if (createError || !projectId) {
         throw createError || new Error("프로젝트 생성에 실패했습니다");
       }
+
+      // 내 프로젝트 목록 새로고침
+      setTimeout(() => {
+        getProjectStore().refreshMyProjects();
+      }, 100);
 
       // 성공 시 프로젝트 페이지로 이동
       navigate(`/project/${projectId}`);

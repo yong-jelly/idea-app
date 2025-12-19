@@ -121,7 +121,12 @@ export function FeedbackRow({
         {feedback.title}
       </h3>
 
-      <ContentArea content={feedback.content} images={feedback.images} />
+      <ContentArea 
+        content={feedback.content} 
+        images={feedback.images}
+        maxLength={300}
+        collapseNewlines={true}
+      />
       
       {/* 투표 버튼 (선택적) */}
       {onVote && (

@@ -2034,6 +2034,405 @@ export interface UpdateChangelogResult {
   error: Error | null;
 }
 
+// ========== 프로젝트 저장(북마크) 관련 ==========
+
+/**
+ * 프로젝트 저장/해제 토글 결과
+ */
+export interface ToggleProjectBookmarkResult {
+  isBookmarked: boolean;
+  bookmarksCount: number;
+  error: Error | null;
+}
+
+/**
+ * 프로젝트 저장/해제 토글
+ * 
+ * @param projectId - 프로젝트 ID
+ * @returns 저장 상태 및 저장 수
+ */
+export async function toggleProjectBookmark(
+  projectId: string
+): Promise<ToggleProjectBookmarkResult> {
+  try {
+    if (!projectId) {
+      return {
+        isBookmarked: false,
+        bookmarksCount: 0,
+        error: new Error("프로젝트 ID가 필요합니다"),
+      };
+    }
+
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_toggle_project_bookmark", {
+        p_project_id: projectId,
+      });
+
+    if (error) {
+      console.error("프로젝트 저장 토글 에러:", error);
+      return {
+        isBookmarked: false,
+        bookmarksCount: 0,
+        error: new Error(error.message || "프로젝트 저장에 실패했습니다"),
+      };
+    }
+
+    if (!data || data.length === 0) {
+      return {
+        isBookmarked: false,
+        bookmarksCount: 0,
+        error: new Error("응답 데이터가 없습니다"),
+      };
+    }
+
+    return {
+      isBookmarked: data[0].is_bookmarked || false,
+      bookmarksCount: data[0].bookmarks_count || 0,
+      error: null,
+    };
+  } catch (err) {
+    console.error("프로젝트 저장 토글 예외:", err);
+    return {
+      isBookmarked: false,
+      bookmarksCount: 0,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 프로젝트 저장 상태 확인 결과
+ */
+export interface CheckProjectBookmarkResult {
+  isBookmarked: boolean;
+  error: Error | null;
+}
+
+/**
+ * 프로젝트 저장 상태 확인
+ * 
+ * @param projectId - 프로젝트 ID
+ * @returns 저장 여부
+ */
+export async function checkProjectBookmark(
+  projectId: string
+): Promise<CheckProjectBookmarkResult> {
+  try {
+    if (!projectId) {
+      return {
+        isBookmarked: false,
+        error: new Error("프로젝트 ID가 필요합니다"),
+      };
+    }
+
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_check_project_bookmark", {
+        p_project_id: projectId,
+      });
+
+    if (error) {
+      console.error("프로젝트 저장 상태 확인 에러:", error);
+      return {
+        isBookmarked: false,
+        error: new Error(error.message || "저장 상태 확인에 실패했습니다"),
+      };
+    }
+
+    return {
+      isBookmarked: data === true,
+      error: null,
+    };
+  } catch (err) {
+    console.error("프로젝트 저장 상태 확인 예외:", err);
+    return {
+      isBookmarked: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 저장한 프로젝트 목록 조회 옵션
+ */
+export interface FetchSavedProjectsOptions {
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * 저장한 프로젝트 목록 조회 결과
+ */
+export interface FetchSavedProjectsResult {
+  projects: Project[];
+  error: Error | null;
+}
+
+/**
+ * 저장한 프로젝트 목록 조회
+ * 
+ * @param options - 조회 옵션
+ * @returns 저장한 프로젝트 목록
+ */
+export async function fetchSavedProjects(
+  options: FetchSavedProjectsOptions = {}
+): Promise<FetchSavedProjectsResult> {
+  try {
+    const { limit = 50, offset = 0 } = options;
+
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_fetch_saved_projects", {
+        p_limit: limit,
+        p_offset: offset,
+      });
+
+    if (error) {
+      console.error("저장한 프로젝트 조회 에러:", error);
+      return {
+        projects: [],
+        error: new Error(error.message || "저장한 프로젝트를 불러오는데 실패했습니다"),
+      };
+    }
+
+    if (!data || data.length === 0) {
+      return {
+        projects: [],
+        error: null,
+      };
+    }
+
+    // 데이터 변환
+    const projects: Project[] = data.map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      shortDescription: row.short_description,
+      fullDescription: row.full_description || undefined,
+      category: row.category as ProjectCategory,
+      techStack: (row.tech_stack as string[]) || [],
+      author: {
+        id: String(row.author_id),
+        username: row.author_username,
+        displayName: row.author_display_name,
+        avatar: row.author_avatar_url ? getProfileImageUrl(row.author_avatar_url, "sm") : undefined,
+      },
+      thumbnail: row.thumbnail ? getProjectImageUrl(row.thumbnail) : undefined,
+      galleryImages: row.gallery_images ? (row.gallery_images as string[]).map((img: string) => getProjectImageUrl(img)) : undefined,
+      repositoryUrl: row.repository_url || undefined,
+      demoUrl: row.demo_url || undefined,
+      androidStoreUrl: row.android_store_url || undefined,
+      iosStoreUrl: row.ios_store_url || undefined,
+      macStoreUrl: row.mac_store_url || undefined,
+      currentFunding: row.current_funding || 0,
+      targetFunding: row.target_funding || 0,
+      backersCount: row.backers_count || 0,
+      likesCount: row.likes_count || 0,
+      commentsCount: row.comments_count || 0,
+      daysLeft: row.days_left || 0,
+      status: row.status as Project["status"],
+      featured: row.featured || false,
+      isLiked: false, // 저장 목록에서는 좋아요 상태를 확인하지 않음
+      createdAt: row.created_at,
+    }));
+
+    return {
+      projects,
+      error: null,
+    };
+  } catch (err) {
+    console.error("저장한 프로젝트 조회 예외:", err);
+    return {
+      projects: [],
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 사용자가 생성한 프로젝트 목록 조회 옵션
+ */
+export interface FetchMyProjectsOptions {
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * 사용자가 생성한 프로젝트 목록 조회 결과
+ */
+export interface FetchMyProjectsResult {
+  projects: Project[];
+  error: Error | null;
+}
+
+/**
+ * 사용자가 생성한 프로젝트 목록 조회
+ * 
+ * @param options - 조회 옵션
+ * @returns 사용자가 생성한 프로젝트 목록
+ */
+export async function fetchMyProjects(
+  options: FetchMyProjectsOptions = {}
+): Promise<FetchMyProjectsResult> {
+  try {
+    // 현재 로그인한 사용자의 auth_id 확인
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return {
+        projects: [],
+        error: new Error("로그인이 필요합니다"),
+      };
+    }
+
+    // auth_id로 사용자 정보 조회
+    const { data: dbUser, error: userError } = await supabase
+      .schema("odd")
+      .from("tbl_users")
+      .select("id")
+      .eq("auth_id", authUser.id)
+      .single();
+
+    if (userError || !dbUser) {
+      return {
+        projects: [],
+        error: new Error("사용자 정보를 찾을 수 없습니다"),
+      };
+    }
+
+    const { limit = 50, offset = 0 } = options;
+
+    // 사용자가 생성한 프로젝트 조회
+    const { data, error } = await supabase
+      .schema("odd")
+      .from("projects")
+      .select(`
+        id,
+        title,
+        short_description,
+        full_description,
+        category,
+        tech_stack,
+        thumbnail,
+        gallery_images,
+        repository_url,
+        demo_url,
+        android_store_url,
+        ios_store_url,
+        mac_store_url,
+        author_id,
+        likes_count,
+        comments_count,
+        backers_count,
+        current_funding,
+        target_funding,
+        days_left,
+        status,
+        featured,
+        created_at,
+        updated_at,
+        author:author_id (
+          id,
+          username,
+          display_name,
+          avatar_url
+        )
+      `)
+      .eq("author_id", dbUser.id)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      console.error("내 프로젝트 조회 에러:", error);
+      return {
+        projects: [],
+        error: new Error(error.message || "내 프로젝트를 불러오는데 실패했습니다"),
+      };
+    }
+
+    if (!data || data.length === 0) {
+      return {
+        projects: [],
+        error: null,
+      };
+    }
+
+    // 데이터 변환
+    const projects: Project[] = data.map((row: any) => {
+      const author = row.author || {};
+      
+      // 썸네일 URL 변환
+      let thumbnailUrl: string | undefined = undefined;
+      if (row.thumbnail) {
+        if (row.thumbnail.startsWith("http://") || row.thumbnail.startsWith("https://")) {
+          thumbnailUrl = row.thumbnail;
+        } else {
+          thumbnailUrl = getProjectImageUrl(row.thumbnail);
+        }
+      }
+
+      // 갤러리 이미지 URL 변환
+      const galleryImages: string[] = [];
+      if (row.gallery_images && Array.isArray(row.gallery_images)) {
+        row.gallery_images.forEach((path: string) => {
+          if (path.startsWith("http://") || path.startsWith("https://")) {
+            galleryImages.push(path);
+          } else {
+            galleryImages.push(getProjectImageUrl(path));
+          }
+        });
+      }
+
+      // 기술 스택 파싱
+      const techStack: string[] = [];
+      if (row.tech_stack && Array.isArray(row.tech_stack)) {
+        techStack.push(...row.tech_stack);
+      }
+
+      return {
+        id: row.id,
+        title: row.title,
+        shortDescription: row.short_description,
+        fullDescription: row.full_description || undefined,
+        category: row.category as ProjectCategory,
+        techStack,
+        author: {
+          id: String(author.id || ""),
+          username: author.username || "",
+          displayName: author.display_name || "",
+          avatar: author.avatar_url ? getProfileImageUrl(author.avatar_url, "sm") : undefined,
+        },
+        thumbnail: thumbnailUrl,
+        galleryImages: galleryImages.length > 0 ? galleryImages : undefined,
+        repositoryUrl: row.repository_url || undefined,
+        demoUrl: row.demo_url || undefined,
+        androidStoreUrl: row.android_store_url || undefined,
+        iosStoreUrl: row.ios_store_url || undefined,
+        macStoreUrl: row.mac_store_url || undefined,
+        currentFunding: row.current_funding || 0,
+        targetFunding: row.target_funding || 0,
+        backersCount: row.backers_count || 0,
+        likesCount: row.likes_count || 0,
+        commentsCount: row.comments_count || 0,
+        daysLeft: row.days_left || 0,
+        status: row.status as Project["status"],
+        featured: row.featured || false,
+        createdAt: row.created_at,
+      };
+    });
+
+    return {
+      projects,
+      error: null,
+    };
+  } catch (err) {
+    console.error("내 프로젝트 조회 예외:", err);
+    return {
+      projects: [],
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
 /**
  * 변경사항 수정
  * 

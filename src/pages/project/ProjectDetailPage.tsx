@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router";
-import { MessageSquare, ChevronUp, MessageCircle, ArrowRight, Bookmark, Share2, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { MessageSquare, ChevronUp, MessageCircle, ArrowRight, Share2, ChevronLeft, ChevronRight, X, Bookmark } from "lucide-react";
 import { Button, Avatar } from "@/shared/ui";
 import { cn, formatNumber } from "@/shared/lib/utils";
-import { useProjectStore, fetchProjectDetail, type Project, CATEGORY_INFO } from "@/entities/project";
+import { useProjectStore, fetchProjectDetail, toggleProjectBookmark, checkProjectBookmark, type Project, CATEGORY_INFO } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { SignUpModal } from "@/pages/auth";
 import { useProjectComments } from "./hooks/useProjectComments";
@@ -25,6 +25,7 @@ export function ProjectDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [isBookmarking, setIsBookmarking] = useState(false);
 
   // 댓글 관련 로직을 hook으로 분리
   const {
@@ -68,12 +69,20 @@ export function ProjectDetailPage() {
         return;
       }
 
-      setProject(overview.project);
+      const loadedProject = overview.project;
+      
+      // 북마크 상태 확인 (인증된 사용자인 경우만)
+      if (isAuthenticated && id) {
+        const { isBookmarked } = await checkProjectBookmark(id);
+        loadedProject.isBookmarked = isBookmarked;
+      }
+
+      setProject(loadedProject);
       setIsLoading(false);
     };
 
     loadProject();
-  }, [id]);
+  }, [id, isAuthenticated]);
 
   // 갤러리 이미지 (프로젝트의 gallery_images 사용, 없으면 썸네일 사용)
   const galleryImages =
@@ -90,6 +99,55 @@ export function ProjectDetailPage() {
       return;
     }
     action();
+  };
+
+  // 저장하기 버튼 핸들러
+  const handleBookmark = async () => {
+    if (!isAuthenticated) {
+      setShowSignUpModal(true);
+      return;
+    }
+
+    if (!project || !id || isBookmarking) {
+      return;
+    }
+
+    setIsBookmarking(true);
+
+    // 낙관적 업데이트
+    const previousIsBookmarked = project.isBookmarked || false;
+    setProject({
+      ...project,
+      isBookmarked: !previousIsBookmarked,
+    });
+
+    try {
+      const { isBookmarked, error: bookmarkError } = await toggleProjectBookmark(id);
+
+      if (bookmarkError) {
+        console.error("북마크 토글 실패:", bookmarkError);
+        // 에러 발생 시 이전 상태로 롤백
+        setProject({
+          ...project,
+          isBookmarked: previousIsBookmarked,
+        });
+      } else {
+        // 성공 시 서버 응답으로 업데이트
+        setProject({
+          ...project,
+          isBookmarked,
+        });
+      }
+    } catch (err) {
+      console.error("북마크 토글 예외:", err);
+      // 에러 발생 시 이전 상태로 롤백
+      setProject({
+        ...project,
+        isBookmarked: previousIsBookmarked,
+      });
+    } finally {
+      setIsBookmarking(false);
+    }
   };
 
   // ESC 키로 모달 닫기
@@ -369,17 +427,17 @@ export function ProjectDetailPage() {
                 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
-                      if (!isAuthenticated) {
-                        setShowSignUpModal(true);
-                        return;
-                      }
-                      // TODO: 저장 기능
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-surface-200 dark:border-surface-700 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
+                    onClick={handleBookmark}
+                    disabled={isBookmarking}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors",
+                      project.isBookmarked
+                        ? "border-primary-500 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-400 dark:bg-primary-950/30 dark:text-primary-400 dark:hover:bg-primary-950/50"
+                        : "border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-800"
+                    )}
                   >
-                    <Bookmark className="h-4 w-4" />
-                    저장
+                    <Bookmark className={cn("h-4 w-4", project.isBookmarked && "fill-current")} />
+                    {isBookmarking ? "저장 중..." : project.isBookmarked ? "저장됨" : "저장"}
                   </button>
                   <button
                     onClick={() => {

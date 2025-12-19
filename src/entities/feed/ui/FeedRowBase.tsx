@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { Badge, BotBadge } from "@/shared/ui";
 import { cn, formatRelativeTime, formatNumber } from "@/shared/lib/utils";
 import { isBot } from "@/entities/user";
+import { normalizeImageUrls } from "@/shared/lib/storage";
 import type { BaseAuthor, AuthorWithRole, ExtendedInteractions, BaseInteractions, FeedSourceInfo } from "../model/feed.types";
 
 // ========== 공통 Props ==========
@@ -389,55 +390,72 @@ export interface ContentAreaProps {
   content: string;
   images?: string[];
   className?: string;
+  maxLength?: number; // 메인 피드에서 내용 길이 제한 (기본값: 제한 없음)
+  collapseNewlines?: boolean; // 개행을 1단으로 표시 (기본값: false)
 }
 
-export function ContentArea({ content, images, className }: ContentAreaProps) {
+export function ContentArea({ content, images, className, maxLength, collapseNewlines = false }: ContentAreaProps) {
+  // 개행을 공백으로 변환 (collapseNewlines가 true일 때)
+  let processedContent = collapseNewlines 
+    ? content.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim()
+    : content;
+  
+  // 길이 제한 적용
+  const shouldTruncate = maxLength !== undefined && processedContent.length > maxLength;
+  const displayContent = shouldTruncate 
+    ? processedContent.slice(0, maxLength) + '...'
+    : processedContent;
+
+  // 이미지 URL 정규화 (상대 경로를 전체 URL로 변환)
+  const normalizedImages = images && images.length > 0 ? normalizeImageUrls(images) : undefined;
+
   return (
     <>
       {content && (
         <div className={cn(
-          "text-surface-800 dark:text-surface-200 whitespace-pre-wrap break-words",
+          "text-surface-800 dark:text-surface-200 break-words",
+          collapseNewlines ? "whitespace-normal" : "whitespace-pre-wrap",
           "leading-relaxed text-[15px] tracking-[-0.01em]",
           className
         )}>
-          {content}
+          {displayContent}
         </div>
       )}
-      {images && images.length > 0 && (
+      {normalizedImages && normalizedImages.length > 0 && (
         <div className="mt-3 flex gap-2 overflow-hidden">
           {/* 첫 번째 이미지 - 강조 */}
           <div className="relative flex-shrink-0 overflow-hidden rounded-xl border border-surface-200/80 dark:border-surface-700/60 bg-surface-100 dark:bg-surface-800 shadow-sm">
             <img
-              src={images[0]}
+              src={normalizedImages[0]}
               alt="Image 1"
               className="h-52 w-52 object-cover hover:scale-105 transition-transform duration-300"
             />
           </div>
           
           {/* 나머지 이미지들 - 작은 썸네일 + 갯수 표시 */}
-          {images.length > 1 && (
+          {normalizedImages.length > 1 && (
             <div className="flex flex-col gap-2 flex-shrink-0">
               {/* 두 번째 이미지 썸네일 */}
               <div className="relative overflow-hidden rounded-xl border border-surface-200/80 dark:border-surface-700/60 bg-surface-100 dark:bg-surface-800 shadow-sm">
                 <img
-                  src={images[1]}
+                  src={normalizedImages[1]}
                   alt="Image 2"
                   className="h-[100px] w-[100px] object-cover hover:scale-105 transition-transform duration-300"
                 />
               </div>
               
               {/* 세 번째 이미지가 있거나 더 많은 경우 */}
-              {images.length > 2 && (
+              {normalizedImages.length > 2 && (
                 <div className="relative overflow-hidden rounded-xl border border-surface-200/80 dark:border-surface-700/60 bg-surface-100 dark:bg-surface-800 shadow-sm">
-                  {images.length === 3 ? (
+                  {normalizedImages.length === 3 ? (
                     <img
-                      src={images[2]}
+                      src={normalizedImages[2]}
                       alt="Image 3"
                       className="h-[100px] w-[100px] object-cover hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
                     <div className="h-[100px] w-[100px] flex items-center justify-center bg-surface-900/60 dark:bg-black/50 backdrop-blur-sm">
-                      <span className="text-white text-base font-semibold">+{images.length - 2}</span>
+                      <span className="text-white text-base font-semibold">+{normalizedImages.length - 2}</span>
                     </div>
                   )}
                 </div>

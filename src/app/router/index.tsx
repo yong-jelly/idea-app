@@ -23,6 +23,7 @@ import {
   ProfilePage,
   MyProjectsPage,
   BookmarksPage,
+  BookmarkProjectsPage,
 } from "@/pages";
 import { AuthCallbackPage } from "@/pages/auth/AuthCallbackPage";
 
@@ -70,6 +71,10 @@ const router = createBrowserRouter([
       {
         path: "bookmarks",
         element: <BookmarksPage />,
+      },
+      {
+        path: "bookmark/project",
+        element: <BookmarkProjectsPage />,
       },
       {
         // 보호된 라우트: 프로젝트 생성 페이지

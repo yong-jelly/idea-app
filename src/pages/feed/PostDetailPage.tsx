@@ -11,7 +11,7 @@ import { fetchPostDetail, togglePostLike, togglePostBookmark } from "@/entities/
 import { convertToUnifiedFeedPost } from "@/widgets/feed-timeline/FeedTimeline";
 import type { UnifiedFeedPost } from "@/entities/feed";
 import { FEEDBACK_TYPE_INFO, FEEDBACK_STATUS_INFO, DEV_POST_TYPE_INFO } from "@/entities/feed";
-import { getProjectImageUrl } from "@/shared/lib/storage";
+import { getProjectImageUrl, normalizeImageUrls } from "@/shared/lib/storage";
 
 // 분리된 모듈 import
 import { usePostComments } from "./post-detail/usePostComments";
@@ -213,13 +213,7 @@ export function PostDetailPage() {
     <div className="mx-auto flex max-w-5xl items-start">
       {/* Left Sidebar */}
       <div className="hidden lg:block w-[260px] shrink-0 self-stretch">
-        <LeftSidebar onProfileEditClick={() => {
-          if (!isAuthenticated) {
-            setShowSignUpModal(true);
-            return;
-          }
-          setIsEditModalOpen(true);
-        }} />
+        <LeftSidebar />
       </div>
 
       {/* Main Content */}
@@ -297,36 +291,12 @@ export function PostDetailPage() {
               )}>
                 {TypeIcon && <TypeIcon className="h-3.5 w-3.5" />}
                 <span>{typeConfig.label}</span>
-                {"projectTitle" in post && post.projectTitle && "projectId" in post && post.projectId && (
-                  <>
-                    <span className="opacity-50 mx-0.5">·</span>
-                    <Link
-                      to={`/project/${post.projectId}`}
-                      className="hover:underline inline-flex items-center gap-1.5"
-                    >
-                      {post.source?.thumbnail ? (
-                        <img
-                          src={post.source.thumbnail.startsWith("http") 
-                            ? post.source.thumbnail 
-                            : getProjectImageUrl(post.source.thumbnail, { width: 20, height: 20 })}
-                          alt={post.projectTitle}
-                          className="h-4 w-4 rounded object-cover"
-                        />
-                      ) : post.source?.emoji ? (
-                        <span className="text-xs">{post.source.emoji}</span>
-                      ) : (
-                        <span className="text-xs">🚀</span>
-                      )}
-                      {post.projectTitle}
-                    </Link>
-                  </>
-                )}
               </div>
             </div>
           )}
 
           {/* 공지/피드백 타입 배지 */}
-          {announcementTypeInfo && "title" in post && (
+          {/* {announcementTypeInfo && "title" in post && (
             <div className="mb-2">
               <div className={cn(
                 "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
@@ -335,7 +305,7 @@ export function PostDetailPage() {
                 <span>{announcementTypeInfo.label}</span>
               </div>
             </div>
-          )}
+          )} */}
 
           {feedbackTypeInfo && feedbackStatusInfo && "title" in post && (
             <div className="mb-2 flex items-center gap-2">
@@ -430,32 +400,35 @@ export function PostDetailPage() {
           </div>
 
           {/* Images */}
-          {post.images && post.images.length > 0 && (
-            <div className={cn(
-              "mb-3 rounded-xl overflow-hidden",
-              post.images.length === 1 ? "" : "grid gap-0.5",
-              post.images.length === 2 ? "grid-cols-2" : "",
-              post.images.length === 3 ? "grid-cols-2" : "",
-              post.images.length >= 4 ? "grid-cols-2" : ""
-            )}>
-              {post.images.slice(0, 4).map((img, idx) => (
-                <div 
-                  key={idx} 
-                  className={cn(
-                    "relative overflow-hidden bg-surface-100 dark:bg-surface-800",
-                    post.images!.length === 1 ? "max-w-md aspect-[16/9]" : "aspect-square max-w-[200px]",
-                    post.images!.length === 3 && idx === 0 ? "row-span-2 aspect-auto max-h-[400px]" : ""
-                  )}
-                >
-                  <img
-                    src={img}
-                    alt={`Image ${idx + 1}`}
-                    className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          {'images' in post && post.images && post.images.length > 0 && (() => {
+            const normalizedImages = normalizeImageUrls(post.images);
+            return (
+              <div className={cn(
+                "mb-3 rounded-xl overflow-hidden",
+                normalizedImages.length === 1 ? "" : "grid gap-0.5",
+                normalizedImages.length === 2 ? "grid-cols-2" : "",
+                normalizedImages.length === 3 ? "grid-cols-2" : "",
+                normalizedImages.length >= 4 ? "grid-cols-2" : ""
+              )}>
+                {normalizedImages.slice(0, 4).map((img, idx) => (
+                  <div 
+                    key={idx} 
+                    className={cn(
+                      "relative overflow-hidden bg-surface-100 dark:bg-surface-800",
+                      normalizedImages.length === 1 ? "max-w-md aspect-[16/9]" : "aspect-square max-w-[200px]",
+                      normalizedImages.length === 3 && idx === 0 ? "row-span-2 aspect-auto max-h-[400px]" : ""
+                    )}
+                  >
+                    <img
+                      src={img}
+                      alt={`Image ${idx + 1}`}
+                      className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Project/Community Link Card */}
           {((("projectId" in post && post.projectId) || post.source) && post.type !== "project_created") && (
@@ -467,8 +440,18 @@ export function PostDetailPage() {
                   className="flex items-center justify-between p-3 hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                      <span className="text-base">🚀</span>
+                    <div className="h-9 w-9 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center overflow-hidden shrink-0">
+                      {post.source?.thumbnail ? (
+                        <img
+                          src={post.source.thumbnail.startsWith("http") 
+                            ? post.source.thumbnail 
+                            : getProjectImageUrl(post.source.thumbnail, { width: 36, height: 36 })}
+                          alt={post.projectTitle}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-base">🚀</span>
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-medium text-surface-900 dark:text-surface-50">
@@ -497,8 +480,19 @@ export function PostDetailPage() {
                     className="flex items-center justify-between p-3 hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                        <span className="text-base">{post.source.emoji || "👥"}</span>
+                      <div className="h-9 w-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center overflow-hidden shrink-0">
+                        
+                        {post.source.thumbnail ? (
+                          <img
+                            src={post.source.thumbnail.startsWith("http") 
+                              ? post.source.thumbnail 
+                              : getProjectImageUrl(post.source.thumbnail, { width: 36, height: 36 })}
+                            alt={post.source.name || ""}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-base">{post.source.emoji || "👥"}</span>
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-medium text-surface-900 dark:text-surface-50">

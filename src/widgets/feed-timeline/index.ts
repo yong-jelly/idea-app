@@ -1,2 +1,2 @@
-export { FeedTimeline } from "./FeedTimeline";
+export { FeedTimeline, convertToUnifiedFeedPost } from "./FeedTimeline";
 

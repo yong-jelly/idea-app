@@ -51,7 +51,12 @@ export function TextPostRow({
     >
       <AuthorHeader author={post.author} createdAt={post.createdAt} />
       
-      <ContentArea content={post.content} images={post.images} />
+      <ContentArea 
+        content={post.content} 
+        images={post.images}
+        maxLength={300}
+        collapseNewlines={true}
+      />
       
       <InteractionButtons
         interactions={post.interactions}

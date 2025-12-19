@@ -28,6 +28,7 @@ export interface Project {
   status: ProjectStatus;
   featured: boolean;
   isLiked?: boolean;
+  isBookmarked?: boolean;
   createdAt: string;
 }
 

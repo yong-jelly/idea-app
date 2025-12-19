@@ -76,7 +76,11 @@ export function FeatureAcceptedRow({
         </span>
       </div>
       
-      <ContentArea content={post.content} />
+      <ContentArea 
+        content={post.content}
+        maxLength={300}
+        collapseNewlines={true}
+      />
       
       <InteractionButtons
         interactions={post.interactions}

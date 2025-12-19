@@ -100,7 +100,7 @@ export async function deleteProfileImage(
 /**
  * 이미지 URL 가져오기 (리사이즈 옵션 포함)
  * 
- * @param filePath - 파일 경로
+ * @param filePath - 파일 경로 또는 이미지 URL
  * @param transform - 리사이즈 옵션
  * @returns 이미지 URL
  */
@@ -108,6 +108,12 @@ export function getImageUrl(
   filePath: string,
   transform?: ImageTransformOptions
 ): string {
+  // 이미 완전한 URL인 경우 (http:// 또는 https://로 시작)
+  // Storage 경로가 아닌 외부 URL이므로 그대로 반환
+  if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+    return filePath;
+  }
+
   const transformOptions = transform
     ? {
         width: transform.width,
@@ -133,6 +139,25 @@ export function getImageUrl(
   }
 
   return data.publicUrl;
+}
+
+/**
+ * 이미지 URL 배열 정규화
+ * 
+ * 상대 경로는 Supabase storage URL로 변환하고, 이미 전체 URL인 경우는 그대로 반환합니다.
+ * 
+ * @param imagePaths - 이미지 경로 배열 (상대 경로 또는 전체 URL)
+ * @returns 정규화된 이미지 URL 배열
+ */
+export function normalizeImageUrls(imagePaths: string[]): string[] {
+  return imagePaths.map((path) => {
+    // 이미 완전한 URL인 경우 그대로 반환
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    // 상대 경로인 경우 Supabase storage URL로 변환
+    return getImageUrl(path);
+  });
 }
 
 /**

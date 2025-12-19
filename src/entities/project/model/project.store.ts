@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Project, FeatureRequest } from "./project.types";
+import { fetchMyProjects, fetchSavedProjects } from "../api/project.api";
 
 // 데모용 프로젝트 데이터
 const demoProjects: Project[] = [
@@ -157,17 +158,50 @@ interface ProjectStore {
   projects: Project[];
   featureRequests: FeatureRequest[];
   isLoading: boolean;
+  
+  // 저장한 프로젝트 관련
+  savedProjects: Project[];
+  savedProjectsHasMore: boolean;
+  savedProjectsLoaded: boolean;
+  savedProjectsLoading: boolean;
+  
+  // 내가 생성한 프로젝트 관련
+  myProjects: Project[];
+  myProjectsLoaded: boolean;
+  myProjectsLoading: boolean;
+  
   getProject: (id: string) => Project | undefined;
   getProjectFeatureRequests: (projectId: string) => FeatureRequest[];
   toggleProjectLike: (projectId: string) => void;
   toggleFeatureVote: (featureId: string) => void;
   addFeatureRequest: (request: Omit<FeatureRequest, "id" | "createdAt" | "updatedAt" | "votesCount" | "isVoted" | "status">) => void;
+  
+  // 저장한 프로젝트 관련 액션
+  loadSavedProjects: () => Promise<void>;
+  refreshSavedProjects: () => Promise<void>;
+  clearSavedProjects: () => void;
+  
+  // 내가 생성한 프로젝트 관련 액션
+  loadMyProjects: () => Promise<void>;
+  refreshMyProjects: () => Promise<void>;
+  clearMyProjects: () => void;
 }
 
 export const useProjectStore = create<ProjectStore>((set, get) => ({
   projects: demoProjects,
   featureRequests: demoFeatureRequests,
   isLoading: false,
+  
+  // 저장한 프로젝트 초기 상태
+  savedProjects: [],
+  savedProjectsHasMore: false,
+  savedProjectsLoaded: false,
+  savedProjectsLoading: false,
+  
+  // 내가 생성한 프로젝트 초기 상태
+  myProjects: [],
+  myProjectsLoaded: false,
+  myProjectsLoading: false,
 
   getProject: (id) => get().projects.find((p) => p.id === id),
 
@@ -211,6 +245,131 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set((state) => ({
       featureRequests: [newRequest, ...state.featureRequests],
     }));
+  },
+  
+  // 저장한 프로젝트 로드 (이미 로드되어 있으면 스킵)
+  loadSavedProjects: async () => {
+    const state = get();
+    if (state.savedProjectsLoaded || state.savedProjectsLoading) {
+      return;
+    }
+    
+    set({ savedProjectsLoading: true });
+    
+    try {
+      const { projects, error } = await fetchSavedProjects({
+        limit: 50,
+        offset: 0,
+      });
+      
+      if (!error && projects) {
+        set({
+          savedProjects: projects,
+          savedProjectsHasMore: projects.length >= 50,
+          savedProjectsLoaded: true,
+        });
+      }
+    } finally {
+      set({ savedProjectsLoading: false });
+    }
+  },
+  
+  // 저장한 프로젝트 강제 새로고침
+  refreshSavedProjects: async () => {
+    const state = get();
+    if (state.savedProjectsLoading) {
+      return;
+    }
+    
+    set({ savedProjectsLoading: true });
+    
+    try {
+      const { projects, error } = await fetchSavedProjects({
+        limit: 50,
+        offset: 0,
+      });
+      
+      if (!error && projects) {
+        set({
+          savedProjects: projects,
+          savedProjectsHasMore: projects.length >= 50,
+          savedProjectsLoaded: true,
+        });
+      }
+    } finally {
+      set({ savedProjectsLoading: false });
+    }
+  },
+  
+  // 저장한 프로젝트 초기화 (로그아웃 시)
+  clearSavedProjects: () => {
+    set({
+      savedProjects: [],
+      savedProjectsHasMore: false,
+      savedProjectsLoaded: false,
+      savedProjectsLoading: false,
+    });
+  },
+  
+  // 내가 생성한 프로젝트 로드 (이미 로드되어 있으면 스킵)
+  loadMyProjects: async () => {
+    const state = get();
+    if (state.myProjectsLoaded || state.myProjectsLoading) {
+      return;
+    }
+    
+    set({ myProjectsLoading: true });
+    
+    try {
+      const { projects, error } = await fetchMyProjects({
+        limit: 10,
+        offset: 0,
+      });
+      
+      if (!error && projects) {
+        set({
+          myProjects: projects,
+          myProjectsLoaded: true,
+        });
+      }
+    } finally {
+      set({ myProjectsLoading: false });
+    }
+  },
+  
+  // 내가 생성한 프로젝트 강제 새로고침
+  refreshMyProjects: async () => {
+    const state = get();
+    if (state.myProjectsLoading) {
+      return;
+    }
+    
+    set({ myProjectsLoading: true });
+    
+    try {
+      const { projects, error } = await fetchMyProjects({
+        limit: 10,
+        offset: 0,
+      });
+      
+      if (!error && projects) {
+        set({
+          myProjects: projects,
+          myProjectsLoaded: true,
+        });
+      }
+    } finally {
+      set({ myProjectsLoading: false });
+    }
+  },
+  
+  // 내가 생성한 프로젝트 초기화 (로그아웃 시)
+  clearMyProjects: () => {
+    set({
+      myProjects: [],
+      myProjectsLoaded: false,
+      myProjectsLoading: false,
+    });
   },
 }));
 

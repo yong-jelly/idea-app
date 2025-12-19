@@ -70,7 +70,12 @@ export function AnnouncementRow({
         {post.title}
       </h3>
       
-      <ContentArea content={post.content} images={post.images} />
+      <ContentArea 
+        content={post.content} 
+        images={post.images}
+        maxLength={300}
+        collapseNewlines={true}
+      />
       
       <InteractionButtons
         interactions={post.interactions}

@@ -66,7 +66,12 @@ export function ProjectUpdateRow({
         projectId={post.projectId}
       />
       
-      <ContentArea content={post.content} images={post.images} />
+      <ContentArea 
+        content={post.content} 
+        images={post.images}
+        maxLength={300}
+        collapseNewlines={true}
+      />
       
       <InteractionButtons
         interactions={post.interactions}
