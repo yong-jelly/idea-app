@@ -25,6 +25,9 @@ ADD COLUMN IF NOT EXISTS links jsonb DEFAULT '{}'::jsonb;
 -- GIN 인덱스로 JSON 검색 최적화
 CREATE INDEX IF NOT EXISTS idx_tbl_users_links ON odd.tbl_users USING gin(links);
 
+-- 기존 함수 삭제 (반환 타입 변경을 위해)
+DROP FUNCTION IF EXISTS odd.v1_update_user_profile(text, text, text, jsonb);
+
 -- 프로필 업데이트 함수
 CREATE OR REPLACE FUNCTION odd.v1_update_user_profile(
     p_display_name text DEFAULT NULL,
@@ -32,7 +35,25 @@ CREATE OR REPLACE FUNCTION odd.v1_update_user_profile(
     p_avatar_url text DEFAULT NULL,
     p_links jsonb DEFAULT NULL
 )
-RETURNS odd.tbl_users
+RETURNS TABLE (
+    id bigint,
+    auth_id uuid,
+    username text,
+    display_name text,
+    avatar_url text,
+    bio text,
+    website text,
+    github text,
+    twitter text,
+    points integer,
+    level text,
+    subscribed_projects_count integer,
+    supported_projects_count integer,
+    projects_count integer,
+    is_active boolean,
+    created_at timestamptz,
+    updated_at timestamptz
+)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = odd, public
@@ -99,7 +120,7 @@ BEGIN
     -- 사용자 존재 확인
     SELECT * INTO v_user
     FROM odd.tbl_users
-    WHERE auth_id = v_auth_id;
+    WHERE tbl_users.auth_id = v_auth_id;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Error in v1_update_user_profile: 사용자를 찾을 수 없습니다';
@@ -126,21 +147,59 @@ BEGIN
     -- 프로필 업데이트
     UPDATE odd.tbl_users
     SET 
-        display_name = COALESCE(p_display_name, display_name),
+        display_name = CASE 
+            WHEN p_display_name IS NOT NULL AND trim(p_display_name) != '' THEN trim(p_display_name)
+            WHEN p_display_name IS NOT NULL THEN tbl_users.display_name  -- 빈 문자열이면 기존 값 유지
+            ELSE tbl_users.display_name
+        END,
         bio = CASE 
             WHEN p_bio IS NOT NULL THEN v_bio_value
-            ELSE bio
+            ELSE tbl_users.bio
         END,
         avatar_url = CASE 
             WHEN p_avatar_url IS NOT NULL THEN v_avatar_url_value
-            ELSE avatar_url
+            ELSE tbl_users.avatar_url
         END,
-        links = COALESCE(p_links, links),
+        links = COALESCE(p_links, tbl_users.links),
         updated_at = now()
-    WHERE auth_id = v_auth_id
+    WHERE tbl_users.auth_id = v_auth_id
     RETURNING * INTO v_user;
 
-    RETURN v_user;
+    -- links JSON 필드를 파싱하여 website, github, twitter를 별도 컬럼으로 반환
+    RETURN QUERY
+    SELECT 
+        (v_user.id)::bigint AS id,
+        (v_user.auth_id)::uuid AS auth_id,
+        (v_user.username)::text AS username,
+        (v_user.display_name)::text AS display_name,
+        (v_user.avatar_url)::text AS avatar_url,
+        (v_user.bio)::text AS bio,
+        -- links JSON에서 website 추출
+        CASE 
+            WHEN v_user.links IS NOT NULL AND v_user.links ? 'website' 
+            THEN (v_user.links->>'website')::text
+            ELSE NULL
+        END AS website,
+        -- links JSON에서 github 추출
+        CASE 
+            WHEN v_user.links IS NOT NULL AND v_user.links ? 'github' 
+            THEN (v_user.links->>'github')::text
+            ELSE NULL
+        END AS github,
+        -- links JSON에서 twitter 추출
+        CASE 
+            WHEN v_user.links IS NOT NULL AND v_user.links ? 'twitter' 
+            THEN (v_user.links->>'twitter')::text
+            ELSE NULL
+        END AS twitter,
+        (v_user.points)::integer AS points,
+        (v_user.level)::text AS level,
+        (v_user.subscribed_projects_count)::integer AS subscribed_projects_count,
+        (v_user.supported_projects_count)::integer AS supported_projects_count,
+        (v_user.projects_count)::integer AS projects_count,
+        (v_user.is_active)::boolean AS is_active,
+        (v_user.created_at)::timestamptz AS created_at,
+        (v_user.updated_at)::timestamptz AS updated_at;
 
 EXCEPTION
     WHEN OTHERS THEN

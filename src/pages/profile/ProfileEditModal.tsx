@@ -16,7 +16,7 @@ export interface ProfileEditModalProps {
 }
 
 export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) {
-  const { user, updateUser } = useUserStore();
+  const { user, updateUser, syncUserFromSession } = useUserStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -221,14 +221,19 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
       }
 
       // UserStore 업데이트 (리사이즈된 URL 사용)
+      // v1_update_user_profile이 반환하는 파싱된 links 값 사용
       updateUser({
         displayName: updatedUser.display_name || "",
         bio: updatedUser.bio || undefined,
-        website: linksData.website || undefined,
-        github: linksData.github || undefined,
-        twitter: linksData.twitter || undefined,
+        website: updatedUser.website || undefined,
+        github: updatedUser.github || undefined,
+        twitter: updatedUser.twitter || undefined,
         avatar: updatedUser.avatar_url || undefined, // Storage 경로 저장
       });
+
+      // 사용자 정보 재동기화 (세션에서 최신 정보 가져오기)
+      const { syncUserFromSession } = useUserStore.getState();
+      await syncUserFromSession();
 
       setIsLoading(false);
       setIsUploadingImage(false);

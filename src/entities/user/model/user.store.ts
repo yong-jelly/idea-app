@@ -17,7 +17,7 @@ interface DbUser {
   github: string | null;
   twitter: string | null;
   points: number;
-  level: "bronze" | "silver" | "gold" | "platinum";
+  level: "bronze" | "silver" | "gold" | "platinum" | string;
   subscribed_projects_count: number;
   supported_projects_count: number;
   projects_count: number;
@@ -247,7 +247,8 @@ export const useUserStore = create<UserStore>()(
                                   authUser.user_metadata?.name || 
                                   null,
                   p_avatar_url: authUser.user_metadata?.avatar_url || null,
-                });
+                })
+                .single();
 
               const timeoutPromise = new Promise<never>((_, reject) => {
                 setTimeout(() => reject(new Error("RPC 호출 타임아웃")), timeout);
@@ -314,7 +315,7 @@ export const useUserStore = create<UserStore>()(
             github: dbUser.github || undefined,
             twitter: dbUser.twitter || undefined,
             points: dbUser.points,
-            level: dbUser.level,
+            level: (dbUser.level as "bronze" | "silver" | "gold" | "platinum") || "bronze",
             subscribedProjectsCount: dbUser.subscribed_projects_count,
             supportedProjectsCount: dbUser.supported_projects_count,
             projectsCount: dbUser.projects_count,

@@ -12,6 +12,9 @@ interface DbUser {
   display_name: string | null;
   avatar_url: string | null;
   bio: string | null;
+  website: string | null;
+  github: string | null;
+  twitter: string | null;
   points: number;
   level: string;
   subscribed_projects_count: number;
@@ -72,22 +75,25 @@ export function AuthCallbackPage() {
         }
 
         // DB에 사용자 정보 저장 (v1_upsert_user 호출)
-        const { data: dbUser, error: dbError } = await supabase
+        const { data: dbUserData, error: dbError } = await supabase
           .schema("odd")
           .rpc("v1_upsert_user", {
             p_auth_id: authUser.id,
             p_email: authUser.email,
             p_display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || null,
             p_avatar_url: authUser.user_metadata?.avatar_url || null,
-          });
+          })
+          .single();
 
-        if (dbError) {
+        const dbUser = dbUserData as DbUser | null;
+
+        if (dbError || !dbUser) {
           console.error("DB 저장 에러:", dbError);
-          setError(dbError.message);
+          setError(dbError?.message || "사용자 정보를 가져올 수 없습니다");
           return;
         }
 
-        const savedUser = dbUser as DbUser;
+        const savedUser = dbUser;
 
         // 스토어에 사용자 정보 저장
         login({
@@ -96,6 +102,9 @@ export function AuthCallbackPage() {
           displayName: savedUser.display_name || "",
           avatar: savedUser.avatar_url || undefined,
           bio: savedUser.bio || undefined,
+          website: savedUser.website || undefined,
+          github: savedUser.github || undefined,
+          twitter: savedUser.twitter || undefined,
           points: savedUser.points,
           level: savedUser.level as "bronze" | "silver" | "gold" | "platinum",
           subscribedProjectsCount: savedUser.subscribed_projects_count,
