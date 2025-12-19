@@ -1,17 +1,13 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
 import { Bookmark } from "lucide-react";
 import { LeftSidebar } from "@/widgets";
-import { fetchSavedProjects, type Project } from "@/entities/project";
-import { ProjectListItem } from "@/entities/project/ui/ProjectListItem";
-import { useProjectStore } from "@/entities/project";
+import { fetchSavedProjects, ProjectList, useProjectStore, type Project } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { SignUpModal } from "@/pages/auth";
-import { ProjectsLoading } from "@/shared/ui/ProjectsLoading";
 
 export function BookmarkProjectsPage() {
   const { toggleProjectLike } = useProjectStore();
-  const { isAuthenticated, user } = useUserStore();
+  const { isAuthenticated } = useUserStore();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -142,56 +138,29 @@ export function BookmarkProjectsPage() {
         </div>
 
         {/* Projects List */}
-        {isLoading && projects.length === 0 ? (
-          <ProjectsLoading />
-        ) : error ? (
-          <div className="py-16 text-center">
-            <p className="text-surface-500 dark:text-surface-400">{error}</p>
-          </div>
-        ) : projects.length === 0 ? (
-          <div className="py-16 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
-              <Bookmark className="h-8 w-8 text-surface-400" />
-            </div>
-            <h3 className="text-lg font-medium text-surface-900 dark:text-surface-50">
-              저장한 프로젝트가 없습니다
-            </h3>
-            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
-              관심 있는 프로젝트를 저장하면 여기에 표시됩니다
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="divide-y divide-surface-100 dark:divide-surface-800">
-              {projects.map((project, index) => {
-                // 내 프로젝트인지 확인
-                const isMyProject = user && user.id === project.author.id;
-                return (
-                  <ProjectListItem
-                    key={project.id}
-                    project={{
-                      ...project,
-                      isMyProject,
-                    }}
-                    rank={index + 1}
-                    onUpvote={() => toggleProjectLike(project.id)}
-                  />
-                );
-              })}
-            </div>
-            {hasMore && (
-              <div className="py-4 text-center">
-                <button
-                  onClick={loadMore}
-                  disabled={isLoading}
-                  className="px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? "로딩 중..." : "더 보기"}
-                </button>
+        <ProjectList
+          projects={projects}
+          isLoading={isLoading && projects.length === 0}
+          error={error}
+          emptyState={
+            <div className="py-16 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
+                <Bookmark className="h-8 w-8 text-surface-400" />
               </div>
-            )}
-          </>
-        )}
+              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-50">
+                저장한 프로젝트가 없습니다
+              </h3>
+              <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
+                관심 있는 프로젝트를 저장하면 여기에 표시됩니다
+              </p>
+            </div>
+          }
+          onUpvote={(projectId) => toggleProjectLike(projectId)}
+          showRank={true}
+          hasMore={hasMore}
+          onLoadMore={loadMore}
+          isLoadingMore={isLoading && projects.length > 0}
+        />
       </main>
 
       {/* 회원 가입 모달 */}

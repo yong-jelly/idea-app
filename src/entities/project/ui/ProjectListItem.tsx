@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { MessageSquare, ChevronUp } from "lucide-react";
+import { MessageSquare, ChevronUp, Star } from "lucide-react";
 import { cn, formatNumber } from "@/shared/lib/utils";
 import { CATEGORY_INFO, type Project } from "../model/project.types";
 
@@ -34,10 +34,13 @@ export function ProjectListItem({ project, rank, onUpvote }: ProjectListItemProp
         <div className="flex items-center gap-2 mb-1">
           <Link
             to={`/project/${project.id}`}
-            className="font-semibold text-surface-900 hover:underline dark:text-surface-50"
+            className="font-semibold text-surface-900 hover:underline dark:text-surface-50 flex items-center gap-1.5"
           >
             {rank !== undefined && (
               <span className="text-surface-500 dark:text-surface-400">{rank}. </span>
+            )}
+            {project.isMyProject && (
+              <Star className="h-3 w-3 text-primary-500 fill-primary-500 shrink-0" />
             )}
             {project.title}
           </Link>
@@ -46,11 +49,11 @@ export function ProjectListItem({ project, rank, onUpvote }: ProjectListItemProp
               Featured
             </span>
           )}
-          {project.isMyProject && (
+          {/* {project.isMyProject && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 font-medium">
               내 프로젝트
             </span>
-          )}
+          )} */}
         </div>
         <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-1 mb-2">
           {project.shortDescription}
@@ -77,16 +80,19 @@ export function ProjectListItem({ project, rank, onUpvote }: ProjectListItemProp
       {/* Action Buttons */}
       <div className="flex items-center gap-2 pt-1">
         {/* Comments */}
-        <div className={cn(
-          "flex flex-col items-center justify-center min-w-[52px] h-14 rounded-lg border transition-colors",
-          "border-surface-200 bg-white hover:border-surface-300",
-          "dark:border-surface-700 dark:bg-surface-800 dark:hover:border-surface-600"
-        )}>
+        <Link
+          to={`/project/${project.id}#comments`}
+          className={cn(
+            "flex flex-col items-center justify-center min-w-[52px] h-14 rounded-lg border transition-colors",
+            "border-surface-200 bg-white hover:border-surface-300",
+            "dark:border-surface-700 dark:bg-surface-800 dark:hover:border-surface-600"
+          )}
+        >
           <MessageSquare className="h-4 w-4 text-surface-400 dark:text-surface-500 mb-0.5" />
           <span className="text-xs font-medium text-surface-600 dark:text-surface-400">
             {formatNumber(project.commentsCount)}
           </span>
-        </div>
+        </Link>
 
         {/* Upvote */}
         <button

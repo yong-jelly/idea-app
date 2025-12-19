@@ -126,6 +126,7 @@
 
 ## 구현 체크리스트 결과
 
+### 기본 기능 구현
 - [x] UserStore에서 `sessionToken` 및 자체 JWT 로직 제거
 - [x] `onAuthStateChange` 리스너를 통한 전역 상태 동기화
 - [x] 앱 초기화 시 실제 세션 검증 로직 추가
@@ -135,6 +136,14 @@
 - [x] RPC 호출 타임아웃 처리 및 재시도 로직 (20초 타임아웃, 최대 2번 재시도)
 - [x] 로그아웃 상태에서 `isSyncing` 플래그 자동 리셋
 - [x] 이벤트별 중복 호출 방지 로직 (`INITIAL_SESSION`, `TOKEN_REFRESHED`, `USER_UPDATED`)
+
+### 보안 및 안정성 체크리스트
+- [x] `onAuthStateChange` 핸들러에서 비동기 작업이 `setTimeout` 또는 `Promise.resolve().then()`으로 처리되는지 확인 (`src/app/providers/index.tsx`에서 `setTimeout(..., 0)` 사용)
+- [x] Supabase 클라이언트에 `autoRefreshToken: true` 설정 적용 (`src/shared/lib/supabase.ts`)
+- [x] Supabase 클라이언트에 `persistSession: true` 설정 적용 (다중 탭 동기화) (`src/shared/lib/supabase.ts`)
+- [x] Supabase 클라이언트에 `detectSessionInUrl: true` 설정 적용 (OAuth 콜백) (`src/shared/lib/supabase.ts`)
+- [x] ProtectedRoute에서 `getSession()` 결과를 "신뢰할 수 있는 인증 증명"으로 사용하지 않음 확인 (`src/shared/components/ProtectedRoute.tsx`에 주석 명시)
+- [x] 모든 데이터 접근이 RLS 및 서버 측 검증으로 담보되는지 확인 (문서에 명시, 실제 구현은 RLS 정책에 의존)
 
 ## 최신 개선 사항 (2024)
 
@@ -186,8 +195,42 @@
 - `TOKEN_REFRESHED`, `USER_UPDATED`: 이미 동기화 중이면 건너뛰어 불필요한 호출 방지
 - `SIGNED_IN`: 항상 동기화를 진행하되, 이전 플래그가 남아있으면 리셋 후 시작
 
-## 마이그레이션 완료
-모든 변경 사항이 적용되었으며, 이제 서비스의 인증 체계는 Supabase Auth를 단일 진실 공급원(Single Source of Truth)으로 사용하는 표준적인 방식으로 안전하게 전환되었습니다. 추가로 중복 호출 방지, 네트워크 안정성 강화, 로그아웃 후 재로그인 문제 해결 등의 개선 사항이 적용되어 더욱 견고한 인증 시스템이 되었습니다.
+## 마이그레이션 완료 (2024-12)
+
+### 구현 완료 상태
+모든 변경 사항이 코드에 적용되었으며, 이제 서비스의 인증 체계는 Supabase Auth를 단일 진실 공급원(Single Source of Truth)으로 사용하는 표준적인 방식으로 안전하게 전환되었습니다.
+
+### 구현된 주요 기능
+1. ✅ **Supabase 클라이언트 설정 개선** (`src/shared/lib/supabase.ts`)
+   - `autoRefreshToken: true` - 자동 토큰 갱신
+   - `persistSession: true` - localStorage 세션 저장 (다중 탭 동기화)
+   - `detectSessionInUrl: true` - OAuth 콜백 세션 자동 감지
+
+2. ✅ **UserStore Supabase 세션 기반 전환** (`src/entities/user/model/user.store.ts`)
+   - `setUser()` - 사용자 상태 설정
+   - `syncUserFromSession()` - DB 사용자 정보 동기화 (타임아웃, 재시도 로직 포함)
+   - `initSession()` - 앱 초기화 시 세션 복구
+   - `logout()` - 비동기 함수로 변경, Supabase 세션 정리 포함
+   - `isSyncing` 플래그로 중복 호출 방지
+
+3. ✅ **전역 인증 리스너 등록** (`src/app/providers/index.tsx`)
+   - `onAuthStateChange` 리스너 등록
+   - `setTimeout(..., 0)`으로 안전한 비동기 처리 (데드락 방지)
+   - 이벤트별 처리 로직 구현 (INITIAL_SESSION 건너뛰기, SIGNED_IN/SIGNED_OUT/TOKEN_REFRESHED 처리)
+
+4. ✅ **ProtectedRoute 세션 교차 검증** (`src/shared/components/ProtectedRoute.tsx`)
+   - `getSession()`으로 실제 Supabase 세션 확인
+   - 세션 확인 중 로딩 상태 UI
+   - 클라이언트 체크는 UX 목적임을 명시
+
+### 보안 및 안정성 개선사항
+- 중복 호출 방지 메커니즘 (`isSyncing` 플래그)
+- RPC 호출 타임아웃 처리 및 재시도 로직 (20초 타임아웃, 최대 2번 재시도)
+- 로그아웃 후 재로그인 문제 해결
+- `onAuthStateChange` 콜백에서의 데드락 방지 (`setTimeout` 사용)
+- 세션 만료 및 갱신 자동 처리
+
+이제 더욱 견고하고 안전한 인증 시스템이 구축되었습니다.
 
 ## 기술적 세부사항
 
@@ -243,26 +286,51 @@ if (get().isSyncing) {
 
 ### Supabase 클라이언트 설정
 
-**설정 옵션** (`src/shared/lib/supabase.ts`):
+**현재 설정 (구현 완료)** (`src/shared/lib/supabase.ts`):
 ```typescript
-{
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: true,      // 자동 토큰 갱신
-    persistSession: true,        // 세션 영속화
-    detectSessionInUrl: true,    // URL에서 세션 감지
+    autoRefreshToken: true,      // 자동 토큰 갱신 활성화
+    persistSession: true,        // localStorage에 세션 영속화 (다중 탭 동기화 필수)
+    detectSessionInUrl: true,    // OAuth 콜백에서 URL의 세션 자동 감지
+    storage: window.localStorage, // 명시적 스토리지 지정 (기본값이지만 명시 권장)
   },
   global: {
     headers: {
       'X-Client-Info': 'idea-app',
     },
   },
-}
+})
 ```
 
-이 설정으로 인해:
+**설정 옵션 설명:**
+
+1. **`autoRefreshToken: true`**
+   - Access Token 만료 전 자동 갱신
+   - 사용자가 로그아웃하지 않는 한 세션 유지
+   - 갱신 성공 시 `TOKEN_REFRESHED` 이벤트 발생
+
+2. **`persistSession: true`** (기본값이지만 명시 권장)
+   - localStorage에 세션 저장
+   - 브라우저 새로고침 시 세션 복구
+   - 다중 탭 동기화의 기반
+   - **주의**: `false`로 설정하면 다중 탭 동기화가 작동하지 않음
+
+3. **`detectSessionInUrl: true`** (기본값이지만 명시 권장)
+   - OAuth 콜백 URL에서 세션 자동 감지
+   - `exchangeCodeForSession()` 호출 없이도 세션 복구 가능
+   - URL에서 세션 정보 제거 (보안)
+
+**이 설정으로 인해:**
 - 세션이 자동으로 갱신되어 만료 방지
 - 브라우저 새로고침 시 세션 복구
 - OAuth 콜백에서 세션 자동 감지
+- 다중 탭 간 세션 동기화
+
+**구현 체크:**
+- [x] Supabase 클라이언트 생성 시 `auth` 옵션 명시적으로 설정 (`src/shared/lib/supabase.ts`에서 완료)
+- [x] `persistSession: true` 설정 확인 (다중 탭 동기화 필수) (`src/shared/lib/supabase.ts`에서 완료)
+- [x] `autoRefreshToken: true` 설정 확인 (자동 토큰 갱신) (`src/shared/lib/supabase.ts`에서 완료)
 
 ### 이벤트 처리 우선순위
 
@@ -272,6 +340,218 @@ if (get().isSyncing) {
 4. **TOKEN_REFRESHED**: 동기화 중이 아니면 진행
 5. **USER_UPDATED**: 동기화 중이 아니면 진행
 
+### `INITIAL_SESSION` 이벤트 처리의 역할 분리
+
+**설계 의도:**
+- `INITIAL_SESSION`은 Supabase가 제공하는 공식 이벤트 타입으로, 앱 초기화 시 현재 세션 상태를 알려주는 목적입니다.
+- 우리는 앱 초기화 시 `initSession()`을 명시적으로 호출하여 세션을 복구하므로, `onAuthStateChange` 핸들러에서 `INITIAL_SESSION`을 건너뛰는 것은 **중복 방지 최적화**입니다.
+
+**역할 분리:**
+- `initSession()`: 앱 시작 시 명시적 세션 복구 및 사용자 정보 동기화
+- `onAuthStateChange('INITIAL_SESSION')`: Supabase SDK가 자동으로 발생시키는 이벤트 (건너뛰기)
+
+이렇게 분리함으로써:
+- 초기 세션 복구가 한 번만 실행됨
+- 이벤트 핸들러와 명시적 초기화 로직 간의 충돌 방지
+- 디버깅 시 세션 복구 경로가 명확함
+
+## 보안 및 안정성 고려사항
+
+### ⚠️ 중요: `onAuthStateChange` 콜백에서의 비동기 호출 주의사항
+
+**데드락(교착) 위험:**
+Supabase 공식 문서에 따르면, `onAuthStateChange` 콜백 내에서 직접 `await`를 사용하여 Supabase API를 호출하면 데드락이 발생할 수 있습니다.
+
+**문제 패턴 (피해야 할 코드):**
+```typescript
+// ❌ 위험한 패턴
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN') {
+    await syncUserFromSession(); // 데드락 위험!
+  }
+});
+```
+
+**해결 방법:**
+콜백을 동기적으로 끝내고, 다음 이벤트 루프 틱에서 비동기 작업을 실행하도록 구현해야 합니다.
+
+**안전한 패턴:**
+```typescript
+// ✅ 안전한 패턴
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN') {
+    // setTimeout을 사용하여 콜백 밖으로 "탈출"
+    setTimeout(() => {
+      syncUserFromSession();
+    }, 0);
+  }
+});
+
+// 또는 Promise.resolve().then() 사용
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN') {
+    Promise.resolve().then(() => {
+      syncUserFromSession();
+    });
+  }
+});
+```
+
+**구현 체크:**
+- [x] `onAuthStateChange` 핸들러 내부에서 `await supabase...` 직접 호출이 없는지 확인 (`src/app/providers/index.tsx`에서 확인 완료)
+- [x] 비동기 작업은 `setTimeout(..., 0)` 또는 `Promise.resolve().then()`으로 다음 틱에서 실행되도록 구현 (`src/app/providers/index.tsx`에서 `setTimeout(..., 0)` 사용)
+
+**구현 완료** (`src/app/providers/index.tsx`):
+```typescript
+// Supabase 인증 상태 변경 리스너
+useEffect(() => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    (event) => {
+      // 콜백을 동기적으로 끝내고, 비동기 작업은 다음 틱에서 실행
+      // 이렇게 하면 onAuthStateChange 콜백에서의 데드락 위험을 방지할 수 있습니다.
+      setTimeout(() => {
+        const store = useUserStore.getState();
+
+        if (event === "INITIAL_SESSION") {
+          // INITIAL_SESSION은 initSession()에서 이미 처리하므로 건너뛰기
+          return;
+        }
+
+        if (event === "SIGNED_IN") {
+          // SIGNED_IN: 항상 동기화 진행 (이전 플래그 리셋 후 시작)
+          if (store.isSyncing) {
+            store.setUser(null); // 플래그 리셋을 위해 임시로 null 설정
+          }
+          store.syncUserFromSession();
+        } else if (event === "SIGNED_OUT") {
+          // SIGNED_OUT: 상태 초기화 및 플래그 리셋
+          store.setUser(null);
+        } else if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+          // TOKEN_REFRESHED, USER_UPDATED: 동기화 중이 아니면 진행
+          if (!store.isSyncing) {
+            store.syncUserFromSession();
+          }
+        }
+      }, 0);
+    }
+  );
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
+```
+
+### `getSession()`의 한계 및 서버 검증의 필요성
+
+**`getSession()`의 특성:**
+- `getSession()`은 기본적으로 **클라이언트 저장소(localStorage)**에 저장된 세션을 가져오는 성격이 강합니다.
+- 클라이언트 측에서 조작 가능한 데이터를 기반으로 하므로, "보안 검증(서버 검증)" 관점의 단일 근거로 사용하기에는 한계가 있습니다.
+
+**보안 고려사항:**
+1. **클라이언트 조작 방지**: 클라이언트에서 세션 토큰을 조작하거나 만료된 토큰을 사용할 수 있습니다.
+2. **서버 측 검증 필수**: 최종 권한 결정 및 민감한 데이터 접근은 반드시 서버 측에서 검증해야 합니다.
+
+**보안 방어 전략:**
+- **클라이언트 측 (UX/편의 목적)**:
+  - `ProtectedRoute`에서 `getSession()`으로 세션 존재 여부 확인
+  - 사용자 경험을 위한 사전 차단 (라우팅, UI 표시 등)
+  
+- **서버 측 (보안의 최종 방어선)**:
+  - **RLS (Row Level Security)**: Supabase의 RLS 정책으로 데이터베이스 레벨에서 접근 제어
+  - **서버 측 검증**: 모든 API 호출 시 Supabase가 자동으로 JWT 토큰을 검증
+  - **만료된 토큰 자동 거부**: Supabase가 만료된 토큰을 자동으로 거부하고 `SIGNED_OUT` 이벤트 발생
+
+**구현 원칙:**
+- 클라이언트 체크는 **UX/편의** 목적이며, 보안의 최종 방어선이 아님을 명심
+- 모든 데이터 접근은 RLS 및 서버 측 검증으로 담보됨
+- `getSession()` 결과를 "신뢰할 수 있는 인증 증명"으로 간주하지 않음
+
+### 다중 탭 동기화의 근거
+
+**동작 원리:**
+- Supabase 클라이언트는 기본적으로 `persistSession: true` 설정 시 **localStorage**에 세션을 저장합니다.
+- 한 탭에서 로그아웃하면 localStorage의 세션이 삭제됩니다.
+- 다른 탭의 `onAuthStateChange` 리스너는 **localStorage 변경 이벤트**를 감지하여 자동으로 동기화됩니다.
+
+**설정 확인:**
+```typescript
+// src/shared/lib/supabase.ts
+{
+  auth: {
+    persistSession: true,  // localStorage에 세션 저장
+    // ...
+  }
+}
+```
+
+**동기화 흐름:**
+1. 탭 A에서 `supabase.auth.signOut()` 호출
+2. localStorage의 세션 데이터 삭제
+3. 탭 B의 `onAuthStateChange` 리스너가 변경 감지
+4. `SIGNED_OUT` 이벤트 발생
+5. 탭 B의 Zustand 스토어 상태 자동 초기화
+
+**주의사항:**
+- `persistSession: false`로 설정하면 다중 탭 동기화가 작동하지 않습니다.
+- localStorage가 비활성화된 환경에서는 세션 영속화가 불가능합니다.
+
+### 세션 만료 및 갱신 운영 파라미터
+
+**토큰 구조:**
+- **Access Token**: API 호출 시 사용, 짧은 수명 (기본 1시간, 프로젝트 설정에 따라 변경 가능)
+- **Refresh Token**: Access Token 갱신에 사용, 긴 수명 (기본 30일)
+
+**중요한 운영 파라미터:**
+
+1. **Refresh Token은 1회용**
+   - Refresh Token으로 새 Access Token을 발급받으면, 기존 Refresh Token은 무효화됩니다.
+   - 동시에 여러 기기에서 동일한 Refresh Token을 사용하면 마지막 사용만 성공하고 나머지는 실패합니다.
+
+2. **JWT Expiry Limit (프로젝트 설정)**
+   - Supabase 대시보드에서 JWT 만료 시간을 설정할 수 있습니다.
+   - 기본값: Access Token 1시간, Refresh Token 30일
+   - 이 값은 프로젝트 전역 설정이므로 변경 시 모든 사용자에게 영향을 미칩니다.
+
+3. **자동 토큰 갱신 (`autoRefreshToken: true`)**
+   - Access Token 만료 전에 자동으로 Refresh Token을 사용하여 새 Access Token을 발급받습니다.
+   - 갱신 성공 시 `TOKEN_REFRESHED` 이벤트 발생
+   - 갱신 실패 시 (Refresh Token 만료 등) `SIGNED_OUT` 이벤트 발생
+
+**장애/만료 이슈 분석 시 확인 사항:**
+- Access Token 만료 시간: 프로젝트 설정 확인
+- Refresh Token 만료 여부: `session.refresh_token` 존재 여부 확인
+- 다중 기기 동시 사용: Refresh Token 충돌 가능성
+- 네트워크 문제: 토큰 갱신 실패 원인
+
+**모니터링 권장사항:**
+- `TOKEN_REFRESHED` 이벤트 발생 빈도 로깅
+- `SIGNED_OUT` 이벤트 발생 시 원인 분석 (만료 vs 네트워크 오류)
+- 세션 만료 전 사용자에게 알림 제공 (선택사항)
+
+## 요약 및 핵심 원칙
+
+### 핵심 설계 원칙
+1. **Supabase Auth를 단일 진실 공급원으로 사용**: 클라이언트 사이드 JWT 생성 제거
+2. **이벤트 기반 동기화**: `onAuthStateChange`를 통한 상태 동기화
+3. **안전한 비동기 처리**: 콜백 내에서 직접 `await` 사용 금지, `setTimeout`으로 탈출
+4. **클라이언트 체크는 UX 목적**: 보안의 최종 방어선은 RLS 및 서버 측 검증
+5. **중복 호출 방지**: `isSyncing` 플래그로 동기화 작업 중복 실행 방지
+
+### 보안 고려사항 요약
+- ✅ `getSession()`은 클라이언트 저장소 기반이므로 보안 검증의 단일 근거로 사용 불가
+- ✅ 모든 데이터 접근은 RLS 및 서버 측 검증으로 담보되어야 함
+- ✅ `onAuthStateChange` 콜백에서 비동기 작업 시 데드락 방지를 위해 `setTimeout` 사용 필수
+- ✅ Supabase 클라이언트 설정 (`autoRefreshToken`, `persistSession`) 명시적 설정 권장
+
+### 운영 파라미터 요약
+- **Access Token**: 기본 1시간 (프로젝트 설정에 따라 변경 가능)
+- **Refresh Token**: 기본 30일, 1회용 (동시 사용 시 마지막 사용만 성공)
+- **자동 갱신**: `autoRefreshToken: true` 설정 시 만료 전 자동 갱신
+- **다중 탭 동기화**: `persistSession: true` 설정 시 localStorage 기반 동기화
+
 ## 참고 자료
 - [Supabase Auth Documentation](https://supabase.com/docs/guides/auth)
+- [Supabase Auth onAuthStateChange](https://supabase.com/docs/reference/javascript/auth-onauthstatechange)
 - [Zustand Persistence Middleware](https://docs.pmnd.rs/zustand/integrations/persisting-store-data)
+- [Supabase Auth Session Management](https://supabase.com/docs/reference/javascript/auth-refreshsession)

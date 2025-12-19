@@ -1,7 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useProjectStore, fetchProjects, type Project } from "@/entities/project";
-import { ProjectListItem } from "@/entities/project/ui/ProjectListItem";
-import { ProjectsLoading } from "@/shared/ui/ProjectsLoading";
+import { useProjectStore, fetchProjects, ProjectList, type Project } from "@/entities/project";
 import { ensureMinDelay, type MinLoadingDelay } from "@/shared/lib/utils";
 
 interface ExplorePageProps {
@@ -70,28 +68,13 @@ export function ExplorePage({ minLoadingDelay }: ExplorePageProps = {}) {
               프로젝트
             </h2>
           </div>
-          {isLoading ? (
-            <ProjectsLoading count={5} />
-          ) : error ? (
-            <div className="px-4 py-8 text-center text-red-500 dark:text-red-400">
-              {error}
-            </div>
-          ) : projects.length > 0 ? (
-            <div className="divide-y divide-surface-100 dark:divide-surface-800/60">
-              {projects.map((project, index) => (
-                <ProjectListItem
-                  key={project.id}
-                  project={project}
-                  rank={index + 1}
-                  onUpvote={toggleProjectLike}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="px-4 py-8 text-center text-surface-500 dark:text-surface-400">
-              프로젝트가 없습니다.
-            </div>
-          )}
+          <ProjectList
+            projects={projects}
+            isLoading={isLoading}
+            error={error}
+            onUpvote={toggleProjectLike}
+            showRank={true}
+          />
         </section>
 
         {/* TODO: 인기 프로젝트 섹션 (커뮤니티 구현 후 추가) */}

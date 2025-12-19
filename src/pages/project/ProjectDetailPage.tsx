@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useParams, useNavigate } from "react-router";
+import { Link, useParams, useNavigate, useLocation } from "react-router";
 import { MessageSquare, ChevronUp, MessageCircle, ArrowRight, Share2, ChevronLeft, ChevronRight, X, Bookmark } from "lucide-react";
 import { Button, Avatar } from "@/shared/ui";
 import { cn, formatNumber } from "@/shared/lib/utils";
@@ -16,6 +16,7 @@ import {
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toggleProjectLike } = useProjectStore();
   const { user, isAuthenticated } = useUserStore();
   const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "gallery" | "team">(
@@ -99,6 +100,34 @@ export function ProjectDetailPage() {
       : project?.thumbnail
       ? [project.thumbnail]
       : [];
+
+  // 해시가 #comments인 경우 overview 탭으로 전환
+  useEffect(() => {
+    if (location.hash === "#comments" && activeTab !== "overview") {
+      setActiveTab("overview");
+    }
+  }, [location.hash, activeTab]);
+
+  // 댓글 섹션으로 스크롤 (해시가 #comments인 경우)
+  useEffect(() => {
+    if (location.hash === "#comments" && project && activeTab === "overview" && !isLoading) {
+      // 약간의 지연을 두어 DOM이 완전히 렌더링된 후 스크롤
+      setTimeout(() => {
+        const commentsSection = document.getElementById("comments");
+        if (commentsSection) {
+          // 헤더 높이를 고려한 오프셋
+          const headerOffset = 80;
+          const elementPosition = commentsSection.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: "smooth",
+          });
+        }
+      }, 200);
+    }
+  }, [location.hash, project, activeTab, isLoading]);
 
   // 회원용 액션 핸들러 (인증 체크)
   const handleAuthenticatedAction = (action: () => void) => {

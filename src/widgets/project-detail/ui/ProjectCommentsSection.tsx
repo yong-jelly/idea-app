@@ -43,10 +43,10 @@ export function ProjectCommentsSection({
   onDelete,
 }: ProjectCommentsSectionProps) {
   return (
-    <div>
+    <div id="comments">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-50">
-          댓글 ({totalComments})
+          의견 ({totalComments})
         </h3>
         <Button
           variant="ghost"
