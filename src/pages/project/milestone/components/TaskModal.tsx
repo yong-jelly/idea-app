@@ -9,6 +9,7 @@ interface TaskModalProps {
   onClose: () => void;
   editingTask: MilestoneTask | null;
   onSubmit: (data: { title: string; description: string; dueDate: string }) => void;
+  canEdit?: boolean; // 권한 체크 (프로젝트 소유자 또는 태스크 생성자)
 }
 
 export function TaskModal({
@@ -16,6 +17,7 @@ export function TaskModal({
   onClose,
   editingTask,
   onSubmit,
+  canEdit = true, // 기본값은 true (권한 체크는 백엔드에서 수행)
 }: TaskModalProps) {
   const [formData, setFormData] = useState({
     title: "",
@@ -80,6 +82,13 @@ export function TaskModal({
             </button>
           </header>
           <div className="p-4 space-y-4">
+            {editingTask && !canEdit && (
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  프로젝트 소유자 또는 태스크 생성자만 수정할 수 있습니다.
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1.5">
                 제목 <span className="text-red-500">*</span>
@@ -92,6 +101,7 @@ export function TaskModal({
                 placeholder="태스크 제목을 입력하세요"
                 className="h-10"
                 autoFocus
+                disabled={editingTask && !canEdit}
               />
             </div>
             <div>
@@ -105,6 +115,7 @@ export function TaskModal({
                 }
                 placeholder="태스크에 대한 상세 설명을 입력하세요"
                 className="min-h-[80px]"
+                disabled={editingTask && !canEdit}
               />
             </div>
             <div>
@@ -118,6 +129,7 @@ export function TaskModal({
                   setFormData((prev) => ({ ...prev, dueDate: e.target.value }))
                 }
                 className="h-10"
+                disabled={editingTask && !canEdit}
               />
             </div>
           </div>
@@ -125,7 +137,10 @@ export function TaskModal({
             <Button variant="outline" onClick={onClose}>
               취소
             </Button>
-            <Button onClick={handleSubmit} disabled={!formData.title.trim()}>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={!formData.title.trim() || (editingTask && !canEdit)}
+            >
               {editingTask ? "수정" : "추가"}
             </Button>
           </footer>

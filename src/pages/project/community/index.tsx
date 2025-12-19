@@ -158,7 +158,7 @@ export function ProjectCommunityPage() {
 
           {/* 마일스톤 */}
           {activeTab === "milestones" && (
-            <MilestonesTab milestones={dummyMilestones} projectId={id || "1"} />
+            <MilestonesTab projectId={id || "1"} />
           )}
 
           {/* 변경사항 */}

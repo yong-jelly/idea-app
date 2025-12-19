@@ -1094,3 +1094,745 @@ export async function toggleProjectCommentLike(
   }
 }
 
+/**
+ * 마일스톤 조회 옵션
+ */
+export interface FetchMilestonesOptions {
+  /** 상태 필터: 'all', 'open', 'closed' (기본값: 'all') */
+  status?: "all" | "open" | "closed";
+  /** 페이지당 마일스톤 수 (기본값: 30, 최대: 100) */
+  limit?: number;
+  /** 페이지 오프셋 (기본값: 0) */
+  offset?: number;
+}
+
+/**
+ * 마일스톤 조회 결과
+ */
+export interface FetchMilestonesResult {
+  milestones: Milestone[];
+  error: Error | null;
+}
+
+/**
+ * 마일스톤 목록 조회
+ * 
+ * @param projectId - 프로젝트 ID
+ * @param options - 조회 옵션
+ * @returns 마일스톤 목록 또는 에러
+ */
+export async function fetchMilestones(
+  projectId: string,
+  options: FetchMilestonesOptions = {}
+): Promise<FetchMilestonesResult> {
+  try {
+    if (!projectId) {
+      return {
+        milestones: [],
+        error: new Error("프로젝트 ID가 필요합니다"),
+      };
+    }
+
+    const {
+      status = "all",
+      limit = 30,
+      offset = 0,
+    } = options;
+
+    // SQL 함수 호출
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_fetch_milestones", {
+        p_project_id: projectId,
+        p_status: status === "all" ? null : status,
+        p_limit: Math.min(limit, 100), // 최대 100으로 제한
+        p_offset: Math.max(offset, 0), // 최소 0으로 제한
+      });
+
+    if (error) {
+      console.error("마일스톤 목록 조회 에러:", error);
+      return {
+        milestones: [],
+        error: new Error(error.message || "마일스톤 목록을 불러오는데 실패했습니다"),
+      };
+    }
+
+    if (!data) {
+      return {
+        milestones: [],
+        error: null,
+      };
+    }
+
+    // DB 데이터를 Milestone 타입으로 변환
+    const milestones: Milestone[] = data.map((row: any) => ({
+      id: row.id,
+      projectId: row.project_id,
+      title: row.title,
+      description: row.description || "",
+      dueDate: row.due_date || undefined,
+      status: row.status as Milestone["status"],
+      openIssuesCount: row.open_issues_count || 0,
+      closedIssuesCount: row.closed_issues_count || 0,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      closedAt: row.closed_at || undefined,
+    }));
+
+    return {
+      milestones,
+      error: null,
+    };
+  } catch (err) {
+    console.error("마일스톤 목록 조회 에러:", err);
+    return {
+      milestones: [],
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 마일스톤 생성 데이터
+ */
+export interface CreateMilestoneData {
+  title: string;
+  description?: string;
+  dueDate?: string; // YYYY-MM-DD 형식
+}
+
+/**
+ * 마일스톤 생성 결과
+ */
+export interface CreateMilestoneResult {
+  milestoneId: string | null;
+  error: Error | null;
+}
+
+/**
+ * 마일스톤 생성
+ * 
+ * @param projectId - 프로젝트 ID
+ * @param data - 마일스톤 데이터
+ * @returns 생성된 마일스톤 ID 또는 에러
+ */
+export async function createMilestone(
+  projectId: string,
+  data: CreateMilestoneData
+): Promise<CreateMilestoneResult> {
+  try {
+    if (!projectId || !data.title.trim()) {
+      return {
+        milestoneId: null,
+        error: new Error("프로젝트 ID와 제목이 필요합니다"),
+      };
+    }
+
+    const { data: result, error } = await supabase
+      .schema("odd")
+      .rpc("v1_create_milestone", {
+        p_project_id: projectId,
+        p_title: data.title.trim(),
+        p_description: data.description?.trim() || null,
+        p_due_date: data.dueDate || null,
+      });
+
+    if (error) {
+      console.error("마일스톤 생성 에러:", error);
+      return {
+        milestoneId: null,
+        error: new Error(error.message || "마일스톤 생성에 실패했습니다"),
+      };
+    }
+
+    return {
+      milestoneId: result,
+      error: null,
+    };
+  } catch (err) {
+    console.error("마일스톤 생성 에러:", err);
+    return {
+      milestoneId: null,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 마일스톤 수정 데이터
+ */
+export interface UpdateMilestoneData {
+  title?: string;
+  description?: string;
+  dueDate?: string; // YYYY-MM-DD 형식
+}
+
+/**
+ * 마일스톤 수정 결과
+ */
+export interface UpdateMilestoneResult {
+  success: boolean;
+  error: Error | null;
+}
+
+/**
+ * 마일스톤 수정
+ * 
+ * @param milestoneId - 마일스톤 ID
+ * @param data - 수정할 마일스톤 데이터
+ * @returns 수정 성공 여부 또는 에러
+ */
+export async function updateMilestone(
+  milestoneId: string,
+  data: UpdateMilestoneData
+): Promise<UpdateMilestoneResult> {
+  try {
+    if (!milestoneId) {
+      return {
+        success: false,
+        error: new Error("마일스톤 ID가 필요합니다"),
+      };
+    }
+
+    const { error } = await supabase
+      .schema("odd")
+      .rpc("v1_update_milestone", {
+        p_milestone_id: milestoneId,
+        p_title: data.title?.trim() || null,
+        p_description: data.description?.trim() || null,
+        p_due_date: data.dueDate || null,
+      });
+
+    if (error) {
+      console.error("마일스톤 수정 에러:", error);
+      return {
+        success: false,
+        error: new Error(error.message || "마일스톤 수정에 실패했습니다"),
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error("마일스톤 수정 에러:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 마일스톤 삭제 결과
+ */
+export interface DeleteMilestoneResult {
+  success: boolean;
+  error: Error | null;
+}
+
+/**
+ * 마일스톤 삭제
+ * 
+ * @param milestoneId - 마일스톤 ID
+ * @returns 삭제 성공 여부 또는 에러
+ */
+export async function deleteMilestone(
+  milestoneId: string
+): Promise<DeleteMilestoneResult> {
+  try {
+    if (!milestoneId) {
+      return {
+        success: false,
+        error: new Error("마일스톤 ID가 필요합니다"),
+      };
+    }
+
+    const { error } = await supabase
+      .schema("odd")
+      .rpc("v1_delete_milestone", {
+        p_milestone_id: milestoneId,
+      });
+
+    if (error) {
+      console.error("마일스톤 삭제 에러:", error);
+      return {
+        success: false,
+        error: new Error(error.message || "마일스톤 삭제에 실패했습니다"),
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error("마일스톤 삭제 에러:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 마일스톤 상태 토글 결과
+ */
+export interface ToggleMilestoneStatusResult {
+  success: boolean;
+  error: Error | null;
+}
+
+/**
+ * 마일스톤 상태 토글 (open ↔ closed)
+ * 
+ * @param milestoneId - 마일스톤 ID
+ * @returns 토글 성공 여부 또는 에러
+ */
+export async function toggleMilestoneStatus(
+  milestoneId: string
+): Promise<ToggleMilestoneStatusResult> {
+  try {
+    if (!milestoneId) {
+      return {
+        success: false,
+        error: new Error("마일스톤 ID가 필요합니다"),
+      };
+    }
+
+    const { error } = await supabase
+      .schema("odd")
+      .rpc("v1_toggle_milestone_status", {
+        p_milestone_id: milestoneId,
+      });
+
+    if (error) {
+      console.error("마일스톤 상태 토글 에러:", error);
+      return {
+        success: false,
+        error: new Error(error.message || "마일스톤 상태 변경에 실패했습니다"),
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error("마일스톤 상태 토글 에러:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 마일스톤 상세 조회 결과
+ */
+export interface FetchMilestoneDetailResult {
+  milestone: Milestone | null;
+  error: Error | null;
+}
+
+/**
+ * 마일스톤 상세 조회
+ * 
+ * @param milestoneId - 마일스톤 ID
+ * @returns 마일스톤 상세 정보 또는 에러
+ */
+export async function fetchMilestoneDetail(
+  milestoneId: string
+): Promise<FetchMilestoneDetailResult> {
+  try {
+    if (!milestoneId) {
+      return {
+        milestone: null,
+        error: new Error("마일스톤 ID가 필요합니다"),
+      };
+    }
+
+    // SQL 함수 호출
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_fetch_milestone_detail", {
+        p_milestone_id: milestoneId,
+      });
+
+    if (error) {
+      console.error("마일스톤 상세 조회 에러:", error);
+      return {
+        milestone: null,
+        error: new Error(error.message || "마일스톤을 불러오는데 실패했습니다"),
+      };
+    }
+
+    if (!data || data.length === 0) {
+      return {
+        milestone: null,
+        error: new Error("마일스톤을 찾을 수 없습니다"),
+      };
+    }
+
+    const row = data[0];
+
+    // DB 데이터를 Milestone 타입으로 변환
+    const milestone: Milestone = {
+      id: row.id,
+      projectId: row.project_id,
+      title: row.title,
+      description: row.description || "",
+      dueDate: row.due_date || undefined,
+      status: row.status as Milestone["status"],
+      openIssuesCount: row.open_issues_count || 0,
+      closedIssuesCount: row.closed_issues_count || 0,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      closedAt: row.closed_at || undefined,
+    };
+
+    return {
+      milestone,
+      error: null,
+    };
+  } catch (err) {
+    console.error("마일스톤 상세 조회 에러:", err);
+    return {
+      milestone: null,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 태스크 조회 옵션
+ */
+export interface FetchTasksOptions {
+  /** 상태 필터: 'all', 'todo', 'done' (기본값: 'all') */
+  status?: "all" | "todo" | "done";
+  /** 페이지당 태스크 수 (기본값: 100, 최대: 200) */
+  limit?: number;
+  /** 페이지 오프셋 (기본값: 0) */
+  offset?: number;
+}
+
+/**
+ * 태스크 조회 결과
+ */
+export interface FetchTasksResult {
+  tasks: MilestoneTask[];
+  error: Error | null;
+}
+
+/**
+ * 태스크 목록 조회
+ * 
+ * @param milestoneId - 마일스톤 ID
+ * @param options - 조회 옵션
+ * @returns 태스크 목록 또는 에러
+ */
+export async function fetchTasks(
+  milestoneId: string,
+  options: FetchTasksOptions = {}
+): Promise<FetchTasksResult> {
+  try {
+    if (!milestoneId) {
+      return {
+        tasks: [],
+        error: new Error("마일스톤 ID가 필요합니다"),
+      };
+    }
+
+    const {
+      status = "all",
+      limit = 100,
+      offset = 0,
+    } = options;
+
+    // SQL 함수 호출
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_fetch_tasks", {
+        p_milestone_id: milestoneId,
+        p_status: status === "all" ? null : status,
+        p_limit: Math.min(limit, 200), // 최대 200으로 제한
+        p_offset: Math.max(offset, 0), // 최소 0으로 제한
+      });
+
+    if (error) {
+      console.error("태스크 목록 조회 에러:", error);
+      return {
+        tasks: [],
+        error: new Error(error.message || "태스크 목록을 불러오는데 실패했습니다"),
+      };
+    }
+
+    if (!data) {
+      return {
+        tasks: [],
+        error: null,
+      };
+    }
+
+    // DB 데이터를 MilestoneTask 타입으로 변환
+    const tasks: MilestoneTask[] = data.map((row: any) => ({
+      id: row.id,
+      milestoneId: row.milestone_id,
+      title: row.title,
+      description: row.description || undefined,
+      dueDate: row.due_date || undefined,
+      status: row.status as MilestoneTask["status"],
+      createdAt: row.created_at,
+      completedAt: row.completed_at || undefined,
+    }));
+
+    return {
+      tasks,
+      error: null,
+    };
+  } catch (err) {
+    console.error("태스크 목록 조회 에러:", err);
+    return {
+      tasks: [],
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 태스크 생성 데이터
+ */
+export interface CreateTaskData {
+  title: string;
+  description?: string;
+  dueDate?: string; // YYYY-MM-DD 형식
+}
+
+/**
+ * 태스크 생성 결과
+ */
+export interface CreateTaskResult {
+  taskId: string | null;
+  error: Error | null;
+}
+
+/**
+ * 태스크 생성
+ * 
+ * @param milestoneId - 마일스톤 ID
+ * @param data - 태스크 데이터
+ * @returns 생성된 태스크 ID 또는 에러
+ */
+export async function createTask(
+  milestoneId: string,
+  data: CreateTaskData
+): Promise<CreateTaskResult> {
+  try {
+    if (!milestoneId || !data.title.trim()) {
+      return {
+        taskId: null,
+        error: new Error("마일스톤 ID와 제목이 필요합니다"),
+      };
+    }
+
+    const { data: result, error } = await supabase
+      .schema("odd")
+      .rpc("v1_create_task", {
+        p_milestone_id: milestoneId,
+        p_title: data.title.trim(),
+        p_description: data.description?.trim() || null,
+        p_due_date: data.dueDate || null,
+      });
+
+    if (error) {
+      console.error("태스크 생성 에러:", error);
+      return {
+        taskId: null,
+        error: new Error(error.message || "태스크 생성에 실패했습니다"),
+      };
+    }
+
+    return {
+      taskId: result,
+      error: null,
+    };
+  } catch (err) {
+    console.error("태스크 생성 에러:", err);
+    return {
+      taskId: null,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 태스크 수정 데이터
+ */
+export interface UpdateTaskData {
+  title?: string;
+  description?: string;
+  dueDate?: string; // YYYY-MM-DD 형식
+}
+
+/**
+ * 태스크 수정 결과
+ */
+export interface UpdateTaskResult {
+  success: boolean;
+  error: Error | null;
+}
+
+/**
+ * 태스크 수정
+ * 
+ * @param taskId - 태스크 ID
+ * @param data - 수정할 태스크 데이터
+ * @returns 수정 성공 여부 또는 에러
+ */
+export async function updateTask(
+  taskId: string,
+  data: UpdateTaskData
+): Promise<UpdateTaskResult> {
+  try {
+    if (!taskId) {
+      return {
+        success: false,
+        error: new Error("태스크 ID가 필요합니다"),
+      };
+    }
+
+    const { error } = await supabase
+      .schema("odd")
+      .rpc("v1_update_task", {
+        p_task_id: taskId,
+        p_title: data.title?.trim() || null,
+        p_description: data.description?.trim() || null,
+        p_due_date: data.dueDate || null,
+      });
+
+    if (error) {
+      console.error("태스크 수정 에러:", error);
+      return {
+        success: false,
+        error: new Error(error.message || "태스크 수정에 실패했습니다"),
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error("태스크 수정 에러:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 태스크 삭제 결과
+ */
+export interface DeleteTaskResult {
+  success: boolean;
+  error: Error | null;
+}
+
+/**
+ * 태스크 삭제
+ * 
+ * @param taskId - 태스크 ID
+ * @returns 삭제 성공 여부 또는 에러
+ */
+export async function deleteTask(
+  taskId: string
+): Promise<DeleteTaskResult> {
+  try {
+    if (!taskId) {
+      return {
+        success: false,
+        error: new Error("태스크 ID가 필요합니다"),
+      };
+    }
+
+    const { error } = await supabase
+      .schema("odd")
+      .rpc("v1_delete_task", {
+        p_task_id: taskId,
+      });
+
+    if (error) {
+      console.error("태스크 삭제 에러:", error);
+      return {
+        success: false,
+        error: new Error(error.message || "태스크 삭제에 실패했습니다"),
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error("태스크 삭제 에러:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 태스크 상태 토글 결과
+ */
+export interface ToggleTaskStatusResult {
+  success: boolean;
+  error: Error | null;
+}
+
+/**
+ * 태스크 상태 토글 (todo ↔ done)
+ * 
+ * @param taskId - 태스크 ID
+ * @returns 토글 성공 여부 또는 에러
+ */
+export async function toggleTaskStatus(
+  taskId: string
+): Promise<ToggleTaskStatusResult> {
+  try {
+    if (!taskId) {
+      return {
+        success: false,
+        error: new Error("태스크 ID가 필요합니다"),
+      };
+    }
+
+    const { error } = await supabase
+      .schema("odd")
+      .rpc("v1_toggle_task_status", {
+        p_task_id: taskId,
+      });
+
+    if (error) {
+      console.error("태스크 상태 토글 에러:", error);
+      return {
+        success: false,
+        error: new Error(error.message || "태스크 상태 변경에 실패했습니다"),
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error("태스크 상태 토글 에러:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+

@@ -15,23 +15,54 @@ import {
 import { Button, Badge, Textarea, Card, CardContent, Input } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
 import type { Milestone } from "@/entities/project";
+import {
+  fetchMilestones,
+  createMilestone,
+  updateMilestone,
+  deleteMilestone,
+  toggleMilestoneStatus,
+} from "@/entities/project/api/project.api";
 
 interface MilestonesTabProps {
-  milestones: Milestone[];
   projectId: string;
 }
 
-export function MilestonesTab({ milestones: initialMilestones, projectId }: MilestonesTabProps) {
+export function MilestonesTab({ projectId }: MilestonesTabProps) {
   const navigate = useNavigate();
-  const [milestones, setMilestones] = useState(initialMilestones);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     dueDate: "",
   });
+
+  // 마일스톤 목록 로드
+  useEffect(() => {
+    const loadMilestones = async () => {
+      if (!projectId) return;
+
+      setIsLoading(true);
+      const { milestones: data, error } = await fetchMilestones(projectId, {
+        status: filter === "all" ? "all" : filter,
+      });
+
+      if (error) {
+        console.error("마일스톤 목록 조회 실패:", error);
+        setIsLoading(false);
+        return;
+      }
+
+      setMilestones(data || []);
+      setIsLoading(false);
+    };
+
+    loadMilestones();
+  }, [projectId, filter]);
 
   const sortedMilestones = [...milestones].sort((a, b) => {
     if (a.status === "open" && b.status === "closed") return -1;
@@ -77,53 +108,108 @@ export function MilestonesTab({ milestones: initialMilestones, projectId }: Mile
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (!formData.title.trim()) return;
+  const handleSave = async () => {
+    if (!formData.title.trim() || isSaving) return;
 
-    if (editingMilestone) {
-      setMilestones((prev) =>
-        prev.map((m) =>
-          m.id === editingMilestone.id
-            ? { ...m, ...formData, updatedAt: new Date().toISOString() }
-            : m
-        )
-      );
-    } else {
-      const newMilestone: Milestone = {
-        id: `m${Date.now()}`,
-        projectId: "1",
-        title: formData.title,
-        description: formData.description,
-        dueDate: formData.dueDate || undefined,
-        status: "open",
-        openIssuesCount: 0,
-        closedIssuesCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setMilestones((prev) => [newMilestone, ...prev]);
+    setIsSaving(true);
+
+    try {
+      if (editingMilestone) {
+        // 마일스톤 수정
+        const { error } = await updateMilestone(editingMilestone.id, {
+          title: formData.title,
+          description: formData.description,
+          dueDate: formData.dueDate || undefined,
+        });
+
+        if (error) {
+          console.error("마일스톤 수정 실패:", error);
+          alert(error.message || "마일스톤 수정에 실패했습니다");
+          setIsSaving(false);
+          return;
+        }
+      } else {
+        // 마일스톤 생성
+        const { milestoneId, error } = await createMilestone(projectId, {
+          title: formData.title,
+          description: formData.description,
+          dueDate: formData.dueDate || undefined,
+        });
+
+        if (error || !milestoneId) {
+          console.error("마일스톤 생성 실패:", error);
+          alert(error?.message || "마일스톤 생성에 실패했습니다");
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      // 목록 새로고침
+      const { milestones: data, error: fetchError } = await fetchMilestones(projectId, {
+        status: filter === "all" ? "all" : filter,
+      });
+
+      if (!fetchError && data) {
+        setMilestones(data);
+      }
+
+      setIsModalOpen(false);
+      setFormData({ title: "", description: "", dueDate: "" });
+    } catch (err) {
+      console.error("마일스톤 저장 에러:", err);
+      alert("마일스톤 저장 중 오류가 발생했습니다");
+    } finally {
+      setIsSaving(false);
     }
-    setIsModalOpen(false);
   };
 
-  const handleToggleStatus = (id: string) => {
-    setMilestones((prev) =>
-      prev.map((m) =>
-        m.id === id
-          ? {
-              ...m,
-              status: m.status === "open" ? "closed" : "open",
-              closedAt: m.status === "open" ? new Date().toISOString() : undefined,
-              updatedAt: new Date().toISOString(),
-            }
-          : m
-      )
-    );
+  const handleToggleStatus = async (id: string) => {
+    try {
+      const { error } = await toggleMilestoneStatus(id);
+
+      if (error) {
+        console.error("마일스톤 상태 변경 실패:", error);
+        alert(error.message || "마일스톤 상태 변경에 실패했습니다");
+        return;
+      }
+
+      // 목록 새로고침
+      const { milestones: data, error: fetchError } = await fetchMilestones(projectId, {
+        status: filter === "all" ? "all" : filter,
+      });
+
+      if (!fetchError && data) {
+        setMilestones(data);
+      }
+    } catch (err) {
+      console.error("마일스톤 상태 변경 에러:", err);
+      alert("마일스톤 상태 변경 중 오류가 발생했습니다");
+    }
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("정말 이 목표를 삭제하시겠습니까?")) {
-      setMilestones((prev) => prev.filter((m) => m.id !== id));
+  const handleDelete = async (id: string) => {
+    if (!confirm("정말 이 목표를 삭제하시겠습니까?")) return;
+
+    try {
+      const { error } = await deleteMilestone(id);
+
+      if (error) {
+        console.error("마일스톤 삭제 실패:", error);
+        alert(error.message || "마일스톤 삭제에 실패했습니다");
+        return;
+      }
+
+      // 목록 새로고침
+      const { milestones: data, error: fetchError } = await fetchMilestones(projectId, {
+        status: filter === "all" ? "all" : filter,
+      });
+
+      if (!fetchError && data) {
+        setMilestones(data);
+      }
+    } catch (err) {
+      console.error("마일스톤 삭제 에러:", err);
+      alert("마일스톤 삭제 중 오류가 발생했습니다");
     }
   };
 
@@ -175,7 +261,13 @@ export function MilestonesTab({ milestones: initialMilestones, projectId }: Mile
       </div>
 
       {/* Milestones List */}
-      {filteredMilestones.length === 0 ? (
+      {isLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-surface-500 dark:text-surface-400">마일스톤을 불러오는 중...</p>
+          </CardContent>
+        </Card>
+      ) : filteredMilestones.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Target className="h-10 w-10 mx-auto mb-3 text-surface-300 dark:text-surface-600" />
@@ -368,10 +460,10 @@ export function MilestonesTab({ milestones: initialMilestones, projectId }: Mile
                 <Button 
                   size="sm" 
                   onClick={handleSave} 
-                  disabled={!formData.title.trim()}
+                  disabled={!formData.title.trim() || isSaving}
                   className="rounded-full"
                 >
-                  {editingMilestone ? "저장" : "추가"}
+                  {isSaving ? "처리 중..." : editingMilestone ? "저장" : "추가"}
                 </Button>
               </header>
 

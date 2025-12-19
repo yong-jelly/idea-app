@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useParams, useNavigate } from "react-router";
+import { Link, useParams } from "react-router";
 import {
   ChevronLeft,
   CheckCircle2,
@@ -8,134 +8,176 @@ import {
 } from "lucide-react";
 import { Badge } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
-import { useProjectStore, CATEGORY_INFO, type Milestone, type MilestoneTask } from "@/entities/project";
+import { 
+  type Milestone, 
+  type MilestoneTask, 
+  fetchMilestoneDetail, 
+  fetchProjectDetail,
+  fetchTasks,
+  createTask,
+  updateTask,
+  deleteTask,
+  toggleTaskStatus,
+} from "@/entities/project";
+import { useUserStore } from "@/entities/user";
 import { TaskModal } from "./milestone/components/TaskModal";
 import { TaskList } from "./milestone/components/TaskList";
-import { formatRelativeTime } from "@/shared/lib/utils";
-
-// 더미 마일스톤 데이터 (실제로는 store에서 가져와야 함)
-const dummyMilestones: Milestone[] = [
-  {
-    id: "m1",
-    projectId: "1",
-    title: "v1.0 - MVP 출시",
-    description: "핵심 기능을 포함한 최소 기능 제품 출시. 사용자 인증, 기본 CRUD, UI 디자인 완성.",
-    dueDate: "2024-10-01",
-    status: "closed",
-    openIssuesCount: 0,
-    closedIssuesCount: 5,
-    tasks: [
-      { id: "t1-1", milestoneId: "m1", title: "사용자 인증 시스템 구현", description: "JWT 기반 인증 및 소셜 로그인 구현", dueDate: "2024-08-15", status: "done", createdAt: "2024-08-01T00:00:00Z", completedAt: "2024-08-15T00:00:00Z" },
-      { id: "t1-2", milestoneId: "m1", title: "기본 CRUD API 개발", description: "REST API 엔드포인트 구현", dueDate: "2024-08-20", status: "done", createdAt: "2024-08-01T00:00:00Z", completedAt: "2024-08-20T00:00:00Z" },
-      { id: "t1-3", milestoneId: "m1", title: "메인 UI 디자인", description: "Figma 디자인 시스템 기반 UI 구현", dueDate: "2024-09-01", status: "done", createdAt: "2024-08-05T00:00:00Z", completedAt: "2024-09-01T00:00:00Z" },
-      { id: "t1-4", milestoneId: "m1", title: "반응형 레이아웃 적용", description: "모바일, 태블릿, 데스크톱 대응", dueDate: "2024-09-10", status: "done", createdAt: "2024-08-10T00:00:00Z", completedAt: "2024-09-10T00:00:00Z" },
-      { id: "t1-5", milestoneId: "m1", title: "배포 환경 설정", description: "CI/CD 파이프라인 및 프로덕션 서버 설정", dueDate: "2024-09-28", status: "done", createdAt: "2024-09-15T00:00:00Z", completedAt: "2024-09-28T00:00:00Z" },
-    ],
-    createdAt: "2024-08-01T00:00:00Z",
-    updatedAt: "2024-09-28T00:00:00Z",
-    closedAt: "2024-09-28T00:00:00Z",
-  },
-  {
-    id: "m2",
-    projectId: "1",
-    title: "v1.5 - 베타 테스트",
-    description: "1000명의 베타 테스터와 함께 제품 검증. 피드백 시스템 구축 및 버그 수정.",
-    dueDate: "2024-12-15",
-    status: "open",
-    openIssuesCount: 3,
-    closedIssuesCount: 4,
-    tasks: [
-      { id: "t2-1", milestoneId: "m2", title: "베타 테스터 모집 페이지", description: "랜딩 페이지 및 신청 폼 구현", dueDate: "2024-09-15", status: "done", createdAt: "2024-09-01T00:00:00Z", completedAt: "2024-09-15T00:00:00Z" },
-      { id: "t2-2", milestoneId: "m2", title: "피드백 수집 시스템 구축", description: "인앱 피드백 위젯 및 관리 대시보드", dueDate: "2024-10-01", status: "done", createdAt: "2024-09-10T00:00:00Z", completedAt: "2024-10-01T00:00:00Z" },
-      { id: "t2-3", milestoneId: "m2", title: "버그 리포트 기능", description: "스크린샷, 콘솔 로그 자동 첨부 기능", dueDate: "2024-10-15", status: "done", createdAt: "2024-09-20T00:00:00Z", completedAt: "2024-10-15T00:00:00Z" },
-      { id: "t2-4", milestoneId: "m2", title: "성능 모니터링 대시보드", description: "실시간 메트릭 및 알림 시스템", dueDate: "2024-11-01", status: "done", createdAt: "2024-10-01T00:00:00Z", completedAt: "2024-11-01T00:00:00Z" },
-      { id: "t2-5", milestoneId: "m2", title: "주요 버그 수정 (5건)", description: "크리티컬 버그 우선 해결", dueDate: "2024-11-30", status: "todo", createdAt: "2024-11-01T00:00:00Z" },
-      { id: "t2-6", milestoneId: "m2", title: "사용자 피드백 반영", description: "UX 개선 및 기능 요청 반영", dueDate: "2024-12-10", status: "todo", createdAt: "2024-11-15T00:00:00Z" },
-      { id: "t2-7", milestoneId: "m2", title: "베타 종료 보고서 작성", description: "테스트 결과 및 인사이트 정리", dueDate: "2024-12-15", status: "todo", createdAt: "2024-12-01T00:00:00Z" },
-    ],
-    createdAt: "2024-09-01T00:00:00Z",
-    updatedAt: "2024-12-01T00:00:00Z",
-  },
-  {
-    id: "m3",
-    projectId: "1",
-    title: "v2.0 - 정식 출시",
-    description: "모든 기능이 완성된 정식 버전 출시. AI 기능 추가, 성능 최적화, 다국어 지원.",
-    dueDate: "2025-03-01",
-    status: "open",
-    openIssuesCount: 5,
-    closedIssuesCount: 1,
-    tasks: [
-      { id: "t3-1", milestoneId: "m3", title: "AI 추천 시스템 설계", description: "추천 알고리즘 설계 및 데이터 파이프라인 구축", dueDate: "2024-11-01", status: "done", createdAt: "2024-10-01T00:00:00Z", completedAt: "2024-11-01T00:00:00Z" },
-      { id: "t3-2", milestoneId: "m3", title: "AI 모델 학습 및 배포", description: "ML 모델 학습, 평가, 서빙 인프라 구축", dueDate: "2024-12-15", status: "todo", createdAt: "2024-11-01T00:00:00Z" },
-      { id: "t3-3", milestoneId: "m3", title: "다국어 지원 (영어, 일본어)", description: "i18n 설정 및 번역 작업", dueDate: "2025-01-15", status: "todo", createdAt: "2024-11-15T00:00:00Z" },
-      { id: "t3-4", milestoneId: "m3", title: "성능 최적화 (로딩 50% 감소)", description: "번들 사이즈 최적화, 코드 스플리팅, 캐싱 전략", dueDate: "2025-02-01", status: "todo", createdAt: "2024-12-01T00:00:00Z" },
-      { id: "t3-5", milestoneId: "m3", title: "마케팅 랜딩 페이지", description: "Product Hunt 런칭용 랜딩 페이지", dueDate: "2025-02-15", status: "todo", createdAt: "2024-12-15T00:00:00Z" },
-      { id: "t3-6", milestoneId: "m3", title: "프로덕션 배포 및 모니터링", description: "최종 배포 및 24시간 모니터링", dueDate: "2025-03-01", status: "todo", createdAt: "2025-01-01T00:00:00Z" },
-    ],
-    createdAt: "2024-10-01T00:00:00Z",
-    updatedAt: "2024-11-15T00:00:00Z",
-  },
-  {
-    id: "m4",
-    projectId: "1",
-    title: "v0.9 - 프로토타입",
-    description: "초기 프로토타입 버전. 컨셉 검증 및 초기 사용자 피드백 수집.",
-    dueDate: "2024-07-15",
-    status: "closed",
-    openIssuesCount: 0,
-    closedIssuesCount: 3,
-    tasks: [
-      { id: "t4-1", milestoneId: "m4", title: "와이어프레임 제작", description: "주요 화면 와이어프레임 디자인", dueDate: "2024-06-15", status: "done", createdAt: "2024-06-01T00:00:00Z", completedAt: "2024-06-15T00:00:00Z" },
-      { id: "t4-2", milestoneId: "m4", title: "프로토타입 개발", description: "핵심 플로우 인터랙티브 프로토타입", dueDate: "2024-07-01", status: "done", createdAt: "2024-06-15T00:00:00Z", completedAt: "2024-07-01T00:00:00Z" },
-      { id: "t4-3", milestoneId: "m4", title: "초기 사용자 인터뷰 (10명)", description: "타겟 사용자 인터뷰 및 피드백 수집", dueDate: "2024-07-10", status: "done", createdAt: "2024-07-01T00:00:00Z", completedAt: "2024-07-10T00:00:00Z" },
-    ],
-    createdAt: "2024-06-01T00:00:00Z",
-    updatedAt: "2024-07-10T00:00:00Z",
-    closedAt: "2024-07-10T00:00:00Z",
-  },
-];
-
-interface TaskFormData {
-  title: string;
-  description: string;
-  dueDate: string;
-}
+import { MilestoneDetailSkeleton } from "./milestone/components/MilestoneDetailSkeleton";
+import { ensureMinDelay } from "@/shared/lib/utils";
 
 export function MilestoneDetailPage() {
   const { id, milestoneId } = useParams<{ id: string; milestoneId: string }>();
-  const navigate = useNavigate();
-  const { projects } = useProjectStore();
+  const { user } = useUserStore();
 
   // 마일스톤 상태 관리
   const [milestone, setMilestone] = useState<Milestone | null>(null);
+  const [tasks, setTasks] = useState<MilestoneTask[]>([]);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<MilestoneTask | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [projectAuthorId, setProjectAuthorId] = useState<string>("");
+
+  // 프로젝트 정보 조회
+  useEffect(() => {
+    if (!id) return;
+
+    const loadProject = async () => {
+      try {
+        const result = await fetchProjectDetail(id);
+        if (result.error) {
+          console.error("프로젝트 조회 실패:", result.error);
+          return;
+        }
+        if (result.overview?.project) {
+          setProjectAuthorId(result.overview.project.author.id);
+        }
+      } catch (err) {
+        console.error("프로젝트 조회 에러:", err);
+      }
+    };
+
+    loadProject();
+  }, [id]);
 
   // 마일스톤 데이터 로드
   useEffect(() => {
-    const found = dummyMilestones.find((m) => m.id === milestoneId);
-    if (found) {
-      setMilestone({ ...found });
-    }
+    if (!milestoneId) return;
+
+    let isCancelled = false;
+
+    const loadMilestone = async () => {
+      setIsLoading(true);
+      setIsLoadingTasks(true);
+      setError(null);
+
+      const startTime = Date.now();
+
+      try {
+        const { milestone: data, error: fetchError } = await fetchMilestoneDetail(milestoneId);
+
+        if (isCancelled) return;
+
+        if (fetchError) {
+          throw new Error(fetchError.message || "마일스톤을 불러오는데 실패했습니다");
+        }
+
+        if (!data) {
+          throw new Error("마일스톤을 찾을 수 없습니다");
+        }
+
+        // 최소 로딩 지연 시간 보장 (0.3~0.7초)
+        await ensureMinDelay(startTime, { min: 300, max: 700 });
+
+        if (isCancelled) return;
+
+        setMilestone(data);
+        
+        // 태스크 목록 로드 (태스크도 로드 완료될 때까지 스켈레톤 표시)
+        const taskStartTime = Date.now();
+        const { tasks: taskList, error: tasksError } = await fetchTasks(data.id);
+        
+        if (isCancelled) return;
+        
+        // 태스크 로딩도 최소 지연 시간 보장
+        await ensureMinDelay(taskStartTime, { min: 300, max: 700 });
+        
+        if (isCancelled) return;
+        
+        if (tasksError) {
+          console.error("태스크 목록 조회 실패:", tasksError);
+          setTasks([]);
+        } else {
+          setTasks(taskList || []);
+        }
+      } catch (err) {
+        if (isCancelled) return;
+        const errorMessage = err instanceof Error ? err.message : "마일스톤을 불러오는 중 오류가 발생했습니다";
+        setError(errorMessage);
+        console.error("마일스톤 조회 에러:", err);
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+          setIsLoadingTasks(false);
+        }
+      }
+    };
+
+    loadMilestone();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [milestoneId]);
 
+  // 태스크 목록 로드 함수 (새로고침용)
+  const loadTasks = async (msId: string) => {
+    setIsLoadingTasks(true);
+    try {
+      const { tasks: taskList, error: tasksError } = await fetchTasks(msId);
+      
+      if (tasksError) {
+        console.error("태스크 목록 조회 실패:", tasksError);
+        setTasks([]);
+        return;
+      }
+      
+      setTasks(taskList || []);
+    } catch (err) {
+      console.error("태스크 목록 조회 에러:", err);
+      setTasks([]);
+    } finally {
+      setIsLoadingTasks(false);
+    }
+  };
 
-  const project = projects[0]; // 임시로 첫 번째 프로젝트 사용
-  const categoryInfo = project ? CATEGORY_INFO[project.category] : null;
+  if (isLoading || isLoadingTasks) {
+    return <MilestoneDetailSkeleton />;
+  }
 
-  if (!milestone) {
+  if (error || !milestone) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <p className="text-surface-500">마일스톤을 찾을 수 없습니다.</p>
+        <div className="text-center">
+          <p className="text-surface-500 mb-4">{error || "마일스톤을 찾을 수 없습니다."}</p>
+          <Link
+            to={`/project/${id}/community/milestones`}
+            className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+          >
+            마일스톤 목록으로 돌아가기
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const tasks = milestone.tasks || [];
   const todoTasks = tasks.filter((t) => t.status === "todo");
   const doneTasks = tasks.filter((t) => t.status === "done");
   const progress = tasks.length > 0 ? Math.round((doneTasks.length / tasks.length) * 100) : 0;
+  
+  // 프로젝트 소유자 여부 확인
+  const isProjectOwner = user && projectAuthorId && user.id === projectAuthorId;
 
   const getDueLabel = (dueDate?: string) => {
     if (!dueDate) return null;
@@ -153,93 +195,95 @@ export function MilestoneDetailPage() {
     setIsTaskModalOpen(true);
   };
 
-  const handleSaveTask = (formData: { title: string; description: string; dueDate: string }) => {
-    if (!formData.title.trim()) return;
+  const handleSaveTask = async (formData: { title: string; description: string; dueDate: string }) => {
+    if (!formData.title.trim() || !milestone) return;
 
-    if (editingTask) {
-      // 수정
-      setMilestone((prev) => {
-        if (!prev) return prev;
-        const updatedTasks = prev.tasks?.map((t) =>
-          t.id === editingTask.id
-            ? {
-                ...t,
-                title: formData.title,
-                description: formData.description || undefined,
-                dueDate: formData.dueDate || undefined,
-              }
-            : t
-        );
-        return { ...prev, tasks: updatedTasks, updatedAt: new Date().toISOString() };
-      });
-    } else {
-      // 새 태스크 추가
-      const newTask: MilestoneTask = {
-        id: `t${Date.now()}`,
-        milestoneId: milestone.id,
-        title: formData.title,
-        description: formData.description || undefined,
-        dueDate: formData.dueDate || undefined,
-        status: "todo",
-        createdAt: new Date().toISOString(),
-      };
-      setMilestone((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          tasks: [...(prev.tasks || []), newTask],
-          openIssuesCount: prev.openIssuesCount + 1,
-          updatedAt: new Date().toISOString(),
-        };
-      });
+    try {
+      if (editingTask) {
+        // 수정
+        const { error } = await updateTask(editingTask.id, {
+          title: formData.title,
+          description: formData.description,
+          dueDate: formData.dueDate || undefined,
+        });
+
+        if (error) {
+          alert(error.message || "태스크 수정에 실패했습니다");
+          return;
+        }
+      } else {
+        // 새 태스크 추가
+        const { taskId, error } = await createTask(milestone.id, {
+          title: formData.title,
+          description: formData.description,
+          dueDate: formData.dueDate || undefined,
+        });
+
+        if (error || !taskId) {
+          alert(error?.message || "태스크 생성에 실패했습니다");
+          return;
+        }
+      }
+
+      // 태스크 목록 새로고침
+      await loadTasks(milestone.id);
+      setIsTaskModalOpen(false);
+      setEditingTask(null);
+    } catch (err) {
+      console.error("태스크 저장 에러:", err);
+      alert("태스크 저장 중 오류가 발생했습니다");
     }
-    setIsTaskModalOpen(false);
   };
 
-  const handleToggleTask = (taskId: string) => {
-    setMilestone((prev) => {
-      if (!prev) return prev;
+  const handleToggleTask = async (taskId: string) => {
+    if (!milestone) return;
 
-      const updatedTasks = prev.tasks?.map((t) => {
-        if (t.id !== taskId) return t;
-        const newStatus = t.status === "todo" ? "done" : "todo";
-        return {
-          ...t,
-          status: newStatus,
-          completedAt: newStatus === "done" ? new Date().toISOString() : undefined,
-        };
-      }) as MilestoneTask[];
+    try {
+      const { error } = await toggleTaskStatus(taskId);
 
-      const openCount = updatedTasks?.filter((t) => t.status === "todo").length || 0;
-      const closedCount = updatedTasks?.filter((t) => t.status === "done").length || 0;
+      if (error) {
+        alert(error.message || "태스크 상태 변경에 실패했습니다");
+        return;
+      }
 
-      return {
-        ...prev,
-        tasks: updatedTasks,
-        openIssuesCount: openCount,
-        closedIssuesCount: closedCount,
-        updatedAt: new Date().toISOString(),
-      };
-    });
+      // 태스크 목록 새로고침
+      await loadTasks(milestone.id);
+      
+      // 마일스톤 정보도 새로고침 (카운트 업데이트 반영)
+      const { milestone: updatedMilestone, error: milestoneError } = await fetchMilestoneDetail(milestone.id);
+      if (!milestoneError && updatedMilestone) {
+        setMilestone(updatedMilestone);
+      }
+    } catch (err) {
+      console.error("태스크 상태 변경 에러:", err);
+      alert("태스크 상태 변경 중 오류가 발생했습니다");
+    }
   };
 
-  const handleDeleteTask = (taskId: string) => {
+  const handleDeleteTask = async (taskId: string) => {
+    if (!milestone) return;
     if (!confirm("이 태스크를 삭제하시겠습니까?")) return;
 
-    setMilestone((prev) => {
-      if (!prev) return prev;
+    try {
+      const { error } = await deleteTask(taskId);
 
-      const taskToDelete = prev.tasks?.find((t) => t.id === taskId);
-      const updatedTasks = prev.tasks?.filter((t) => t.id !== taskId);
+      if (error) {
+        alert(error.message || "태스크 삭제에 실패했습니다");
+        return;
+      }
 
-      return {
-        ...prev,
-        tasks: updatedTasks,
-        openIssuesCount: taskToDelete?.status === "todo" ? prev.openIssuesCount - 1 : prev.openIssuesCount,
-        closedIssuesCount: taskToDelete?.status === "done" ? prev.closedIssuesCount - 1 : prev.closedIssuesCount,
-        updatedAt: new Date().toISOString(),
-      };
-    });
+      // 태스크 목록 새로고침
+      await loadTasks(milestone.id);
+      
+      // 마일스톤 정보도 새로고침 (카운트 업데이트 반영)
+      const { milestone: updatedMilestone, error: milestoneError } = await fetchMilestoneDetail(milestone.id);
+      if (!milestoneError && updatedMilestone) {
+        setMilestone(updatedMilestone);
+      }
+    } catch (err) {
+      console.error("태스크 삭제 에러:", err);
+      alert("태스크 삭제 중 오류가 발생했습니다");
+    }
   };
 
   return (
@@ -373,6 +417,7 @@ export function MilestoneDetailPage() {
         onClose={() => setIsTaskModalOpen(false)}
         editingTask={editingTask}
         onSubmit={handleSaveTask}
+        canEdit={!!isProjectOwner} // 프로젝트 소유자만 수정 가능 (실제 권한 체크는 백엔드에서 수행)
       />
     </div>
   );
