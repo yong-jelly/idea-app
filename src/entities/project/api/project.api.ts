@@ -516,8 +516,7 @@ export async function fetchProjects(
         targetFunding: row.target_funding || 0,
         backersCount: row.backers_count || 0,
         likesCount: row.likes_count || 0,
-        // TODO: 커뮤니티 기능 구현 후 실제 댓글 카운트로 변경
-        commentsCount: row.comments_count || 0, // 현재는 DB의 기본값(0) 사용, 실제 댓글 시스템 연동 필요
+        commentsCount: row.comments_count || 0,
         daysLeft: row.days_left || 0,
         status: row.status as Project["status"],
         featured: row.featured || false,
@@ -660,8 +659,7 @@ export async function fetchProjectDetail(
       targetFunding: row.target_funding || 0,
       backersCount: row.backers_count || 0,
       likesCount: row.likes_count || 0,
-      // TODO: 커뮤니티 기능 구현 후 실제 댓글 카운트로 변경
-      commentsCount: row.comments_count || 0, // 현재는 DB의 기본값(0) 사용, 실제 댓글 시스템 연동 필요
+      commentsCount: row.comments_count || 0,
       daysLeft: row.days_left || 0,
       status: row.status as Project["status"],
       featured: row.featured || false,
@@ -2357,6 +2355,26 @@ export async function fetchMyProjects(
       };
     }
 
+    // 프로젝트 ID 목록 추출
+    const projectIds = data.map((row: any) => row.id);
+
+    // 각 프로젝트의 실제 댓글 카운트 조회
+    const { data: commentsData, error: commentsError } = await supabase
+      .schema("odd")
+      .from("tbl_comments")
+      .select("post_id")
+      .in("post_id", projectIds)
+      .eq("is_deleted", false);
+
+    // 프로젝트별 댓글 카운트 맵 생성
+    const commentsCountMap = new Map<string, number>();
+    if (!commentsError && commentsData) {
+      commentsData.forEach((comment: any) => {
+        const projectId = comment.post_id;
+        commentsCountMap.set(projectId, (commentsCountMap.get(projectId) || 0) + 1);
+      });
+    }
+
     // 데이터 변환
     const projects: Project[] = data.map((row: any) => {
       const author = row.author || {};
@@ -2413,7 +2431,7 @@ export async function fetchMyProjects(
         targetFunding: row.target_funding || 0,
         backersCount: row.backers_count || 0,
         likesCount: row.likes_count || 0,
-        commentsCount: row.comments_count || 0,
+        commentsCount: commentsCountMap.get(row.id) || 0,
         daysLeft: row.days_left || 0,
         status: row.status as Project["status"],
         featured: row.featured || false,

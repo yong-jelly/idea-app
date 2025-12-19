@@ -55,7 +55,7 @@ export function ProjectUpdateRow({
         />
       }
     >
-      <AuthorHeader author={post.author} createdAt={post.createdAt} />
+      <AuthorHeader author={post.author} createdAt={post.createdAt} showMoreButton={false} />
       
       <PostTypeBadge
         icon={<UpdateIcon />}

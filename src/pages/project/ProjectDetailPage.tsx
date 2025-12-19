@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
-import { MessageSquare, ChevronUp, MessageCircle, ArrowRight, Share2, ChevronLeft, ChevronRight, X, Bookmark } from "lucide-react";
+import { MessageSquare, ChevronUp, MessageCircle, ArrowRight, ChevronLeft, ChevronRight, X, Bookmark, Link2, Check } from "lucide-react";
 import { Button, Avatar } from "@/shared/ui";
 import { cn, formatNumber } from "@/shared/lib/utils";
 import { useProjectStore, fetchProjectDetail, toggleProjectBookmark, checkProjectBookmark, type Project, CATEGORY_INFO } from "@/entities/project";
@@ -27,6 +27,7 @@ export function ProjectDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // 댓글 관련 로직을 hook으로 분리
   const {
@@ -136,6 +137,13 @@ export function ProjectDetailPage() {
       return;
     }
     action();
+  };
+
+  // 링크 복사 핸들러
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   // 저장하기 버튼 핸들러
@@ -484,14 +492,16 @@ export function ProjectDetailPage() {
                     {isBookmarking ? "저장 중..." : project.isBookmarked ? "저장됨" : "저장"}
                   </button>
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.href);
-                      // TODO: 토스트 알림
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-surface-200 dark:border-surface-700 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
+                    onClick={handleCopyLink}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors",
+                      copied
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-400 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+                        : "border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-800"
+                    )}
                   >
-                    <Share2 className="h-4 w-4" />
-                    공유
+                    {copied ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+                    {copied ? "복사됨" : "링크"}
                   </button>
                 </div>
               </div>

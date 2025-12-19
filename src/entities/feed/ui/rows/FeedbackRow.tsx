@@ -100,7 +100,7 @@ export function FeedbackRow({
         />
       }
     >
-      <AuthorHeader author={feedback.author} createdAt={feedback.createdAt} />
+      <AuthorHeader author={feedback.author} createdAt={feedback.createdAt} showMoreButton={false} />
       
       {/* 타입 및 상태 배지 */}
       <div className="mb-2 flex items-center gap-2">

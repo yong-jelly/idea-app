@@ -53,7 +53,7 @@ export function AnnouncementRow({
         />
       }
     >
-      <AuthorHeader author={post.author} createdAt={post.createdAt} />
+      <AuthorHeader author={post.author} createdAt={post.createdAt} showMoreButton={false} />
       
       {/* 타입 배지 */}
       <div className="mb-2 flex items-center gap-2">

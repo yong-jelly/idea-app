@@ -55,7 +55,7 @@ export function MilestoneAchievedRow({
         />
       }
     >
-      <AuthorHeader author={post.author} createdAt={post.createdAt} />
+      <AuthorHeader author={post.author} createdAt={post.createdAt} showMoreButton={false} />
       
       <PostTypeBadge
         icon={<FlagIcon />}

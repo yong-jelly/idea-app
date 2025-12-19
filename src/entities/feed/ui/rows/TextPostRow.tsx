@@ -49,7 +49,7 @@ export function TextPostRow({
         />
       }
     >
-      <AuthorHeader author={post.author} createdAt={post.createdAt} />
+      <AuthorHeader author={post.author} createdAt={post.createdAt} showMoreButton={false} />
       
       <ContentArea 
         content={post.content} 

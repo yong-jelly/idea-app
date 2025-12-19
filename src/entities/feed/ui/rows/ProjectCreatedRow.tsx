@@ -53,7 +53,7 @@ export function ProjectCreatedRow({
         />
       }
     >
-      <AuthorHeader author={post.author} createdAt={post.createdAt} />
+      <AuthorHeader author={post.author} createdAt={post.createdAt} showMoreButton={false} />
       
       {/* 프로젝트 카드 */}
       <Link
