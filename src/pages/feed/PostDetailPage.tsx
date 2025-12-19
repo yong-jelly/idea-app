@@ -7,6 +7,7 @@ import { usePostStore } from "@/entities/post";
 import { useUserStore } from "@/entities/user";
 import { LeftSidebar } from "@/widgets";
 import { SignUpModal } from "@/pages/auth";
+import { ProfileEditModal } from "@/pages/profile";
 import { useState, useEffect } from "react";
 
 // 분리된 모듈 import
@@ -20,6 +21,7 @@ export function PostDetailPage() {
   const { posts, toggleLike, toggleBookmark } = usePostStore();
   const { user, isAuthenticated } = useUserStore();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // 댓글 관련 로직은 커스텀 훅으로 분리
   const {
@@ -55,10 +57,16 @@ export function PostDetailPage() {
   if (!post) {
     return (
       <div className="mx-auto flex max-w-5xl items-start">
-        <div className="hidden lg:block w-[275px] shrink-0 px-3 self-stretch">
-          <LeftSidebar />
+        <div className="hidden lg:block w-[260px] shrink-0 self-stretch">
+          <LeftSidebar onProfileEditClick={() => {
+            if (!isAuthenticated) {
+              setShowSignUpModal(true);
+              return;
+            }
+            setIsEditModalOpen(true);
+          }} />
         </div>
-        <main className="min-w-0 flex-1 min-h-[calc(100vh-3.5rem)] bg-white dark:bg-surface-950 border-x border-surface-200 dark:border-surface-800">
+        <main className="min-w-0 flex-1 min-h-[calc(100vh-4rem)] bg-white dark:bg-surface-950 border-x border-surface-100/80 dark:border-surface-800/50">
           <div className="p-8 text-center">
             <p className="text-surface-500">포스트를 찾을 수 없습니다.</p>
             <Button variant="outline" className="mt-4" onClick={() => navigate("/")}>
@@ -77,14 +85,20 @@ export function PostDetailPage() {
   return (
     <div className="mx-auto flex max-w-5xl items-start">
       {/* Left Sidebar */}
-      <div className="hidden lg:block w-[275px] shrink-0 px-3 self-stretch">
-        <LeftSidebar />
+      <div className="hidden lg:block w-[260px] shrink-0 self-stretch">
+        <LeftSidebar onProfileEditClick={() => {
+          if (!isAuthenticated) {
+            setShowSignUpModal(true);
+            return;
+          }
+          setIsEditModalOpen(true);
+        }} />
       </div>
 
       {/* Main Content */}
-      <main className="min-w-0 flex-1 min-h-[calc(100vh-3.5rem)] bg-white dark:bg-surface-950 border-x border-surface-200 dark:border-surface-800">
+      <main className="min-w-0 flex-1 min-h-[calc(100vh-4rem)] bg-white dark:bg-surface-950 border-x border-surface-100/80 dark:border-surface-800/50">
         {/* Header */}
-        <div className="sticky top-14 z-10 bg-white/80 dark:bg-surface-950/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
+        <div className="sticky top-16 z-10 bg-white/95 dark:bg-surface-950/95 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800/50">
           <div className="h-[53px] flex items-center gap-4 px-4">
             <Button 
               variant="ghost" 
@@ -343,6 +357,14 @@ export function PostDetailPage() {
           />
         </div>
       </main>
+
+      {/* 프로필 편집 모달 */}
+      {isAuthenticated && (
+        <ProfileEditModal
+          open={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+        />
+      )}
 
       {/* 회원 가입 모달 */}
       <SignUpModal

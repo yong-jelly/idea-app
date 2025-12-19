@@ -134,20 +134,22 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
   };
 
   return (
-    <div className="bg-white dark:bg-black">
+    <div className="bg-white dark:bg-surface-950">
       {posts.map(renderPost)}
 
       {/* Load More Trigger */}
-      <div ref={loadMoreRef} className="py-8 border-b border-surface-200 dark:border-surface-800">
+      <div ref={loadMoreRef} className="py-10">
         {isLoading && (
           <div className="flex justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-surface-400" />
           </div>
         )}
         {!hasMore && posts.length > 0 && (
-          <p className="text-center text-sm text-surface-400 dark:text-surface-500">
-            모든 포스트를 확인했습니다
-          </p>
+          <div className="text-center">
+            <p className="text-sm text-surface-400 dark:text-surface-500">
+              모든 포스트를 확인했습니다
+            </p>
+          </div>
         )}
       </div>
     </div>
@@ -156,25 +158,24 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
 
 function FeedSkeleton() {
   return (
-    <div className="bg-white dark:bg-black">
+    <div className="bg-white dark:bg-surface-950">
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="px-4 py-3 border-b border-surface-200 dark:border-surface-800"
+          className="px-4 py-4 border-b border-surface-100/80 dark:border-surface-800/50"
         >
-          <div className="flex gap-3">
-            <Skeleton variant="circular" className="h-10 w-10" />
+          <div className="flex gap-3.5">
+            <Skeleton variant="circular" className="h-11 w-11" />
             <div className="flex-1 space-y-3">
               <div className="flex items-center gap-2">
-                <Skeleton variant="text" className="h-4 w-24" />
-                <Skeleton variant="text" className="h-4 w-16" />
+                <Skeleton variant="text" className="h-4 w-28" />
+                <Skeleton variant="text" className="h-4 w-20" />
               </div>
               <Skeleton variant="text" className="h-4 w-full" />
-              <Skeleton variant="text" className="h-4 w-3/4" />
-              <div className="flex gap-4 pt-2">
-                <Skeleton variant="text" className="h-5 w-12" />
-                <Skeleton variant="text" className="h-5 w-12" />
-                <Skeleton variant="text" className="h-5 w-12" />
+              <Skeleton variant="text" className="h-4 w-4/5" />
+              <div className="flex gap-3 pt-3">
+                <Skeleton variant="text" className="h-5 w-14" />
+                <Skeleton variant="text" className="h-5 w-14" />
               </div>
             </div>
           </div>

@@ -26,54 +26,61 @@ export function Header() {
   const isDev = import.meta.env.DEV;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-surface-200/80 bg-white/95 backdrop-blur-sm dark:border-surface-800 dark:bg-surface-950/95">
+    <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-surface-100 dark:bg-surface-950/80 dark:border-surface-800/50 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        <div className="flex h-14 items-center justify-between">
+        <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-10 items-center justify-center rounded-lg bg-primary-600">
-              <span className="text-xs font-bold text-white">1DD</span>
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-sm group-hover:shadow-md transition-shadow">
+              <span className="text-[11px] font-bold tracking-tight text-white">1DD</span>
             </div>
-            <span className="text-lg font-semibold text-surface-900 dark:text-surface-50">
-              {/* 1DD */}
-            </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-0.5">
+          {/* Desktop Navigation - 중앙 배치 */}
+          <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  "px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors",
+                  "relative px-5 py-2 text-sm font-medium transition-all duration-200",
                   location.pathname === item.href
-                    ? "bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-50"
-                    : "text-surface-500 hover:text-surface-900 hover:bg-surface-50 dark:text-surface-400 dark:hover:text-surface-100 dark:hover:bg-surface-800/50"
+                    ? "text-surface-900 dark:text-white"
+                    : "text-surface-500 hover:text-surface-800 dark:text-surface-400 dark:hover:text-surface-200"
                 )}
               >
                 {item.name}
+                {/* 활성 탭 인디케이터 */}
+                <span
+                  className={cn(
+                    "absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 rounded-full bg-primary-500 transition-all duration-200",
+                    location.pathname === item.href ? "w-5 opacity-100" : "w-0 opacity-0"
+                  )}
+                />
               </Link>
             ))}
           </nav>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             {/* Theme Toggle */}
-            <Button variant="ghost" size="icon" onClick={toggleTheme}>
+            <button 
+              onClick={toggleTheme}
+              className="h-9 w-9 flex items-center justify-center rounded-full text-surface-500 hover:text-surface-700 hover:bg-surface-100/80 dark:text-surface-400 dark:hover:text-surface-200 dark:hover:bg-surface-800/50 transition-all"
+            >
               {theme === "dark" ? (
                 <Sun className="h-[18px] w-[18px]" />
               ) : (
                 <Moon className="h-[18px] w-[18px]" />
               )}
-            </Button>
+            </button>
 
             {/* User Menu */}
             {isAuthenticated && user ? (
-              <div className="relative ml-1">
+              <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 rounded-full p-0.5 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+                  className="flex items-center gap-2 rounded-full p-1 hover:bg-surface-100/80 dark:hover:bg-surface-800/50 transition-all ring-2 ring-transparent hover:ring-surface-200 dark:hover:ring-surface-700"
                 >
                   <Avatar
                     src={user.avatar ? getProfileImageUrl(user.avatar, "sm") : undefined}
@@ -89,46 +96,42 @@ export function Header() {
                       className="fixed inset-0 z-40"
                       onClick={() => setUserMenuOpen(false)}
                     />
-                    <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-surface-200 bg-white p-1.5 shadow-soft-lg dark:border-surface-800 dark:bg-surface-900 animate-scale-in">
-                      <div className="border-b border-surface-100 px-3 py-2.5 dark:border-surface-800">
-                        <p className="font-medium text-surface-900 dark:text-surface-50">
+                    <div className="absolute right-0 top-full z-50 mt-3 w-64 rounded-2xl border border-surface-100 bg-white p-2 shadow-xl dark:border-surface-800 dark:bg-surface-900 animate-scale-in">
+                      {/* 프로필 헤더 */}
+                      <div className="px-3 py-3 mb-1">
+                        <p className="font-semibold text-surface-900 dark:text-surface-50 text-[15px]">
                           {user.displayName}
                         </p>
-                        <p className="text-sm text-surface-500 dark:text-surface-400">
+                        <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">
                           @{user.username}
                         </p>
                       </div>
 
-                      <div className="py-1.5">
-                        <div className="flex items-center gap-2 px-3 py-2 text-sm text-surface-600 dark:text-surface-400">
-                          <Coins className="h-4 w-4" />
-                          <span>{user.points.toLocaleString()} P</span>
-                          <Badge variant="default" className="ml-auto">
+                      {/* 포인트 섹션 */}
+                      <div className="mx-2 mb-2 px-3 py-2.5 rounded-xl bg-gradient-to-br from-surface-50 to-surface-100/50 dark:from-surface-800 dark:to-surface-800/50 border border-surface-100 dark:border-surface-700">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-300">
+                            <Coins className="h-4 w-4 text-amber-500" />
+                            <span className="font-medium">{user.points.toLocaleString()} P</span>
+                          </div>
+                          <Badge variant="default" className="text-[10px] px-2">
                             {user.level}
                           </Badge>
                         </div>
                       </div>
 
-                      <div className="border-t border-surface-100 dark:border-surface-800 pt-1.5">
+                      <div className="h-px bg-surface-100 dark:bg-surface-800 mx-2 my-1" />
+
+                      {/* 메뉴 아이템 */}
+                      <div className="py-1">
                         <Link
                           to={`/profile/${user.username}`}
-                          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-surface-600 hover:bg-surface-50 dark:text-surface-400 dark:hover:bg-surface-800"
+                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-surface-700 hover:bg-surface-50 dark:text-surface-300 dark:hover:bg-surface-800 transition-colors"
                           onClick={() => setUserMenuOpen(false)}
                         >
-                          <Avatar size="xs" fallback={user.displayName} />
+                          <User className="h-4 w-4 text-surface-400" />
                           마이페이지
                         </Link>
-                          {/* <button
-                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-surface-600 hover:bg-surface-50 dark:text-surface-400 dark:hover:bg-surface-800"
-                          >
-                            <Settings className="h-4 w-4" />
-                            설정
-                          </button> */}
-                        {/* 
-                          로그아웃 버튼
-                          사용자 메뉴에서 로그아웃을 수행합니다.
-                          logout()과 clearSession()을 모두 호출하여 사용자 정보와 세션 토큰을 완전히 제거합니다.
-                        */}
                         <button
                           onClick={async () => {
                             console.log("[HEADER] 로그아웃 버튼 클릭", {
@@ -138,20 +141,14 @@ export function Header() {
                               timestamp: new Date().toISOString()
                             });
                             
-                            // Supabase 세션 제거
                             try {
                               await supabase.auth.signOut();
                             } catch (err) {
                               console.error("[HEADER] Supabase 로그아웃 에러:", err);
                             }
                             
-                            // 사용자 정보 제거
                             logout();
-                            
-                            // 세션 토큰 제거
                             clearSession();
-                            
-                            // 사용자 메뉴 닫기
                             setUserMenuOpen(false);
                             
                             console.log("[HEADER] 로그아웃 완료", {
@@ -160,7 +157,7 @@ export function Header() {
                               timestamp: new Date().toISOString()
                             });
                           }}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-accent-rose hover:bg-red-50 dark:hover:bg-red-900/20"
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 transition-colors"
                         >
                           <LogOut className="h-4 w-4" />
                           로그아웃
@@ -171,48 +168,41 @@ export function Header() {
                 )}
               </div>
             ) : (
-              <Button 
-                variant="outline" 
-                size="sm"
+              <button
                 onClick={() => setSignUpModalOpen(true)}
-                className={cn(
-                  "transition-all",
-                  !isDev && "hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700 dark:hover:bg-primary-950 dark:hover:border-primary-700 dark:hover:text-primary-300"
-                )}
+                className="h-9 px-4 text-sm font-medium text-white bg-surface-900 hover:bg-surface-800 dark:bg-white dark:text-surface-900 dark:hover:bg-surface-100 rounded-full transition-all shadow-sm hover:shadow-md"
               >
                 로그인
-              </Button>
+              </button>
             )}
 
             {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
+            <button
+              className="md:hidden h-9 w-9 flex items-center justify-center rounded-full text-surface-600 hover:bg-surface-100/80 dark:text-surface-400 dark:hover:bg-surface-800/50 transition-all"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? (
-                <X className="h-[18px] w-[18px]" />
+                <X className="h-5 w-5" />
               ) : (
-                <Menu className="h-[18px] w-[18px]" />
+                <Menu className="h-5 w-5" />
               )}
-            </Button>
+            </button>
           </div>
         </div>
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="border-t border-surface-200 py-3 md:hidden dark:border-surface-800 animate-slide-down">
-            <nav className="flex flex-col gap-0.5">
+          <div className="border-t border-surface-100 py-4 md:hidden dark:border-surface-800 animate-slide-down">
+            <nav className="flex flex-col gap-1 px-2">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   to={item.href}
                   className={cn(
-                    "px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    "px-4 py-3 text-sm font-medium rounded-xl transition-all",
                     location.pathname === item.href
-                      ? "bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-surface-50"
-                      : "text-surface-600 hover:text-surface-900 hover:bg-surface-50 dark:text-surface-400 dark:hover:text-surface-100 dark:hover:bg-surface-800"
+                      ? "bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-white"
+                      : "text-surface-600 hover:text-surface-900 hover:bg-surface-50 dark:text-surface-400 dark:hover:text-white dark:hover:bg-surface-800/50"
                   )}
                   onClick={() => setMobileMenuOpen(false)}
                 >

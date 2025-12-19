@@ -6,11 +6,13 @@ import { LeftSidebar } from "@/widgets";
 import { useProjectStore } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { SignUpModal } from "@/pages/auth";
+import { ProfileEditModal } from "@/pages/profile";
 
 export function MyProjectsPage() {
   const { projects } = useProjectStore();
   const { user, isAuthenticated } = useUserStore();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -46,14 +48,20 @@ export function MyProjectsPage() {
   return (
     <div className="mx-auto flex max-w-5xl items-start">
       {/* Left Sidebar - Desktop Only */}
-      <div className="hidden lg:block w-[275px] shrink-0 px-3 self-stretch">
-        <LeftSidebar />
+      <div className="hidden lg:block w-[260px] shrink-0 self-stretch">
+        <LeftSidebar onProfileEditClick={() => {
+          if (!isAuthenticated) {
+            setShowSignUpModal(true);
+            return;
+          }
+          setIsEditModalOpen(true);
+        }} />
       </div>
 
       {/* Main Content */}
-      <main className="min-w-0 flex-1 min-h-[calc(100vh-3.5rem)] bg-white dark:bg-surface-950 border-x border-surface-200 dark:border-surface-800">
+      <main className="min-w-0 flex-1 min-h-[calc(100vh-4rem)] bg-white dark:bg-surface-950 border-x border-surface-100/80 dark:border-surface-800/50">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-white/95 dark:bg-surface-950/95 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
+        <div className="sticky top-16 z-10 bg-white/95 dark:bg-surface-950/95 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800/50">
           <div className="h-[53px] flex items-center justify-between px-4">
             <h1 className="text-lg font-bold text-surface-900 dark:text-surface-50">
               내 프로젝트
@@ -141,6 +149,14 @@ export function MyProjectsPage() {
           )}
         </div>
       </main>
+
+      {/* 프로필 편집 모달 */}
+      {isAuthenticated && (
+        <ProfileEditModal
+          open={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+        />
+      )}
 
       {/* 회원 가입 모달 */}
       <SignUpModal

@@ -163,8 +163,8 @@ export function AuthorHeader({ author, createdAt, showMoreButton = true, badge, 
   const role = "role" in author ? author.role : undefined;
 
   return (
-    <div className="flex items-center justify-between mb-1">
-      <div className="flex items-center gap-1.5 min-w-0 text-sm">
+    <div className="flex items-center justify-between mb-1.5">
+      <div className="flex items-center gap-1.5 min-w-0 text-[14px]">
         <Link
           to={`/profile/${author.username}`}
           className="font-semibold text-surface-900 dark:text-white hover:underline truncate"
@@ -177,11 +177,11 @@ export function AuthorHeader({ author, createdAt, showMoreButton = true, badge, 
             {role}
           </Badge>
         )}
-        <span className="text-surface-500 dark:text-surface-500 truncate">
+        <span className="text-surface-400 dark:text-surface-500 truncate">
           @{author.username}
         </span>
-        <span className="text-surface-300 dark:text-surface-700">·</span>
-        <span className="text-surface-500 dark:text-surface-500 shrink-0">
+        <span className="text-surface-200 dark:text-surface-700">·</span>
+        <span className="text-surface-400 dark:text-surface-500 shrink-0">
           {formatRelativeTime(createdAt)}
         </span>
         {badge}
@@ -189,7 +189,7 @@ export function AuthorHeader({ author, createdAt, showMoreButton = true, badge, 
       {showMoreButton && (
         <button 
           onClick={(e) => { e.stopPropagation(); onMoreClick?.(); }}
-          className="h-8 w-8 shrink-0 -mr-2 flex items-center justify-center rounded-full text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+          className="h-8 w-8 shrink-0 -mr-2 flex items-center justify-center rounded-xl text-surface-400 hover:text-surface-600 hover:bg-surface-100/80 dark:hover:bg-surface-800/50 transition-all"
         >
           <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
             <circle cx="3" cy="8" r="1.5" />
@@ -258,41 +258,47 @@ export function InteractionButtons({
   };
 
   return (
-    <div className="flex items-center gap-1 -ml-2 pt-2">
+    <div className="flex items-center gap-0.5 -ml-2.5 pt-3">
       {/* 댓글 */}
       <button
         onClick={(e) => handleInteraction(e, onComment)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-surface-500 hover:text-surface-700 hover:bg-surface-100 dark:hover:bg-surface-800 dark:hover:text-surface-300 transition-all"
+        className="group flex items-center gap-1.5 px-3 py-2 rounded-xl text-surface-500 hover:text-surface-700 hover:bg-surface-100/80 dark:hover:bg-surface-800/50 dark:hover:text-surface-300 transition-all"
       >
-        <CommentIcon className="h-[18px] w-[18px]" />
-        <span className="text-[13px] tabular-nums">{formatNumber(interactions.commentsCount)}</span>
+        <CommentIcon className="h-[17px] w-[17px] group-hover:scale-110 transition-transform" />
+        <span className="text-[13px] font-medium tabular-nums">{formatNumber(interactions.commentsCount)}</span>
       </button>
 
       {/* 좋아요 */}
       <button
         onClick={(e) => handleInteraction(e, onLike, true)}
         className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all",
+          "group flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all",
           interactions.isLiked
             ? "text-rose-500"
-            : "text-surface-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+            : "text-surface-500 hover:text-rose-500 hover:bg-rose-50/80 dark:hover:bg-rose-950/20"
         )}
       >
-        <HeartIcon className="h-[18px] w-[18px]" filled={interactions.isLiked} />
-        <span className="text-[13px] tabular-nums">{formatNumber(interactions.likesCount)}</span>
+        <HeartIcon className={cn(
+          "h-[17px] w-[17px] transition-transform",
+          interactions.isLiked ? "scale-110" : "group-hover:scale-110"
+        )} filled={interactions.isLiked} />
+        <span className="text-[13px] font-medium tabular-nums">{formatNumber(interactions.likesCount)}</span>
       </button>
 
       {/* 북마크 */}
       <button
         onClick={(e) => handleInteraction(e, onBookmark, true)}
         className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all ml-auto",
+          "group flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all ml-auto",
           interactions.isBookmarked
             ? "text-primary-600 dark:text-primary-400"
-            : "text-surface-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/30"
+            : "text-surface-500 hover:text-primary-600 hover:bg-primary-50/80 dark:hover:bg-primary-950/20"
         )}
       >
-        <BookmarkIcon className="h-[18px] w-[18px]" filled={interactions.isBookmarked} />
+        <BookmarkIcon className={cn(
+          "h-[17px] w-[17px] transition-transform",
+          interactions.isBookmarked ? "scale-110" : "group-hover:scale-110"
+        )} filled={interactions.isBookmarked} />
       </button>
     </div>
   );
@@ -373,12 +379,12 @@ export interface ContentAreaProps {
 export function ContentArea({ content, images, className }: ContentAreaProps) {
   return (
     <>
-      <div className={cn("text-surface-900 dark:text-white whitespace-pre-wrap break-words mb-3 leading-relaxed text-[15px]", className)}>
+      <div className={cn("text-surface-800 dark:text-surface-100 whitespace-pre-wrap break-words leading-[1.6] text-[15px]", className)}>
         {content}
       </div>
       {images && images.length > 0 && (
         <div className={cn(
-          "mb-3 rounded-xl overflow-hidden",
+          "mt-3 rounded-2xl overflow-hidden border border-surface-100 dark:border-surface-800",
           images.length === 1 ? "" : "grid gap-0.5",
           images.length === 2 ? "grid-cols-2" : "",
           images.length === 3 ? "grid-cols-2" : "",
@@ -396,10 +402,10 @@ export function ContentArea({ content, images, className }: ContentAreaProps) {
               <img
                 src={img}
                 alt={`Image ${idx + 1}`}
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
               />
               {images.length > 4 && idx === 3 && (
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
                   <span className="text-white text-xl font-semibold">+{images.length - 4}</span>
                 </div>
               )}
@@ -422,13 +428,13 @@ export function FeedRowWrapper({ className, children, avatar, onClick }: FeedRow
   return (
     <article 
       className={cn(
-        "px-4 py-3 border-b border-surface-200 dark:border-surface-800 bg-white dark:bg-black",
-        "hover:bg-surface-50 dark:hover:bg-surface-900/50 transition-colors cursor-pointer",
+        "px-4 py-4 border-b border-surface-100/80 dark:border-surface-800/50 bg-white dark:bg-surface-950",
+        "hover:bg-surface-50/50 dark:hover:bg-surface-900/30 transition-all duration-200 cursor-pointer",
         className
       )}
       onClick={onClick}
     >
-      <div className="flex gap-3">
+      <div className="flex gap-3.5">
         {avatar}
         <div className="flex-1 min-w-0">
           {children}

@@ -38,7 +38,7 @@ function ScrollToTop() {
 
 function RootLayout() {
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900">
+    <div className="min-h-screen bg-surface-50/30 dark:bg-surface-950">
       <ScrollToTop />
       <Header />
       <Outlet />
