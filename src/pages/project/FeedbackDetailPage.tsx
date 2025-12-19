@@ -1036,6 +1036,7 @@ export function FeedbackDetailPage() {
                             id: user.id,
                             username: user.username,
                             displayName: user.displayName,
+                            avatarUrl: user.avatar ? getProfileImageUrl(user.avatar, "sm") : undefined,
                           }
                         : { id: "guest", displayName: "게스트" }
                     }
@@ -1095,11 +1096,11 @@ export function FeedbackDetailPage() {
                   <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50">
                     세부 정보
                   </h3>
-                  {isProjectMember && (
+                  {/* {isProjectMember && (
                     <p className="text-xs text-surface-400 mt-1">
                       관리자에게만 노출됩니다.
                     </p>
-                  )}
+                  )} */}
                 </div>
                 
                 <div className="divide-y divide-surface-100 dark:divide-surface-800">

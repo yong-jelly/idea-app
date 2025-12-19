@@ -21,18 +21,29 @@ import {
   ThumbsUp,
   Bug,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { Button, Card, CardContent, Input, Textarea } from "@/shared/ui";
 import { ChangelogCard } from "../components/ChangelogCard";
 import type { ChangelogEntry, ChangelogChange } from "../types";
+import {
+  fetchChangelogs,
+  createChangelog,
+  updateChangelog,
+  deleteChangelog,
+  type CreateChangelogData,
+  type UpdateChangelogData,
+} from "@/entities/project/api/project.api";
 
 interface ChangelogTabProps {
-  changelogs: ChangelogEntry[];
   projectId: string;
+  isOwner?: boolean;
 }
 
-export function ChangelogTab({ changelogs: initialChangelogs, projectId }: ChangelogTabProps) {
-  const [changelogs, setChangelogs] = useState<ChangelogEntry[]>(initialChangelogs);
+export function ChangelogTab({ projectId, isOwner = false }: ChangelogTabProps) {
+  const [changelogs, setChangelogs] = useState<ChangelogEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingChangelog, setEditingChangelog] = useState<ChangelogEntry | null>(null);
   const [formData, setFormData] = useState({
@@ -46,6 +57,12 @@ export function ChangelogTab({ changelogs: initialChangelogs, projectId }: Chang
     fixes: [{ id: `x-${Date.now()}`, description: "" }] as { id: string; description: string }[],
     breakings: [] as { id: string; description: string }[],
   });
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    loadChangelogs();
+  }, [projectId]);
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -65,6 +82,25 @@ export function ChangelogTab({ changelogs: initialChangelogs, projectId }: Chang
       document.body.style.overflow = "";
     };
   }, [isModalOpen]);
+
+  /**
+   * 변경사항 목록 로드
+   */
+  const loadChangelogs = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    const { changelogs: data, error: err } = await fetchChangelogs(projectId);
+    
+    if (err) {
+      setError(err);
+      setIsLoading(false);
+      return;
+    }
+    
+    setChangelogs(data);
+    setIsLoading(false);
+  };
 
   /**
    * 모달 열기 핸들러
@@ -111,8 +147,11 @@ export function ChangelogTab({ changelogs: initialChangelogs, projectId }: Chang
    * 변경사항 저장 핸들러
    * 모든 변경사항을 합쳐서 저장
    */
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.version.trim() || !formData.title.trim()) return;
+    if (!isOwner) return;
+
+    setIsSaving(true);
 
     // 모든 변경사항 합치기
     const changes: ChangelogChange[] = [
@@ -122,47 +161,78 @@ export function ChangelogTab({ changelogs: initialChangelogs, projectId }: Chang
       ...formData.breakings.filter(b => b.description.trim()).map(b => ({ id: b.id, type: "breaking" as const, description: b.description })),
     ];
 
-    if (editingChangelog) {
-      // 수정
-      setChangelogs((prev) =>
-        prev.map((cl) =>
-          cl.id === editingChangelog.id
-            ? {
-                ...cl,
-                version: formData.version,
-                title: formData.title,
-                description: formData.description,
-                changes,
-                repositoryUrl: formData.repositoryUrl || undefined,
-                downloadUrl: formData.downloadUrl || undefined,
-              }
-            : cl
-        )
-      );
-    } else {
-      // 새 변경사항 추가
-      const newChangelog: ChangelogEntry = {
-        id: `cl${Date.now()}`,
-        version: formData.version,
-        title: formData.title,
-        description: formData.description,
-        changes,
-        releasedAt: new Date().toISOString().split("T")[0],
-        repositoryUrl: formData.repositoryUrl || undefined,
-        downloadUrl: formData.downloadUrl || undefined,
-      };
-      setChangelogs((prev) => [newChangelog, ...prev]);
+    try {
+      if (editingChangelog) {
+        // 수정
+        const updateData: UpdateChangelogData = {
+          version: formData.version.trim(),
+          title: formData.title.trim(),
+          description: formData.description.trim() || undefined,
+          changes,
+          releasedAt: editingChangelog.releasedAt,
+          repositoryUrl: formData.repositoryUrl.trim() || undefined,
+          downloadUrl: formData.downloadUrl.trim() || undefined,
+        };
+
+        const { success, error: err } = await updateChangelog(editingChangelog.id, updateData);
+        
+        if (!success || err) {
+          alert(err?.message || "변경사항 수정에 실패했습니다");
+          setIsSaving(false);
+          return;
+        }
+
+        // 목록 새로고침
+        await loadChangelogs();
+      } else {
+        // 새 변경사항 추가
+        const createData: CreateChangelogData = {
+          version: formData.version.trim(),
+          title: formData.title.trim(),
+          description: formData.description.trim() || undefined,
+          changes,
+          releasedAt: new Date().toISOString().split("T")[0],
+          repositoryUrl: formData.repositoryUrl.trim() || undefined,
+          downloadUrl: formData.downloadUrl.trim() || undefined,
+        };
+
+        const { changelogId, error: err } = await createChangelog(projectId, createData);
+        
+        if (!changelogId || err) {
+          alert(err?.message || "변경사항 생성에 실패했습니다");
+          setIsSaving(false);
+          return;
+        }
+
+        // 목록 새로고침
+        await loadChangelogs();
+      }
+
+      setIsModalOpen(false);
+      setIsSaving(false);
+    } catch (err) {
+      console.error("변경사항 저장 에러:", err);
+      alert("변경사항 저장 중 오류가 발생했습니다");
+      setIsSaving(false);
     }
-    setIsModalOpen(false);
   };
 
   /**
    * 변경사항 삭제 핸들러
    */
-  const handleDelete = (changelogId: string) => {
-    if (confirm("정말 이 변경사항을 삭제하시겠습니까?")) {
-      setChangelogs((prev) => prev.filter((cl) => cl.id !== changelogId));
+  const handleDelete = async (changelogId: string) => {
+    if (!isOwner) return;
+    if (!confirm("정말 이 변경사항을 삭제하시겠습니까?")) return;
+
+    const { success, error: err } = await deleteChangelog(changelogId);
+    
+    if (!success || err) {
+      alert(err?.message || "변경사항 삭제에 실패했습니다");
+      return;
     }
+
+    // 목록 새로고침
+    await loadChangelogs();
   };
 
   /**
@@ -201,39 +271,78 @@ export function ChangelogTab({ changelogs: initialChangelogs, projectId }: Chang
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-surface-500">
-          총 {changelogs.length}개의 릴리즈
+          {isLoading ? "로딩 중..." : `총 ${changelogs.length}개의 릴리즈`}
         </p>
-        <Button size="sm" onClick={() => handleOpenModal()}>
-          <Plus className="h-4 w-4 mr-1" />
-          변경사항 추가
-        </Button>
+        {isOwner && (
+          <Button size="sm" onClick={() => handleOpenModal()} disabled={isLoading}>
+            <Plus className="h-4 w-4 mr-1" />
+            변경사항 추가
+          </Button>
+        )}
       </div>
 
-      {/* 변경사항 목록 */}
-      {changelogs.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileText className="h-10 w-10 mx-auto mb-3 text-surface-300 dark:text-surface-600" />
-            <p className="text-surface-500 dark:text-surface-400">
-              아직 변경사항이 없습니다
+      {/* 에러 메시지 */}
+      {error && (
+        <Card className="mb-4 border-rose-200 dark:border-rose-800">
+          <CardContent className="py-4">
+            <p className="text-sm text-rose-600 dark:text-rose-400">
+              {error.message || "변경사항을 불러오는데 실패했습니다"}
             </p>
-            <Button onClick={() => handleOpenModal()} variant="outline" size="sm" className="mt-4">
-              <Plus className="h-4 w-4 mr-1" />
-              첫 변경사항 추가
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadChangelogs}
+              className="mt-2"
+            >
+              다시 시도
             </Button>
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-4">
-          {changelogs.map((entry) => (
-            <ChangelogCard 
-              key={entry.id} 
-              entry={entry} 
-              onEdit={() => handleOpenModal(entry)}
-              onDelete={() => handleDelete(entry.id)}
-            />
-          ))}
-        </div>
+      )}
+
+      {/* 로딩 상태 */}
+      {isLoading && !error && (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Loader2 className="h-10 w-10 mx-auto mb-3 text-surface-300 dark:text-surface-600 animate-spin" />
+            <p className="text-surface-500 dark:text-surface-400">
+              변경사항을 불러오는 중...
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 변경사항 목록 */}
+      {!isLoading && !error && (
+        changelogs.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <FileText className="h-10 w-10 mx-auto mb-3 text-surface-300 dark:text-surface-600" />
+              <p className="text-surface-500 dark:text-surface-400">
+                아직 변경사항이 없습니다
+              </p>
+              {isOwner && (
+                <Button onClick={() => handleOpenModal()} variant="outline" size="sm" className="mt-4">
+                  <Plus className="h-4 w-4 mr-1" />
+                  첫 변경사항 추가
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {changelogs.map((entry) => (
+              <ChangelogCard 
+                key={entry.id} 
+                entry={entry} 
+                {...(isOwner && {
+                  onEdit: () => handleOpenModal(entry),
+                  onDelete: () => handleDelete(entry.id),
+                })}
+              />
+            ))}
+          </div>
+        )
       )}
 
       {/* 변경사항 작성/수정 모달 */}
@@ -265,10 +374,17 @@ export function ChangelogTab({ changelogs: initialChangelogs, projectId }: Chang
                 <Button 
                   size="sm" 
                   onClick={handleSave} 
-                  disabled={!formData.version.trim() || !formData.title.trim()}
+                  disabled={!formData.version.trim() || !formData.title.trim() || isSaving}
                   className="rounded-full"
                 >
-                  {editingChangelog ? "저장" : "추가"}
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      저장 중...
+                    </>
+                  ) : (
+                    editingChangelog ? "저장" : "추가"
+                  )}
                 </Button>
               </header>
 

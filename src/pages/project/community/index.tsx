@@ -8,40 +8,90 @@ import {
   FileText,
   ChevronLeft,
 } from "lucide-react";
-import { cn } from "@/shared/lib/utils";
-import { useProjectStore, CATEGORY_INFO } from "@/entities/project";
+import { cn, ensureMinDelay } from "@/shared/lib/utils";
+import { CATEGORY_INFO, fetchProjectDetail, type Project } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import type { TabType } from "./types";
 import { MilestonesTab } from "./tabs/MilestonesTab";
 import { DevFeedTab } from "./tabs/DevFeedTab";
 import { FeedbackTab } from "./tabs/FeedbackTab";
-// TODO: 나머지 탭들 분리 후 import
+import { ChangelogTab } from "./tabs/ChangelogTab";
+import { CommunityPageSkeleton } from "./components/CommunityPageSkeleton";
+// TODO: RewardsTab 분리 후 import
 // import { RewardsTab } from "./tabs/RewardsTab";
-// import { ChangelogTab } from "./tabs/ChangelogTab";
 
 // 임시: 원본 파일에서 import (나중에 분리)
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import {
   RewardsTab,
-  ChangelogTab,
-  dummyMilestones,
   dummyRewards,
   dummyPointRules,
   dummyTopSupporters,
   dummyClaimedRewards,
-  dummyChangelog,
 } from "../ProjectCommunityPage";
 
 export function ProjectCommunityPage() {
   const { id, tab } = useParams<{ id: string; tab?: string }>();
   const navigate = useNavigate();
-  const { projects } = useProjectStore();
   const { user } = useUserStore();
   
   const validTabs: TabType[] = ["devfeed", "feedback", "rewards", "milestones", "changelog"];
   const initialTab = tab && validTabs.includes(tab as TabType) ? (tab as TabType) : "devfeed";
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+  const [project, setProject] = useState<Project | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 프로젝트 상세 조회
+  useEffect(() => {
+    if (!id) {
+      setError("프로젝트 ID가 필요합니다");
+      setIsLoading(false);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadProject = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      const startTime = Date.now();
+
+      try {
+        const { overview, error: fetchError } = await fetchProjectDetail(id);
+
+        if (isCancelled) return;
+
+        if (fetchError) {
+          console.error("프로젝트 상세 조회 실패:", fetchError);
+          setError(fetchError.message);
+          setIsLoading(false);
+          return;
+        }
+
+        // 최소 로딩 지연 시간 보장 (0.3~0.5초)
+        await ensureMinDelay(startTime, { min: 300, max: 500 });
+
+        if (isCancelled) return;
+
+        setProject(overview.project);
+        setIsLoading(false);
+      } catch (err) {
+        if (isCancelled) return;
+        console.error("프로젝트 조회 에러:", err);
+        setError("프로젝트를 불러오는 중 오류가 발생했습니다");
+        setIsLoading(false);
+      }
+    };
+
+    loadProject();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [id]);
 
   // URL 변경 시 탭 동기화
   useEffect(() => {
@@ -58,13 +108,16 @@ export function ProjectCommunityPage() {
     navigate(`/project/${id}/community/${newTab}`, { replace: true });
   };
 
-  const project = projects[0]; // 임시로 첫 번째 프로젝트 사용
   const categoryInfo = project ? CATEGORY_INFO[project.category] : null;
 
-  if (!project) {
+  if (isLoading) {
+    return <CommunityPageSkeleton />;
+  }
+
+  if (error || !project) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <p className="text-surface-500">프로젝트를 찾을 수 없습니다.</p>
+        <p className="text-surface-500">{error || "프로젝트를 찾을 수 없습니다."}</p>
       </div>
     );
   }
@@ -91,15 +144,23 @@ export function ProjectCommunityPage() {
           </Link>
           
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-surface-100 text-3xl dark:bg-surface-800">
-              {categoryInfo?.icon}
+            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-surface-100 text-3xl ring-1 ring-surface-200 dark:bg-surface-800 dark:ring-surface-700 overflow-hidden shrink-0">
+              {project.thumbnail ? (
+                <img
+                  src={project.thumbnail}
+                  alt={project.title}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                categoryInfo?.icon
+              )}
             </div>
             <div>
               <h1 className="text-xl font-bold text-surface-900 dark:text-surface-50">
                 {project.title} 커뮤니티
               </h1>
               <p className="text-sm text-surface-500 dark:text-surface-400">
-                개발팀과 소통하고 프로젝트 진행 상황을 확인하세요
+                {project.shortDescription || "개발팀과 소통하고 프로젝트 진행 상황을 확인하세요"}
               </p>
             </div>
           </div>
@@ -163,7 +224,7 @@ export function ProjectCommunityPage() {
 
           {/* 변경사항 */}
           {activeTab === "changelog" && (
-            <ChangelogTab changelogs={dummyChangelog} projectId={id || "1"} />
+            <ChangelogTab projectId={id || "1"} isOwner={project.author.id === user?.id} />
           )}
         </div>
       </div>

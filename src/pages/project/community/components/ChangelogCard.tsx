@@ -7,8 +7,8 @@ import { CHANGE_TYPE_INFO, MAX_VISIBLE_CHANGES, extractDomain } from "../constan
 
 interface ChangelogCardProps {
   entry: ChangelogEntry;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export function ChangelogCard({ entry, onEdit, onDelete }: ChangelogCardProps) {
@@ -62,22 +62,28 @@ export function ChangelogCard({ entry, onEdit, onDelete }: ChangelogCardProps) {
             )}
           </div>
           {/* 관리 액션 */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-            <button
-              onClick={onEdit}
-              className="p-1.5 rounded text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
-              title="수정"
-            >
-              <Edit className="h-4 w-4" />
-            </button>
-            <button
-              onClick={onDelete}
-              className="p-1.5 rounded text-surface-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
-              title="삭제"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
+          {(onEdit || onDelete) && (
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+              {onEdit && (
+                <button
+                  onClick={onEdit}
+                  className="p-1.5 rounded text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+                  title="수정"
+                >
+                  <Edit className="h-4 w-4" />
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={onDelete}
+                  className="p-1.5 rounded text-surface-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                  title="삭제"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
         {entry.description && (
           <p className="text-sm text-surface-600 dark:text-surface-400 mb-4">

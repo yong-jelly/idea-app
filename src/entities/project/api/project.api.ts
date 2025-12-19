@@ -1836,3 +1836,306 @@ export async function toggleTaskStatus(
   }
 }
 
+/**
+ * 변경사항 조회 옵션
+ */
+export interface FetchChangelogsOptions {
+  /** 페이지당 변경사항 수 (기본값: 50, 최대: 100) */
+  limit?: number;
+  /** 페이지 오프셋 (기본값: 0) */
+  offset?: number;
+}
+
+/**
+ * 변경사항 조회 결과
+ */
+export interface FetchChangelogsResult {
+  changelogs: import("@/pages/project/community/types").ChangelogEntry[];
+  error: Error | null;
+}
+
+/**
+ * 변경사항 목록 조회
+ * 
+ * @param projectId - 프로젝트 ID
+ * @param options - 조회 옵션
+ * @returns 변경사항 목록 또는 에러
+ */
+export async function fetchChangelogs(
+  projectId: string,
+  options: FetchChangelogsOptions = {}
+): Promise<FetchChangelogsResult> {
+  try {
+    if (!projectId) {
+      return {
+        changelogs: [],
+        error: new Error("프로젝트 ID가 필요합니다"),
+      };
+    }
+
+    const {
+      limit = 50,
+      offset = 0,
+    } = options;
+
+    // SQL 함수 호출
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_fetch_changelogs", {
+        p_project_id: projectId,
+        p_limit: Math.min(limit, 100), // 최대 100으로 제한
+        p_offset: Math.max(offset, 0), // 최소 0으로 제한
+      });
+
+    if (error) {
+      console.error("변경사항 목록 조회 에러:", error);
+      return {
+        changelogs: [],
+        error: new Error(error.message || "변경사항 목록을 불러오는데 실패했습니다"),
+      };
+    }
+
+    if (!data) {
+      return {
+        changelogs: [],
+        error: null,
+      };
+    }
+
+    // DB 데이터를 ChangelogEntry 타입으로 변환
+    const changelogs: import("@/pages/project/community/types").ChangelogEntry[] = data.map((row: any) => ({
+      id: row.id,
+      version: row.version,
+      title: row.title,
+      description: row.description || "",
+      changes: (row.changes || []).map((change: any) => ({
+        id: change.id || `ch-${Date.now()}-${Math.random()}`,
+        type: change.type as "feature" | "improvement" | "fix" | "breaking",
+        description: change.description,
+      })),
+      releasedAt: row.released_at,
+      repositoryUrl: row.repository_url || undefined,
+      downloadUrl: row.download_url || undefined,
+    }));
+
+    return {
+      changelogs,
+      error: null,
+    };
+  } catch (err) {
+    console.error("변경사항 목록 조회 에러:", err);
+    return {
+      changelogs: [],
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 변경사항 생성 데이터
+ */
+export interface CreateChangelogData {
+  version: string;
+  title: string;
+  description?: string;
+  changes: Array<{
+    id: string;
+    type: "feature" | "improvement" | "fix" | "breaking";
+    description: string;
+  }>;
+  releasedAt?: string; // YYYY-MM-DD 형식
+  repositoryUrl?: string;
+  downloadUrl?: string;
+}
+
+/**
+ * 변경사항 생성 결과
+ */
+export interface CreateChangelogResult {
+  changelogId: string | null;
+  error: Error | null;
+}
+
+/**
+ * 변경사항 생성
+ * 
+ * @param projectId - 프로젝트 ID
+ * @param data - 변경사항 데이터
+ * @returns 생성된 변경사항 ID 또는 에러
+ */
+export async function createChangelog(
+  projectId: string,
+  data: CreateChangelogData
+): Promise<CreateChangelogResult> {
+  try {
+    if (!projectId || !data.version.trim() || !data.title.trim()) {
+      return {
+        changelogId: null,
+        error: new Error("프로젝트 ID, 버전, 제목이 필요합니다"),
+      };
+    }
+
+    const { data: result, error } = await supabase
+      .schema("odd")
+      .rpc("v1_create_changelog", {
+        p_project_id: projectId,
+        p_version: data.version.trim(),
+        p_title: data.title.trim(),
+        p_description: data.description?.trim() || null,
+        p_changes: data.changes || [],
+        p_released_at: data.releasedAt || null,
+        p_repository_url: data.repositoryUrl || null,
+        p_download_url: data.downloadUrl || null,
+      });
+
+    if (error) {
+      console.error("변경사항 생성 에러:", error);
+      return {
+        changelogId: null,
+        error: new Error(error.message || "변경사항 생성에 실패했습니다"),
+      };
+    }
+
+    return {
+      changelogId: result,
+      error: null,
+    };
+  } catch (err) {
+    console.error("변경사항 생성 에러:", err);
+    return {
+      changelogId: null,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 변경사항 수정 데이터
+ */
+export interface UpdateChangelogData {
+  version?: string;
+  title?: string;
+  description?: string;
+  changes?: Array<{
+    id: string;
+    type: "feature" | "improvement" | "fix" | "breaking";
+    description: string;
+  }>;
+  releasedAt?: string; // YYYY-MM-DD 형식
+  repositoryUrl?: string;
+  downloadUrl?: string;
+}
+
+/**
+ * 변경사항 수정 결과
+ */
+export interface UpdateChangelogResult {
+  success: boolean;
+  error: Error | null;
+}
+
+/**
+ * 변경사항 수정
+ * 
+ * @param changelogId - 변경사항 ID
+ * @param data - 수정할 변경사항 데이터
+ * @returns 수정 성공 여부 또는 에러
+ */
+export async function updateChangelog(
+  changelogId: string,
+  data: UpdateChangelogData
+): Promise<UpdateChangelogResult> {
+  try {
+    if (!changelogId) {
+      return {
+        success: false,
+        error: new Error("변경사항 ID가 필요합니다"),
+      };
+    }
+
+    const { error } = await supabase
+      .schema("odd")
+      .rpc("v1_update_changelog", {
+        p_changelog_id: changelogId,
+        p_version: data.version?.trim() || null,
+        p_title: data.title?.trim() || null,
+        p_description: data.description?.trim() || null,
+        p_changes: data.changes ? (data.changes as any) : null,
+        p_released_at: data.releasedAt || null,
+        p_repository_url: data.repositoryUrl || null,
+        p_download_url: data.downloadUrl || null,
+      });
+
+    if (error) {
+      console.error("변경사항 수정 에러:", error);
+      return {
+        success: false,
+        error: new Error(error.message || "변경사항 수정에 실패했습니다"),
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error("변경사항 수정 에러:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 변경사항 삭제 결과
+ */
+export interface DeleteChangelogResult {
+  success: boolean;
+  error: Error | null;
+}
+
+/**
+ * 변경사항 삭제
+ * 
+ * @param changelogId - 변경사항 ID
+ * @returns 삭제 성공 여부 또는 에러
+ */
+export async function deleteChangelog(
+  changelogId: string
+): Promise<DeleteChangelogResult> {
+  try {
+    if (!changelogId) {
+      return {
+        success: false,
+        error: new Error("변경사항 ID가 필요합니다"),
+      };
+    }
+
+    const { error } = await supabase
+      .schema("odd")
+      .rpc("v1_delete_changelog", {
+        p_changelog_id: changelogId,
+      });
+
+    if (error) {
+      console.error("변경사항 삭제 에러:", error);
+      return {
+        success: false,
+        error: new Error(error.message || "변경사항 삭제에 실패했습니다"),
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error("변경사항 삭제 에러:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+

@@ -116,7 +116,7 @@ export function ProjectDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <p className="text-surface-500">프로젝트를 불러오는 중...</p>
+        <p className="text-surface-500">프로젝트를 불러오는 중...?</p>
       </div>
     );
   }
