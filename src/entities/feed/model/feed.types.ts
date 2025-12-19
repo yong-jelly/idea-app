@@ -1,4 +1,4 @@
-import type { User } from "@/entities/user";
+import type { User, UserType, BotRole } from "@/entities/user";
 
 // ========== 공통 타입 ==========
 
@@ -7,6 +7,8 @@ export interface BaseAuthor {
   username: string;
   displayName: string;
   avatar?: string;
+  userType?: UserType;
+  botRole?: BotRole;
 }
 
 export interface AuthorWithRole extends BaseAuthor {
@@ -44,6 +46,8 @@ export interface FeedSourceInfo {
   name?: string;
   /** 프로젝트/커뮤니티 이모지/아이콘 */
   emoji?: string;
+  /** 프로젝트 썸네일 이미지 (프로젝트인 경우) */
+  thumbnail?: string;
   /** 내가 참여/팔로우 중인지 여부 */
   isJoined?: boolean;
 }
@@ -108,6 +112,67 @@ export interface FeatureAcceptedPost {
 }
 
 export type GeneralPost = TextPost | ProjectUpdatePost | MilestoneAchievedPost | FeatureAcceptedPost;
+
+// ========== 프로젝트 생성 피드 타입 ==========
+
+export interface ProjectCreatedPost {
+  id: string;
+  type: "project_created";
+  author: BaseAuthor;
+  content: string;
+  projectId: string;
+  projectTitle: string;
+  projectThumbnail?: string;
+  images?: string[];
+  /** 피드 출처 정보 */
+  source?: FeedSourceInfo;
+  interactions: ExtendedInteractions;
+  createdAt: string;
+}
+
+// ========== 공지 피드 타입 (확장) ==========
+
+export interface AnnouncementPost {
+  id: string;
+  type: "announcement" | "update" | "vote";
+  title: string;
+  content: string;
+  author: BaseAuthor;
+  projectId?: string;
+  projectTitle?: string;
+  isPinned?: boolean;
+  images?: string[];
+  /** 피드 출처 정보 */
+  source?: FeedSourceInfo;
+  interactions: ExtendedInteractions;
+  createdAt: string;
+  // 투표 관련 (vote 타입일 때만)
+  voteOptions?: Array<{
+    id: string;
+    text: string;
+    votesCount: number;
+    sortOrder: number;
+  }>;
+  votedOptionId?: string;
+  totalVotes?: number;
+}
+
+// ========== 피드백 피드 타입 (확장) ==========
+
+export interface FeedbackPostExtended extends FeedbackPost {
+  projectId?: string;
+  projectTitle?: string;
+  /** 피드 출처 정보 */
+  source?: FeedSourceInfo;
+}
+
+// ========== 통합 피드 타입 ==========
+
+export type UnifiedFeedPost = 
+  | GeneralPost 
+  | ProjectCreatedPost 
+  | AnnouncementPost 
+  | FeedbackPostExtended;
 
 // ========== 개발사 피드 타입 ==========
 

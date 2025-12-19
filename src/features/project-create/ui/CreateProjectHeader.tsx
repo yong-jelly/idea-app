@@ -7,12 +7,12 @@ export function CreateProjectHeader() {
       {/* 헤더 */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link
+          {/* <Link
             to="/"
             className="flex h-9 w-9 items-center justify-center rounded-full text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
           >
             <ArrowLeft className="h-5 w-5" />
-          </Link>
+          </Link> */}
           <div>
             <h1 className="text-xl font-bold text-surface-900 dark:text-surface-50">
               새 프로젝트 등록

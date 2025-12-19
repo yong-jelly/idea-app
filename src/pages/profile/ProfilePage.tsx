@@ -112,13 +112,7 @@ export function ProfilePage() {
     <div className="mx-auto flex max-w-5xl items-start">
       {/* Left Sidebar - Desktop Only (피드와 동일) */}
       <div className="hidden lg:block w-[260px] shrink-0 self-stretch">
-        <LeftSidebar onProfileEditClick={() => {
-          if (!isAuthenticated) {
-            setShowSignUpModal(true);
-            return;
-          }
-          setIsEditModalOpen(true);
-        }} />
+        <LeftSidebar />
       </div>
 
       {/* Main Content */}

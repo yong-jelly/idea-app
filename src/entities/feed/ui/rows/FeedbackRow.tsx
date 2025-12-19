@@ -1,7 +1,15 @@
-import { Card, CardContent, Badge } from "@/shared/ui";
-import { cn, formatRelativeTime, formatNumber } from "@/shared/lib/utils";
-import type { FeedbackPost, FeedbackType } from "../../model/feed.types";
+import { UserAvatar } from "@/entities/user";
+import { Badge } from "@/shared/ui";
+import { cn, formatNumber } from "@/shared/lib/utils";
+import type { FeedbackPostExtended, FeedbackType } from "../../model/feed.types";
 import { FEEDBACK_TYPE_INFO, FEEDBACK_STATUS_INFO } from "../../model/feed.types";
+import {
+  FeedRowWrapper,
+  AuthorHeader,
+  ContentArea,
+  InteractionButtons,
+  FeedSourceFooter,
+} from "../FeedRowBase";
 
 // 미니멀 아이콘들
 const BugIcon = () => (
@@ -48,111 +56,128 @@ const FEEDBACK_ICONS: Record<FeedbackType, () => JSX.Element> = {
 };
 
 export interface FeedbackRowProps {
-  feedback: FeedbackPost;
+  feedback: FeedbackPostExtended;
   onVote?: () => void;
+  onLike?: () => void;
+  onComment?: () => void;
+  onBookmark?: () => void;
   onClick?: () => void;
   className?: string;
+  isAuthenticated?: boolean;
+  onSignUpPrompt?: () => void;
 }
 
 /**
  * 피드백 Row
  * 
  * 버그 리포트, 기능 요청, 개선 제안, 질문 등 사용자 피드백을 표시합니다.
- * 투표 기능과 상태 표시가 포함됩니다.
+ * 제목이 강조되어 표시되며, 피드 목록에서 사용 가능합니다.
  */
 export function FeedbackRow({
   feedback,
   onVote,
+  onLike,
+  onComment,
+  onBookmark,
   onClick,
   className,
+  isAuthenticated = true,
+  onSignUpPrompt,
 }: FeedbackRowProps) {
   const TypeIcon = FEEDBACK_ICONS[feedback.type];
   const typeInfo = FEEDBACK_TYPE_INFO[feedback.type];
   const statusInfo = FEEDBACK_STATUS_INFO[feedback.status];
 
   return (
-    <Card 
-      className={cn(
-        "hover:bg-surface-50/50 dark:hover:bg-surface-800/30 transition-colors cursor-pointer",
-        className
-      )}
+    <FeedRowWrapper
+      className={className}
       onClick={onClick}
+      avatar={
+        <UserAvatar 
+          user={feedback.author} 
+          size="md" 
+          linkToProfile 
+        />
+      }
     >
-      <CardContent className="p-4">
-        <div className="flex items-start gap-4">
-          {/* Vote Button */}
+      <AuthorHeader author={feedback.author} createdAt={feedback.createdAt} />
+      
+      {/* 타입 및 상태 배지 */}
+      <div className="mb-2 flex items-center gap-2">
+        <Badge className={cn("text-xs flex items-center gap-1", typeInfo.colorClass)}>
+          <TypeIcon />
+          {typeInfo.label}
+        </Badge>
+        <Badge className={cn("rounded-full text-xs", statusInfo.colorClass)}>
+          {statusInfo.label}
+        </Badge>
+      </div>
+
+      {/* 제목 강조 */}
+      <h3 className={cn(
+        "font-semibold text-lg text-surface-900 dark:text-surface-50 mb-2",
+        "leading-tight"
+      )}>
+        {feedback.title}
+      </h3>
+
+      <ContentArea content={feedback.content} images={feedback.images} />
+      
+      {/* 투표 버튼 (선택적) */}
+      {onVote && (
+        <div className="mb-2">
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onVote?.();
+              onVote();
             }}
             className={cn(
-              "flex flex-col items-center justify-center min-w-[48px] py-2 rounded-xl transition-colors",
+              "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors",
               feedback.isVoted
                 ? "bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
                 : "bg-surface-100 text-surface-500 hover:bg-primary-50 hover:text-primary-600 dark:bg-surface-800 dark:hover:bg-primary-900/20"
             )}
           >
             <ThumbsUpIcon filled={feedback.isVoted} />
-            <span className="text-sm font-semibold mt-0.5 tabular-nums">{formatNumber(feedback.votesCount)}</span>
+            <span className="text-sm font-semibold tabular-nums">{formatNumber(feedback.votesCount)}</span>
           </button>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            {/* Type & Status Badges */}
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className={cn(
-                "flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                typeInfo.colorClass
-              )}>
-                <TypeIcon />
-                {typeInfo.label}
-              </span>
-              <Badge className={cn("rounded-full", statusInfo.colorClass)}>
-                {statusInfo.label}
-              </Badge>
-            </div>
-
-            {/* Title */}
-            <h3 className="font-semibold text-surface-900 dark:text-surface-50 mb-1">
-              {feedback.title}
-            </h3>
-
-            {/* Content Preview */}
-            <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-2">
-              {feedback.content}
-            </p>
-
-            {/* Meta */}
-            <div className="mt-2 flex items-center gap-3 text-xs text-surface-500">
-              <span>@{feedback.author.username}</span>
-              <span>{formatRelativeTime(feedback.createdAt)}</span>
-              <span className="flex items-center gap-1">
-                <CommentIcon />
-                <span className="tabular-nums">{feedback.commentsCount}</span>
-              </span>
-            </div>
-          </div>
         </div>
-      </CardContent>
-    </Card>
+      )}
+      
+      <InteractionButtons
+        interactions={{
+          likesCount: feedback.votesCount, // 피드백은 votesCount를 likesCount로 사용
+          commentsCount: feedback.commentsCount,
+          bookmarksCount: 0,
+          isLiked: feedback.isVoted,
+          isBookmarked: false,
+        }}
+        onLike={onVote || onLike}
+        onComment={onComment}
+        onBookmark={onBookmark}
+        isAuthenticated={isAuthenticated}
+        onSignUpPrompt={onSignUpPrompt}
+      />
+
+      {feedback.source && <FeedSourceFooter source={feedback.source} />}
+    </FeedRowWrapper>
   );
 }
 
 // ========== 피드백 타입별 스타일 변형 ==========
 
-export function BugReportRow(props: Omit<FeedbackRowProps, 'feedback'> & { feedback: FeedbackPost }) {
+export function BugReportRow(props: Omit<FeedbackRowProps, 'feedback'> & { feedback: FeedbackPostExtended }) {
   return <FeedbackRow {...props} />;
 }
 
-export function FeatureRequestRow(props: Omit<FeedbackRowProps, 'feedback'> & { feedback: FeedbackPost }) {
+export function FeatureRequestRow(props: Omit<FeedbackRowProps, 'feedback'> & { feedback: FeedbackPostExtended }) {
   return <FeedbackRow {...props} />;
 }
 
-export function ImprovementRow(props: Omit<FeedbackRowProps, 'feedback'> & { feedback: FeedbackPost }) {
+export function ImprovementRow(props: Omit<FeedbackRowProps, 'feedback'> & { feedback: FeedbackPostExtended }) {
   return <FeedbackRow {...props} />;
 }
 
-export function QuestionRow(props: Omit<FeedbackRowProps, 'feedback'> & { feedback: FeedbackPost }) {
+export function QuestionRow(props: Omit<FeedbackRowProps, 'feedback'> & { feedback: FeedbackPostExtended }) {
   return <FeedbackRow {...props} />;
 }

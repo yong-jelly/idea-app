@@ -38,5 +38,17 @@ export type PostTypeConfig = {
 /**
  * 피드 타입 키
  */
-export type PostType = "text" | "project_update" | "milestone" | "feature_accepted";
+export type PostType = 
+  | "text" 
+  | "project_update" 
+  | "milestone" 
+  | "feature_accepted"
+  | "project_created"
+  | "announcement"
+  | "update"
+  | "vote"
+  | "bug"
+  | "feature"
+  | "improvement"
+  | "question";
 

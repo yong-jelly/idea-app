@@ -3,6 +3,7 @@ export { TextPostRow, type TextPostRowProps } from "./TextPostRow";
 export { ProjectUpdateRow, type ProjectUpdateRowProps } from "./ProjectUpdateRow";
 export { MilestoneAchievedRow, type MilestoneAchievedRowProps } from "./MilestoneAchievedRow";
 export { FeatureAcceptedRow, type FeatureAcceptedRowProps } from "./FeatureAcceptedRow";
+export { ProjectCreatedRow, type ProjectCreatedRowProps } from "./ProjectCreatedRow";
 
 // 개발사 피드 Row
 export { AnnouncementRow, type AnnouncementRowProps } from "./AnnouncementRow";

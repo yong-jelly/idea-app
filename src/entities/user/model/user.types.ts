@@ -1,3 +1,12 @@
+// 사용자 타입
+export type UserType = "user" | "bot";
+
+// Bot 역할 타입
+export type BotRole = 
+  | "system_notification"    // 시스템 알림 봇
+  | "project_assistant"      // 프로젝트 어시스턴트 봇
+  | "community_moderator";    // 커뮤니티 모더레이터 봇
+
 export interface User {
   id: string;
   username: string;
@@ -14,6 +23,14 @@ export interface User {
   projectsCount: number;
   badges?: Badge[];
   createdAt: string;
+  // Bot 관련 필드
+  userType?: UserType;
+  botRole?: BotRole;
+}
+
+// Bot 작성자 확인 헬퍼 함수
+export function isBot(user: User | { userType?: UserType }): boolean {
+  return user.userType === "bot";
 }
 
 export interface UserProfile extends User {

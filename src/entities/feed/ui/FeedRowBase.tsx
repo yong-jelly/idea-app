@@ -1,6 +1,7 @@
 import { Link } from "react-router";
-import { Badge } from "@/shared/ui";
+import { Badge, BotBadge } from "@/shared/ui";
 import { cn, formatRelativeTime, formatNumber } from "@/shared/lib/utils";
+import { isBot } from "@/entities/user";
 import type { BaseAuthor, AuthorWithRole, ExtendedInteractions, BaseInteractions, FeedSourceInfo } from "../model/feed.types";
 
 // ========== 공통 Props ==========
@@ -57,12 +58,12 @@ export function FeedSourceHeader({ source, author, createdAt, showMoreButton = t
     : `/project/${source.id}`;
 
   return (
-    <div className="flex items-start justify-between mb-1.5">
+    <div className="flex items-start justify-between mb-2">
       <div className="min-w-0">
         {/* 1줄: 출처 이름 */}
         <Link 
           to={link}
-          className="flex items-center gap-1.5 text-[13px] font-medium text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200 transition-colors mb-0.5"
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-surface-500 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors mb-1"
           onClick={(e) => e.stopPropagation()}
         >
           {source.emoji ? (
@@ -71,29 +72,29 @@ export function FeedSourceHeader({ source, author, createdAt, showMoreButton = t
             <Icon />
           )}
           <span className="truncate">{source.name}</span>
-          {isCommunity && <span className="text-surface-400 dark:text-surface-500">커뮤니티</span>}
+          {isCommunity && <span className="text-surface-400 dark:text-surface-500 font-normal">커뮤니티</span>}
         </Link>
         
         {/* 2줄: 작성자 · 시간 */}
-        <div className="flex items-center gap-1.5 text-sm">
+        <div className="flex items-center gap-2 text-sm">
           <Link
             to={`/profile/${author.username}`}
-            className="font-medium text-surface-900 dark:text-white hover:underline truncate"
+            className="font-semibold text-surface-900 dark:text-surface-50 hover:text-primary-600 dark:hover:text-primary-400 transition-colors truncate"
             onClick={(e) => e.stopPropagation()}
           >
             {author.displayName}
           </Link>
-          <span className="text-surface-300 dark:text-surface-700">·</span>
-          <span className="text-surface-500 dark:text-surface-500 shrink-0">
+          <span className="text-surface-300 dark:text-surface-600">·</span>
+          <time className="text-surface-400 dark:text-surface-500 shrink-0 tabular-nums">
             {formatRelativeTime(createdAt)}
-          </span>
+          </time>
         </div>
       </div>
       
       {showMoreButton && (
         <button 
           onClick={(e) => { e.stopPropagation(); onMoreClick?.(); }}
-          className="h-8 w-8 shrink-0 -mr-2 flex items-center justify-center rounded-full text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+          className="h-8 w-8 shrink-0 -mr-1 flex items-center justify-center rounded-full text-surface-400 opacity-0 group-hover/feed:opacity-100 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-all"
         >
           <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
             <circle cx="3" cy="8" r="1.5" />
@@ -161,35 +162,49 @@ export interface AuthorHeaderProps {
 
 export function AuthorHeader({ author, createdAt, showMoreButton = true, badge, onMoreClick }: AuthorHeaderProps) {
   const role = "role" in author ? author.role : undefined;
+  const isAuthorBot = isBot(author);
 
   return (
-    <div className="flex items-center justify-between mb-1.5">
-      <div className="flex items-center gap-1.5 min-w-0 text-[14px]">
+    <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center gap-2 min-w-0 text-[14px]">
         <Link
-          to={`/profile/${author.username}`}
-          className="font-semibold text-surface-900 dark:text-white hover:underline truncate"
-          onClick={(e) => e.stopPropagation()}
+          to={isAuthorBot ? "#" : `/profile/${author.username}`}
+          className={cn(
+            "font-semibold text-surface-900 dark:text-surface-50 truncate",
+            isAuthorBot ? "cursor-default" : "hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+          )}
+          onClick={(e) => {
+            if (isAuthorBot) {
+              e.preventDefault();
+              e.stopPropagation();
+            } else {
+              e.stopPropagation();
+            }
+          }}
         >
           {author.displayName}
         </Link>
         {role && (
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 font-medium">
             {role}
           </Badge>
         )}
-        <span className="text-surface-400 dark:text-surface-500 truncate">
+        {isAuthorBot && author.botRole && (
+          <BotBadge role={author.botRole} size="sm" />
+        )}
+        <span className="text-surface-400 dark:text-surface-500 truncate font-normal">
           @{author.username}
         </span>
-        <span className="text-surface-200 dark:text-surface-700">·</span>
-        <span className="text-surface-400 dark:text-surface-500 shrink-0">
+        <span className="text-surface-300 dark:text-surface-600">·</span>
+        <time className="text-surface-400 dark:text-surface-500 shrink-0 tabular-nums">
           {formatRelativeTime(createdAt)}
-        </span>
+        </time>
         {badge}
       </div>
       {showMoreButton && (
         <button 
           onClick={(e) => { e.stopPropagation(); onMoreClick?.(); }}
-          className="h-8 w-8 shrink-0 -mr-2 flex items-center justify-center rounded-xl text-surface-400 hover:text-surface-600 hover:bg-surface-100/80 dark:hover:bg-surface-800/50 transition-all"
+          className="h-8 w-8 shrink-0 -mr-1 flex items-center justify-center rounded-full text-surface-400 opacity-0 group-hover/feed:opacity-100 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-all"
         >
           <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
             <circle cx="3" cy="8" r="1.5" />
@@ -258,46 +273,46 @@ export function InteractionButtons({
   };
 
   return (
-    <div className="flex items-center gap-0.5 -ml-2.5 pt-3">
+    <div className="flex items-center gap-1 -ml-2 mt-3">
       {/* 댓글 */}
       <button
         onClick={(e) => handleInteraction(e, onComment)}
-        className="group flex items-center gap-1.5 px-3 py-2 rounded-xl text-surface-500 hover:text-surface-700 hover:bg-surface-100/80 dark:hover:bg-surface-800/50 dark:hover:text-surface-300 transition-all"
+        className="group/btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-surface-500 hover:text-primary-600 hover:bg-primary-50/60 dark:hover:bg-primary-950/30 dark:hover:text-primary-400 transition-all duration-200"
       >
-        <CommentIcon className="h-[17px] w-[17px] group-hover:scale-110 transition-transform" />
-        <span className="text-[13px] font-medium tabular-nums">{formatNumber(interactions.commentsCount)}</span>
+        <CommentIcon className="h-[18px] w-[18px] group-hover/btn:scale-110 transition-transform duration-200" />
+        <span className="text-[13px] font-medium tabular-nums min-w-[1.25rem]">{formatNumber(interactions.commentsCount)}</span>
       </button>
 
       {/* 좋아요 */}
       <button
         onClick={(e) => handleInteraction(e, onLike, true)}
         className={cn(
-          "group flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all",
+          "group/btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-all duration-200",
           interactions.isLiked
             ? "text-rose-500"
-            : "text-surface-500 hover:text-rose-500 hover:bg-rose-50/80 dark:hover:bg-rose-950/20"
+            : "text-surface-500 hover:text-rose-500 hover:bg-rose-50/60 dark:hover:bg-rose-950/30"
         )}
       >
         <HeartIcon className={cn(
-          "h-[17px] w-[17px] transition-transform",
-          interactions.isLiked ? "scale-110" : "group-hover:scale-110"
+          "h-[18px] w-[18px] transition-all duration-200",
+          interactions.isLiked ? "scale-110 drop-shadow-sm" : "group-hover/btn:scale-110"
         )} filled={interactions.isLiked} />
-        <span className="text-[13px] font-medium tabular-nums">{formatNumber(interactions.likesCount)}</span>
+        <span className="text-[13px] font-medium tabular-nums min-w-[1.25rem]">{formatNumber(interactions.likesCount)}</span>
       </button>
 
       {/* 북마크 */}
       <button
         onClick={(e) => handleInteraction(e, onBookmark, true)}
         className={cn(
-          "group flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all ml-auto",
+          "group/btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-all duration-200 ml-auto",
           interactions.isBookmarked
             ? "text-primary-600 dark:text-primary-400"
-            : "text-surface-500 hover:text-primary-600 hover:bg-primary-50/80 dark:hover:bg-primary-950/20"
+            : "text-surface-500 hover:text-primary-600 hover:bg-primary-50/60 dark:hover:bg-primary-950/30 dark:hover:text-primary-400"
         )}
       >
         <BookmarkIcon className={cn(
-          "h-[17px] w-[17px] transition-transform",
-          interactions.isBookmarked ? "scale-110" : "group-hover:scale-110"
+          "h-[18px] w-[18px] transition-all duration-200",
+          interactions.isBookmarked ? "scale-110 drop-shadow-sm" : "group-hover/btn:scale-110"
         )} filled={interactions.isBookmarked} />
       </button>
     </div>
@@ -379,38 +394,56 @@ export interface ContentAreaProps {
 export function ContentArea({ content, images, className }: ContentAreaProps) {
   return (
     <>
-      <div className={cn("text-surface-800 dark:text-surface-100 whitespace-pre-wrap break-words leading-[1.6] text-[15px]", className)}>
-        {content}
-      </div>
-      {images && images.length > 0 && (
+      {content && (
         <div className={cn(
-          "mt-3 rounded-2xl overflow-hidden border border-surface-100 dark:border-surface-800",
-          images.length === 1 ? "" : "grid gap-0.5",
-          images.length === 2 ? "grid-cols-2" : "",
-          images.length === 3 ? "grid-cols-2" : "",
-          images.length >= 4 ? "grid-cols-2" : ""
+          "text-surface-800 dark:text-surface-200 whitespace-pre-wrap break-words",
+          "leading-relaxed text-[15px] tracking-[-0.01em]",
+          className
         )}>
-          {images.slice(0, 4).map((img, idx) => (
-            <div 
-              key={idx} 
-              className={cn(
-                "relative overflow-hidden bg-surface-100 dark:bg-surface-800",
-                images.length === 1 ? "aspect-[16/9]" : "aspect-square",
-                images.length === 3 && idx === 0 ? "row-span-2 aspect-auto" : ""
-              )}
-            >
-              <img
-                src={img}
-                alt={`Image ${idx + 1}`}
-                className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
-              />
-              {images.length > 4 && idx === 3 && (
-                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-                  <span className="text-white text-xl font-semibold">+{images.length - 4}</span>
+          {content}
+        </div>
+      )}
+      {images && images.length > 0 && (
+        <div className="mt-3 flex gap-2 overflow-hidden">
+          {/* 첫 번째 이미지 - 강조 */}
+          <div className="relative flex-shrink-0 overflow-hidden rounded-xl border border-surface-200/80 dark:border-surface-700/60 bg-surface-100 dark:bg-surface-800 shadow-sm">
+            <img
+              src={images[0]}
+              alt="Image 1"
+              className="h-52 w-52 object-cover hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+          
+          {/* 나머지 이미지들 - 작은 썸네일 + 갯수 표시 */}
+          {images.length > 1 && (
+            <div className="flex flex-col gap-2 flex-shrink-0">
+              {/* 두 번째 이미지 썸네일 */}
+              <div className="relative overflow-hidden rounded-xl border border-surface-200/80 dark:border-surface-700/60 bg-surface-100 dark:bg-surface-800 shadow-sm">
+                <img
+                  src={images[1]}
+                  alt="Image 2"
+                  className="h-[100px] w-[100px] object-cover hover:scale-105 transition-transform duration-300"
+                />
+              </div>
+              
+              {/* 세 번째 이미지가 있거나 더 많은 경우 */}
+              {images.length > 2 && (
+                <div className="relative overflow-hidden rounded-xl border border-surface-200/80 dark:border-surface-700/60 bg-surface-100 dark:bg-surface-800 shadow-sm">
+                  {images.length === 3 ? (
+                    <img
+                      src={images[2]}
+                      alt="Image 3"
+                      className="h-[100px] w-[100px] object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="h-[100px] w-[100px] flex items-center justify-center bg-surface-900/60 dark:bg-black/50 backdrop-blur-sm">
+                      <span className="text-white text-base font-semibold">+{images.length - 2}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          ))}
+          )}
         </div>
       )}
     </>
@@ -428,14 +461,18 @@ export function FeedRowWrapper({ className, children, avatar, onClick }: FeedRow
   return (
     <article 
       className={cn(
-        "px-4 py-4 border-b border-surface-100/80 dark:border-surface-800/50 bg-white dark:bg-surface-950",
-        "hover:bg-surface-50/50 dark:hover:bg-surface-900/30 transition-all duration-200 cursor-pointer",
+        "group/feed px-5 py-5 bg-white dark:bg-surface-950",
+        "border-b border-surface-100 dark:border-surface-800/60",
+        "hover:bg-gradient-to-r hover:from-surface-50/80 hover:to-transparent dark:hover:from-surface-900/40 dark:hover:to-transparent",
+        "transition-all duration-300 ease-out cursor-pointer",
         className
       )}
       onClick={onClick}
     >
-      <div className="flex gap-3.5">
-        {avatar}
+      <div className="flex gap-4">
+        <div className="shrink-0 transition-transform duration-200 group-hover/feed:scale-[1.02]">
+          {avatar}
+        </div>
         <div className="flex-1 min-w-0">
           {children}
         </div>

@@ -6,13 +6,10 @@ import { LeftSidebar } from "@/widgets";
 import { useProjectStore } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { SignUpModal } from "@/pages/auth";
-import { ProfileEditModal } from "@/pages/profile";
-
 export function MyProjectsPage() {
   const { projects } = useProjectStore();
   const { user, isAuthenticated } = useUserStore();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -49,13 +46,7 @@ export function MyProjectsPage() {
     <div className="mx-auto flex max-w-5xl items-start">
       {/* Left Sidebar - Desktop Only */}
       <div className="hidden lg:block w-[260px] shrink-0 self-stretch">
-        <LeftSidebar onProfileEditClick={() => {
-          if (!isAuthenticated) {
-            setShowSignUpModal(true);
-            return;
-          }
-          setIsEditModalOpen(true);
-        }} />
+        <LeftSidebar />
       </div>
 
       {/* Main Content */}
@@ -149,14 +140,6 @@ export function MyProjectsPage() {
           )}
         </div>
       </main>
-
-      {/* 프로필 편집 모달 */}
-      {isAuthenticated && (
-        <ProfileEditModal
-          open={isEditModalOpen}
-          onOpenChange={setIsEditModalOpen}
-        />
-      )}
 
       {/* 회원 가입 모달 */}
       <SignUpModal

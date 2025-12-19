@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Menu, X, Sun, Moon, LogOut, Coins, User, UserX } from "lucide-react";
+import { Menu, X, Sun, Moon, LogOut, Coins, User, UserX, Settings, PlusCircle } from "lucide-react";
 import { Button, Avatar, Badge } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
 import { useUIStore } from "@/shared/config/ui.store";
 import { SignUpModal } from "@/pages/auth";
+import { ProfileEditModal } from "@/pages/profile";
 import { supabase } from "@/shared/lib/supabase";
 import { getProfileImageUrl } from "@/shared/lib/storage";
 
@@ -19,6 +20,7 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [signUpModalOpen, setSignUpModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const { user, isAuthenticated, logout, toggleAuth, clearSession, sessionToken } = useUserStore();
   const { theme, toggleTheme } = useUIStore();
@@ -132,6 +134,25 @@ export function Header() {
                           <User className="h-4 w-4 text-surface-400" />
                           마이페이지
                         </Link>
+                        <Link
+                          to="/create-project"
+                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-surface-700 hover:bg-surface-50 dark:text-surface-300 dark:hover:bg-surface-800 transition-colors"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <PlusCircle className="h-4 w-4 text-surface-400" />
+                          프로젝트 등록
+                        </Link>
+                        <button
+                          onClick={() => {
+                            setIsEditModalOpen(true);
+                            setUserMenuOpen(false);
+                          }}
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-surface-700 hover:bg-surface-50 dark:text-surface-300 dark:hover:bg-surface-800 transition-colors"
+                        >
+                          <Settings className="h-4 w-4 text-surface-400" />
+                          프로필 편집
+                        </button>
+                        <div className="h-px bg-surface-100 dark:bg-surface-800 mx-2 my-1" />
                         <button
                           onClick={async () => {
                             console.log("[HEADER] 로그아웃 버튼 클릭", {
@@ -219,6 +240,14 @@ export function Header() {
         open={signUpModalOpen}
         onOpenChange={setSignUpModalOpen}
       />
+
+      {/* 프로필 편집 모달 */}
+      {isAuthenticated && (
+        <ProfileEditModal
+          open={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+        />
+      )}
     </header>
   );
 }
