@@ -13,9 +13,20 @@ interface ProjectLinksProps {
 }
 
 export function ProjectLinks({ project }: ProjectLinksProps) {
+  const hasAnyLink =
+    project.repositoryUrl ||
+    project.demoUrl ||
+    project.androidStoreUrl ||
+    project.iosStoreUrl ||
+    project.macStoreUrl;
+
+  if (!hasAnyLink) {
+    return null;
+  }
+
   return (
     <div className="mt-3 flex flex-wrap items-center gap-1.5">
-      {project.repositoryUrl ? (
+      {project.repositoryUrl && (
         <a
           href={project.repositoryUrl}
           target="_blank"
@@ -25,13 +36,8 @@ export function ProjectLinks({ project }: ProjectLinksProps) {
           <Github className="h-3 w-3" />
           저장소
         </a>
-      ) : (
-        <span className="inline-flex items-center gap-1 rounded-full bg-surface-50 px-2 py-1 text-xs text-surface-300 dark:bg-surface-900 dark:text-surface-600 cursor-not-allowed">
-          <Github className="h-3 w-3" />
-          저장소
-        </span>
       )}
-      {project.demoUrl ? (
+      {project.demoUrl && (
         <a
           href={project.demoUrl}
           target="_blank"
@@ -41,13 +47,8 @@ export function ProjectLinks({ project }: ProjectLinksProps) {
           <Globe className="h-3 w-3" />
           웹사이트
         </a>
-      ) : (
-        <span className="inline-flex items-center gap-1 rounded-full bg-surface-50 px-2 py-1 text-xs text-surface-300 dark:bg-surface-900 dark:text-surface-600 cursor-not-allowed">
-          <Globe className="h-3 w-3" />
-          웹사이트
-        </span>
       )}
-      {project.androidStoreUrl ? (
+      {project.androidStoreUrl && (
         <a
           href={project.androidStoreUrl}
           target="_blank"
@@ -57,13 +58,8 @@ export function ProjectLinks({ project }: ProjectLinksProps) {
           <Play className="h-3 w-3 fill-current" />
           Google Play
         </a>
-      ) : (
-        <span className="inline-flex items-center gap-1 rounded-full bg-surface-50 px-2 py-1 text-xs text-surface-300 dark:bg-surface-900 dark:text-surface-600 cursor-not-allowed">
-          <Play className="h-3 w-3" />
-          Google Play
-        </span>
       )}
-      {project.iosStoreUrl ? (
+      {project.iosStoreUrl && (
         <a
           href={project.iosStoreUrl}
           target="_blank"
@@ -73,13 +69,8 @@ export function ProjectLinks({ project }: ProjectLinksProps) {
           <span className="text-[10px]">🍎</span>
           App Store
         </a>
-      ) : (
-        <span className="inline-flex items-center gap-1 rounded-full bg-surface-50 px-2 py-1 text-xs text-surface-300 dark:bg-surface-900 dark:text-surface-600 cursor-not-allowed grayscale">
-          <span className="text-[10px]">🍎</span>
-          App Store
-        </span>
       )}
-      {project.macStoreUrl ? (
+      {project.macStoreUrl && (
         <a
           href={project.macStoreUrl}
           target="_blank"
@@ -89,11 +80,6 @@ export function ProjectLinks({ project }: ProjectLinksProps) {
           <span className="text-[10px]">💻</span>
           Mac
         </a>
-      ) : (
-        <span className="inline-flex items-center gap-1 rounded-full bg-surface-50 px-2 py-1 text-xs text-surface-300 dark:bg-surface-900 dark:text-surface-600 cursor-not-allowed grayscale">
-          <span className="text-[10px]">💻</span>
-          Mac
-        </span>
       )}
     </div>
   );

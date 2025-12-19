@@ -2,11 +2,16 @@ import { Link } from "react-router";
 import { CATEGORY_INFO, type Project } from "@/entities/project";
 
 interface ProjectMetaTagsProps {
-  project: Pick<Project, "category" | "techStack">;
+  project: Pick<Project, "category" | "techStack" | "createdAt">;
 }
 
 export function ProjectMetaTags({ project }: ProjectMetaTagsProps) {
   const categoryInfo = CATEGORY_INFO[project.category];
+  const launchDate = new Date(project.createdAt).toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <div className="flex flex-wrap items-center gap-2 mb-6 text-sm">
@@ -25,6 +30,12 @@ export function ProjectMetaTags({ project }: ProjectMetaTagsProps) {
           </span>
         </span>
       ))}
+      <span className="flex items-center gap-1">
+        <span className="text-surface-300 dark:text-surface-600">•</span>
+        <span className="text-surface-500 dark:text-surface-400">
+          런칭 {launchDate}
+        </span>
+      </span>
     </div>
   );
 }

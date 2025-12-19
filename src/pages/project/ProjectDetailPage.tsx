@@ -1,19 +1,17 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router";
-import { MessageSquare, ChevronRight } from "lucide-react";
-import { Button } from "@/shared/ui";
-import { cn } from "@/shared/lib/utils";
-import { useProjectStore, fetchProjectDetail, type Project } from "@/entities/project";
+import { MessageSquare, Heart, Upload, ChevronUp, Users, MessageCircle, Edit2 } from "lucide-react";
+import { Button, Avatar } from "@/shared/ui";
+import { cn, formatNumber } from "@/shared/lib/utils";
+import { useProjectStore, fetchProjectDetail, type Project, CATEGORY_INFO } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { SignUpModal } from "@/pages/auth";
 import { useProjectComments } from "./hooks/useProjectComments";
 import {
-  ProjectSidebar,
   ProjectOverviewTab,
   ProjectTeamTab,
-  ProjectHeader,
-  ProjectMetaTags,
-  ProjectDescription,
+  ProjectGallery,
+  ProjectLinks,
 } from "@/widgets/project-detail";
 
 export function ProjectDetailPage() {
@@ -129,34 +127,119 @@ export function ProjectDetailPage() {
     );
   }
 
+  const categoryInfo = CATEGORY_INFO[project.category];
+  const isAuthor = user && user.id === project.author.id;
+  const launchDate = new Date(project.createdAt).toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
-      <div className="mx-auto max-w-5xl px-4 py-6">
-        <div className="flex gap-8">
+      {/* Content Section */}
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Main Content */}
-          <main className="flex-1 min-w-0">
-            {/* Header Section */}
-            <ProjectHeader project={project} />
+          <main className="lg:col-span-2">
+            {/* Title & Meta */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400 mb-3">
+                <Link
+                  to={`/explore?category=${project.category}`}
+                  className="hover:text-surface-700 dark:hover:text-surface-200 transition-colors"
+                >
+                  {categoryInfo?.icon} {categoryInfo?.name}
+                </Link>
+                <span>·</span>
+                <span>{launchDate} 런칭</span>
+              </div>
+              
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  {project.thumbnail ? (
+                    <img
+                      src={project.thumbnail}
+                      alt={project.title}
+                      className="h-10 w-10 rounded-lg object-cover ring-1 ring-surface-200 dark:ring-surface-700"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-100 dark:bg-surface-800 text-2xl ring-1 ring-surface-200 dark:ring-surface-700">
+                      {categoryInfo?.icon}
+                    </div>
+                  )}
+                  <h1 className="text-3xl font-semibold text-surface-900 dark:text-surface-50 tracking-tight">
+                    {project.title}
+                  </h1>
+                </div>
+                {isAuthor && (
+                  <Link to={`/project/${project.id}/edit`}>
+                    <Button variant="ghost" size="sm" className="gap-1.5 text-surface-500 hover:text-surface-700">
+                      <Edit2 className="h-4 w-4" />
+                      수정
+                    </Button>
+                  </Link>
+                )}
+              </div>
+              
+              <p className="mt-2 text-lg text-surface-600 dark:text-surface-400 leading-relaxed">
+                {project.shortDescription}
+              </p>
+            </div>
 
-            {/* Tags */}
-            <ProjectMetaTags project={project} />
+            {/* Links */}
+            <ProjectLinks project={project} />
+
+            {/* Divider */}
+            <div className="border-b border-surface-200 dark:border-surface-800 my-8" />
+
+            {/* Host/Author Info */}
+            <div className="flex items-center gap-4 mb-8">
+              <Link to={`/profile/${project.author.username}`}>
+                <Avatar
+                  src={project.author.avatar}
+                  fallback={project.author.displayName}
+                  size="lg"
+                  className="ring-2 ring-surface-100 dark:ring-surface-800"
+                />
+              </Link>
+              <div>
+                <p className="text-sm text-surface-500 dark:text-surface-400">
+                  만든 사람
+                </p>
+                <Link
+                  to={`/profile/${project.author.username}`}
+                  className="font-medium text-surface-900 dark:text-surface-50 hover:underline"
+                >
+                  {project.author.displayName}
+                </Link>
+              </div>
+            </div>
 
             {/* Description */}
-            <ProjectDescription project={project} />
+            {project.fullDescription && (
+              <div className="mb-8">
+                <p className="text-surface-700 dark:text-surface-300 leading-relaxed whitespace-pre-wrap">
+                  {project.fullDescription}
+                </p>
+              </div>
+            )}
+
+            {/* Divider */}
+            <div className="border-b border-surface-200 dark:border-surface-800 my-8" />
 
             {/* Tabs */}
-            <div className="border-b border-surface-200 dark:border-surface-800 mb-6">
-              <nav className="flex items-center gap-6">
+            <div className="border-b border-surface-200 dark:border-surface-800 mb-8">
+              <nav className="flex items-center gap-8">
                 {[
                   { id: "overview", label: "개요" },
-                  // { id: "reviews", label: "리뷰" },
                   { id: "team", label: "팀" },
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as typeof activeTab)}
                     className={cn(
-                      "pb-3 text-sm font-medium transition-colors relative",
+                      "pb-4 text-sm font-medium transition-colors relative",
                       activeTab === tab.id
                         ? "text-surface-900 dark:text-surface-50"
                         : "text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200"
@@ -164,16 +247,15 @@ export function ProjectDetailPage() {
                   >
                     {tab.label}
                     {activeTab === tab.id && (
-                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
+                      <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-surface-900 dark:bg-surface-50 rounded-full" />
                     )}
                   </button>
                 ))}
                 <Link
                   to={`/project/${id}/community`}
-                  className="pb-3 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 flex items-center gap-1"
+                  className="pb-4 text-sm font-medium text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200 transition-colors"
                 >
                   커뮤니티
-                  <ChevronRight className="h-4 w-4" />
                 </Link>
               </nav>
             </div>
@@ -182,7 +264,7 @@ export function ProjectDetailPage() {
             {activeTab === "overview" && project && (
               <ProjectOverviewTab
                 project={project}
-                galleryImages={galleryImages}
+                galleryImages={[]}
                 comments={comments}
                 totalComments={totalComments}
                 isLoadingComments={isLoadingComments}
@@ -205,7 +287,6 @@ export function ProjectDetailPage() {
               <ProjectTeamTab project={project} />
             )}
 
-            {/* Reviews Tab */}
             {activeTab === "reviews" && (
               <div className="text-center py-12">
                 <MessageSquare className="h-12 w-12 mx-auto text-surface-300 dark:text-surface-600 mb-4" />
@@ -216,7 +297,6 @@ export function ProjectDetailPage() {
                   variant="outline" 
                   className="mt-4"
                   onClick={() => handleAuthenticatedAction(() => {
-                    // TODO: 리뷰 작성 기능 구현
                     console.log("리뷰 작성 기능");
                   })}
                 >
@@ -226,36 +306,123 @@ export function ProjectDetailPage() {
             )}
           </main>
 
-          {/* Sidebar */}
-          {project && id && (
-            <ProjectSidebar
-              project={project}
-              projectId={id}
-              onUpvote={() => {
-                if (!isAuthenticated) {
-                  setShowSignUpModal(true);
-                  return;
-                }
-                toggleProjectLike(project.id);
-              }}
-              onBookmark={() => {
-                if (!isAuthenticated) {
-                  setShowSignUpModal(true);
-                  return;
-                }
-                // TODO: 저장 기능 구현
-                console.log("저장 기능");
-              }}
-              onShare={() => {
-                if (!isAuthenticated) {
-                  setShowSignUpModal(true);
-                  return;
-                }
-                // TODO: 공유 기능 구현
-                console.log("공유 기능");
-              }}
-            />
-          )}
+          {/* Sidebar - Sticky */}
+          <aside className="lg:col-span-1">
+            <div className="sticky top-24 space-y-6">
+              {/* Action Card */}
+              <div className="rounded-xl border border-surface-200 dark:border-surface-800 p-6 shadow-sm">
+                {/* Upvote Button */}
+                <button
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      setShowSignUpModal(true);
+                      return;
+                    }
+                    toggleProjectLike(project.id);
+                  }}
+                  className={cn(
+                    "w-full flex items-center justify-center gap-2 py-3 rounded-lg font-medium transition-all",
+                    project.isLiked
+                      ? "bg-primary-500 text-white hover:bg-primary-600"
+                      : "bg-surface-900 dark:bg-surface-50 text-white dark:text-surface-900 hover:bg-surface-800 dark:hover:bg-surface-200"
+                  )}
+                >
+                  <ChevronUp className={cn("h-5 w-5", project.isLiked && "fill-current")} />
+                  응원하기
+                </button>
+
+                {/* Stats */}
+                <div className="mt-6 space-y-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-surface-500 dark:text-surface-400 flex items-center gap-2">
+                      <Heart className="h-4 w-4" />
+                      응원
+                    </span>
+                    <span className="font-semibold text-surface-900 dark:text-surface-50">
+                      {formatNumber(project.likesCount)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-surface-500 dark:text-surface-400 flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      서포터
+                    </span>
+                    <span className="font-semibold text-surface-900 dark:text-surface-50">
+                      {formatNumber(project.backersCount)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-surface-500 dark:text-surface-400 flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4" />
+                      댓글
+                    </span>
+                    <span className="font-semibold text-surface-900 dark:text-surface-50">
+                      {formatNumber(project.commentsCount)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-b border-surface-200 dark:border-surface-800 my-5" />
+
+                {/* Secondary Actions */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        setShowSignUpModal(true);
+                        return;
+                      }
+                      console.log("저장 기능");
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-surface-200 dark:border-surface-700 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
+                  >
+                    <Heart className="h-4 w-4" />
+                    저장
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.href);
+                      // TODO: 토스트 알림
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-surface-200 dark:border-surface-700 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
+                  >
+                    <Upload className="h-4 w-4" />
+                    공유
+                  </button>
+                </div>
+              </div>
+
+              {/* Tech Stack */}
+              {project.techStack.length > 0 && (
+                <div className="rounded-xl border border-surface-200 dark:border-surface-800 p-6">
+                  <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50 mb-4">
+                    기술 스택
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {project.techStack.map((tech) => (
+                      <span
+                        key={tech}
+                        className="px-3 py-1.5 rounded-full text-xs font-medium bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400"
+                      >
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Gallery */}
+              {galleryImages.length > 0 && (
+                <div className="rounded-xl border border-surface-200 dark:border-surface-800 p-6">
+                  <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50 mb-4">
+                    스크린샷
+                  </h3>
+                  <ProjectGallery images={galleryImages} />
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
       </div>
 

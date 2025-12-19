@@ -14,7 +14,7 @@ export { FeatureRequestsPage } from "./FeatureRequestsPage";
 export { ProjectDetailPage } from "./ProjectDetailPage";
 
 // 프로젝트 커뮤니티 페이지 - 공지, 피드백, 리워드, 마일스톤, 변경사항 탭을 제공하는 커뮤니티 페이지
-export { ProjectCommunityPage } from "./community";
+export { ProjectCommunityPage } from "./community/index.tsx";
 
 // 마일스톤 상세 페이지 - 특정 마일스톤의 상세 정보와 작업 목록을 보여주는 페이지
 export { MilestoneDetailPage } from "./MilestoneDetailPage";
