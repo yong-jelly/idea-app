@@ -71,10 +71,18 @@ export function ProjectDetailPage() {
 
       const loadedProject = overview.project;
       
+      // 자신의 프로젝트인지 확인
+      const isMyProject = user && user.id === loadedProject.author.id;
+      
       // 북마크 상태 확인 (인증된 사용자인 경우만)
       if (isAuthenticated && id) {
-        const { isBookmarked } = await checkProjectBookmark(id);
-        loadedProject.isBookmarked = isBookmarked;
+        // 자신의 프로젝트인 경우 항상 저장됨 상태로 설정
+        if (isMyProject) {
+          loadedProject.isBookmarked = true;
+        } else {
+          const { isBookmarked } = await checkProjectBookmark(id);
+          loadedProject.isBookmarked = isBookmarked;
+        }
       }
 
       setProject(loadedProject);
@@ -109,6 +117,12 @@ export function ProjectDetailPage() {
     }
 
     if (!project || !id || isBookmarking) {
+      return;
+    }
+
+    // 자신의 프로젝트인 경우 저장 해제 불가
+    const isMyProject = user && user.id === project.author.id;
+    if (isMyProject) {
       return;
     }
 
@@ -428,12 +442,13 @@ export function ProjectDetailPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={handleBookmark}
-                    disabled={isBookmarking}
+                    disabled={isBookmarking || !!isAuthor}
                     className={cn(
                       "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors",
                       project.isBookmarked
                         ? "border-primary-500 bg-primary-50 text-primary-700 hover:bg-primary-100 dark:border-primary-400 dark:bg-primary-950/30 dark:text-primary-400 dark:hover:bg-primary-950/50"
-                        : "border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-800"
+                        : "border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-800",
+                      isAuthor && "opacity-60 cursor-not-allowed"
                     )}
                   >
                     <Bookmark className={cn("h-4 w-4", project.isBookmarked && "fill-current")} />

@@ -110,6 +110,7 @@ DECLARE
     v_user_id bigint;
     v_is_bookmarked boolean;
     v_bookmarks_count integer;
+    v_project_author_id bigint;
 BEGIN
     -- 현재 로그인한 사용자 확인
     v_auth_id := auth.uid();
@@ -127,8 +128,12 @@ BEGIN
         RAISE EXCEPTION '사용자 정보를 찾을 수 없습니다';
     END IF;
     
-    -- 프로젝트 존재 확인
-    IF NOT EXISTS (SELECT 1 FROM odd.projects WHERE id = p_project_id) THEN
+    -- 프로젝트 존재 확인 및 작성자 확인
+    SELECT author_id INTO v_project_author_id
+    FROM odd.projects
+    WHERE id = p_project_id;
+    
+    IF v_project_author_id IS NULL THEN
         RAISE EXCEPTION '프로젝트를 찾을 수 없습니다';
     END IF;
     
@@ -140,6 +145,11 @@ BEGIN
     
     -- 저장/해제 토글
     IF v_is_bookmarked THEN
+        -- 자신의 프로젝트인 경우 저장 해제 불가
+        IF v_project_author_id = v_user_id THEN
+            RAISE EXCEPTION '자신의 프로젝트는 저장 해제할 수 없습니다';
+        END IF;
+        
         -- 저장 해제
         DELETE FROM odd.tbl_project_bookmarks
         WHERE project_id = p_project_id AND user_id = v_user_id;

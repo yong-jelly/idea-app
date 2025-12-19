@@ -11,7 +11,7 @@ import { ProjectsLoading } from "@/shared/ui/ProjectsLoading";
 
 export function BookmarkProjectsPage() {
   const { toggleProjectLike } = useProjectStore();
-  const { isAuthenticated } = useUserStore();
+  const { isAuthenticated, user } = useUserStore();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -163,14 +163,21 @@ export function BookmarkProjectsPage() {
         ) : (
           <>
             <div className="divide-y divide-surface-100 dark:divide-surface-800">
-              {projects.map((project, index) => (
-                <ProjectListItem
-                  key={project.id}
-                  project={project}
-                  rank={index + 1}
-                  onUpvote={() => toggleProjectLike(project.id)}
-                />
-              ))}
+              {projects.map((project, index) => {
+                // 내 프로젝트인지 확인
+                const isMyProject = user && user.id === project.author.id;
+                return (
+                  <ProjectListItem
+                    key={project.id}
+                    project={{
+                      ...project,
+                      isMyProject,
+                    }}
+                    rank={index + 1}
+                    onUpvote={() => toggleProjectLike(project.id)}
+                  />
+                );
+              })}
             </div>
             {hasMore && (
               <div className="py-4 text-center">

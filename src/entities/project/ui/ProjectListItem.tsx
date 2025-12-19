@@ -46,6 +46,11 @@ export function ProjectListItem({ project, rank, onUpvote }: ProjectListItemProp
               Featured
             </span>
           )}
+          {project.isMyProject && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 font-medium">
+              내 프로젝트
+            </span>
+          )}
         </div>
         <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-1 mb-2">
           {project.shortDescription}

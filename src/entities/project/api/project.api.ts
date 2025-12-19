@@ -2233,6 +2233,7 @@ export async function fetchSavedProjects(
       status: row.status as Project["status"],
       featured: row.featured || false,
       isLiked: false, // 저장 목록에서는 좋아요 상태를 확인하지 않음
+      isMyProject: row.is_my_project || false, // 내가 생성한 프로젝트 여부
       createdAt: row.created_at,
     }));
 

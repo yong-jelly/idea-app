@@ -689,7 +689,8 @@ export function useDevFeedComments({
       setCommentOffset(0);
       loadComments(0, false);
     }
-  }, [postId, projectAuthorId, loadComments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId, projectAuthorId]);
 
   // 삭제된 댓글을 제외한 실제 댓글 개수
   const totalComments = commentPagination 

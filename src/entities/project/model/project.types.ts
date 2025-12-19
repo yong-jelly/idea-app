@@ -29,6 +29,7 @@ export interface Project {
   featured: boolean;
   isLiked?: boolean;
   isBookmarked?: boolean;
+  isMyProject?: boolean; // 내가 생성한 프로젝트 여부 (저장한 프로젝트 목록에서 사용)
   createdAt: string;
 }
 
