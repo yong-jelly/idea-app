@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link, useParams } from "react-router";
-import { MessageSquare, Heart, Upload, ChevronUp, Users, MessageCircle, Edit2 } from "lucide-react";
+import { Link, useParams, useNavigate } from "react-router";
+import { MessageSquare, ChevronUp, MessageCircle, ArrowRight, Bookmark, Share2, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button, Avatar } from "@/shared/ui";
 import { cn, formatNumber } from "@/shared/lib/utils";
 import { useProjectStore, fetchProjectDetail, type Project, CATEGORY_INFO } from "@/entities/project";
@@ -10,15 +10,15 @@ import { useProjectComments } from "./hooks/useProjectComments";
 import {
   ProjectOverviewTab,
   ProjectTeamTab,
-  ProjectGallery,
   ProjectLinks,
 } from "@/widgets/project-detail";
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { toggleProjectLike } = useProjectStore();
   const { user, isAuthenticated } = useUserStore();
-  const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "team">(
+  const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "gallery" | "team">(
     "overview"
   );
   const [project, setProject] = useState<Project | null>(null);
@@ -143,46 +143,42 @@ export function ProjectDetailPage() {
           {/* Main Content */}
           <main className="lg:col-span-2">
             {/* Title & Meta */}
-            <div className="mb-6">
-              <div className="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400 mb-3">
-                <Link
-                  to={`/explore?category=${project.category}`}
-                  className="hover:text-surface-700 dark:hover:text-surface-200 transition-colors"
-                >
-                  {categoryInfo?.icon} {categoryInfo?.name}
-                </Link>
-                <span>·</span>
-                <span>{launchDate} 런칭</span>
-              </div>
-              
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  {project.thumbnail ? (
-                    <img
-                      src={project.thumbnail}
-                      alt={project.title}
-                      className="h-10 w-10 rounded-lg object-cover ring-1 ring-surface-200 dark:ring-surface-700"
-                    />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-100 dark:bg-surface-800 text-2xl ring-1 ring-surface-200 dark:ring-surface-700">
-                      {categoryInfo?.icon}
-                    </div>
-                  )}
-                  <h1 className="text-3xl font-semibold text-surface-900 dark:text-surface-50 tracking-tight">
+            <div className="mb-8">
+              {/* 프로젝트 헤더 */}
+              <div className="flex items-start gap-4 mb-4">
+                {project.thumbnail ? (
+                  <img
+                    src={project.thumbnail}
+                    alt={project.title}
+                    className="h-16 w-16 rounded-2xl object-cover ring-1 ring-surface-200 dark:ring-surface-700 shadow-sm"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-surface-100 to-surface-50 dark:from-surface-800 dark:to-surface-900 text-3xl ring-1 ring-surface-200 dark:ring-surface-700">
+                    {categoryInfo?.icon}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400 mb-1">
+                    <span>{launchDate} 런칭</span>
+                    {isAuthor && (
+                      <>
+                        <span>·</span>
+                        <Link 
+                          to={`/project/${project.id}/edit`}
+                          className="text-primary-600 dark:text-primary-400 hover:underline"
+                        >
+                          수정하기
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                  <h1 className="text-2xl lg:text-3xl font-semibold text-surface-900 dark:text-surface-50 tracking-tight">
                     {project.title}
                   </h1>
                 </div>
-                {isAuthor && (
-                  <Link to={`/project/${project.id}/edit`}>
-                    <Button variant="ghost" size="sm" className="gap-1.5 text-surface-500 hover:text-surface-700">
-                      <Edit2 className="h-4 w-4" />
-                      수정
-                    </Button>
-                  </Link>
-                )}
               </div>
               
-              <p className="mt-2 text-lg text-surface-600 dark:text-surface-400 leading-relaxed">
+              <p className="text-lg text-surface-600 dark:text-surface-400 leading-relaxed">
                 {project.shortDescription}
               </p>
             </div>
@@ -230,33 +226,38 @@ export function ProjectDetailPage() {
 
             {/* Tabs */}
             <div className="border-b border-surface-200 dark:border-surface-800 mb-8">
-              <nav className="flex items-center gap-8">
+              <nav className="flex items-center gap-1">
                 {[
                   { id: "overview", label: "개요" },
+                  { id: "gallery", label: "갤러리" },
                   { id: "team", label: "팀" },
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as typeof activeTab)}
                     className={cn(
-                      "pb-4 text-sm font-medium transition-colors relative",
+                      "relative px-4 py-3 text-sm font-medium transition-all duration-200",
                       activeTab === tab.id
-                        ? "text-surface-900 dark:text-surface-50"
-                        : "text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200"
+                        ? "text-surface-900 dark:text-white"
+                        : "text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-300"
                     )}
                   >
-                    {tab.label}
+                    <span className="relative z-10">{tab.label}</span>
                     {activeTab === tab.id && (
-                      <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-surface-900 dark:bg-surface-50 rounded-full" />
+                      <>
+                        <span className="absolute inset-x-1 inset-y-1 rounded-lg bg-surface-100/70 dark:bg-surface-800/50 -z-0" />
+                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-primary-500" />
+                      </>
                     )}
                   </button>
                 ))}
-                <Link
+                {/* <Link
                   to={`/project/${id}/community`}
-                  className="pb-4 text-sm font-medium text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200 transition-colors"
+                  className="relative px-4 py-3 text-sm font-medium text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-300 transition-all duration-200 flex items-center gap-1.5"
                 >
                   커뮤니티
-                </Link>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link> */}
               </nav>
             </div>
 
@@ -281,6 +282,10 @@ export function ProjectDetailPage() {
                 onEditComment={handleEditComment}
                 onDeleteComment={handleDeleteComment}
               />
+            )}
+
+            {activeTab === "gallery" && (
+              <GalleryTab images={galleryImages} />
             )}
 
             {activeTab === "team" && project && (
@@ -308,10 +313,38 @@ export function ProjectDetailPage() {
 
           {/* Sidebar - Sticky */}
           <aside className="lg:col-span-1">
-            <div className="sticky top-24 space-y-6">
-              {/* Action Card */}
-              <div className="rounded-xl border border-surface-200 dark:border-surface-800 p-6 shadow-sm">
-                {/* Upvote Button */}
+            <div className="sticky top-24 space-y-5">
+              {/* Community Card - 메인 CTA */}
+              <div className="rounded-2xl border border-surface-200 dark:border-surface-800 overflow-hidden shadow-sm">
+                <div className="bg-gradient-to-br from-primary-50 to-primary-100/50 dark:from-primary-950/30 dark:to-primary-900/20 p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-500 text-white">
+                      <MessageCircle className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-surface-900 dark:text-white">
+                        커뮤니티
+                      </h3>
+                      <p className="text-xs text-surface-500 dark:text-surface-400">
+                        {formatNumber(project.commentsCount)}개의 글
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-surface-600 dark:text-surface-400 mb-4">
+                    프로젝트에 대한 의견을 나누고, 피드백을 주고받아 보세요.
+                  </p>
+                  <button
+                    onClick={() => navigate(`/project/${id}/community`)}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-medium bg-primary-500 text-white hover:bg-primary-600 transition-all shadow-sm hover:shadow-md"
+                  >
+                    커뮤니티 참여하기
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="rounded-2xl border border-surface-200 dark:border-surface-800 p-5 shadow-sm">
                 <button
                   onClick={() => {
                     if (!isAuthenticated) {
@@ -321,51 +354,19 @@ export function ProjectDetailPage() {
                     toggleProjectLike(project.id);
                   }}
                   className={cn(
-                    "w-full flex items-center justify-center gap-2 py-3 rounded-lg font-medium transition-all",
+                    "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all mb-3",
                     project.isLiked
-                      ? "bg-primary-500 text-white hover:bg-primary-600"
-                      : "bg-surface-900 dark:bg-surface-50 text-white dark:text-surface-900 hover:bg-surface-800 dark:hover:bg-surface-200"
+                      ? "bg-primary-500 text-white hover:bg-primary-600 shadow-sm"
+                      : "bg-surface-100 text-surface-700 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700"
                   )}
                 >
                   <ChevronUp className={cn("h-5 w-5", project.isLiked && "fill-current")} />
                   응원하기
+                  <span className="ml-1 text-sm opacity-90">
+                    {formatNumber(project.likesCount)}
+                  </span>
                 </button>
-
-                {/* Stats */}
-                <div className="mt-6 space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-surface-500 dark:text-surface-400 flex items-center gap-2">
-                      <Heart className="h-4 w-4" />
-                      응원
-                    </span>
-                    <span className="font-semibold text-surface-900 dark:text-surface-50">
-                      {formatNumber(project.likesCount)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-surface-500 dark:text-surface-400 flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      서포터
-                    </span>
-                    <span className="font-semibold text-surface-900 dark:text-surface-50">
-                      {formatNumber(project.backersCount)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-surface-500 dark:text-surface-400 flex items-center gap-2">
-                      <MessageCircle className="h-4 w-4" />
-                      댓글
-                    </span>
-                    <span className="font-semibold text-surface-900 dark:text-surface-50">
-                      {formatNumber(project.commentsCount)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Divider */}
-                <div className="border-b border-surface-200 dark:border-surface-800 my-5" />
-
-                {/* Secondary Actions */}
+                
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
@@ -373,11 +374,11 @@ export function ProjectDetailPage() {
                         setShowSignUpModal(true);
                         return;
                       }
-                      console.log("저장 기능");
+                      // TODO: 저장 기능
                     }}
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-surface-200 dark:border-surface-700 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
                   >
-                    <Heart className="h-4 w-4" />
+                    <Bookmark className="h-4 w-4" />
                     저장
                   </button>
                   <button
@@ -387,7 +388,7 @@ export function ProjectDetailPage() {
                     }}
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-surface-200 dark:border-surface-700 text-sm font-medium text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
                   >
-                    <Upload className="h-4 w-4" />
+                    <Share2 className="h-4 w-4" />
                     공유
                   </button>
                 </div>
@@ -395,7 +396,7 @@ export function ProjectDetailPage() {
 
               {/* Tech Stack */}
               {project.techStack.length > 0 && (
-                <div className="rounded-xl border border-surface-200 dark:border-surface-800 p-6">
+                <div className="rounded-2xl border border-surface-200 dark:border-surface-800 p-5">
                   <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50 mb-4">
                     기술 스택
                   </h3>
@@ -403,7 +404,7 @@ export function ProjectDetailPage() {
                     {project.techStack.map((tech) => (
                       <span
                         key={tech}
-                        className="px-3 py-1.5 rounded-full text-xs font-medium bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400"
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 border border-surface-200 dark:border-surface-700"
                       >
                         {tech}
                       </span>
@@ -412,15 +413,6 @@ export function ProjectDetailPage() {
                 </div>
               )}
 
-              {/* Gallery */}
-              {galleryImages.length > 0 && (
-                <div className="rounded-xl border border-surface-200 dark:border-surface-800 p-6">
-                  <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50 mb-4">
-                    스크린샷
-                  </h3>
-                  <ProjectGallery images={galleryImages} />
-                </div>
-              )}
             </div>
           </aside>
         </div>
@@ -431,6 +423,185 @@ export function ProjectDetailPage() {
         open={showSignUpModal}
         onOpenChange={setShowSignUpModal}
       />
+    </div>
+  );
+}
+
+// 갤러리 탭 컴포넌트
+function GalleryTab({ images }: { images: string[] }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  if (images.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-6">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-100 dark:bg-surface-800">
+          <MessageSquare className="h-8 w-8 text-surface-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-surface-900 dark:text-white mb-2">
+          이미지가 없습니다
+        </h3>
+        <p className="text-sm text-surface-500 dark:text-surface-400 text-center max-w-xs">
+          프로젝트 이미지가 등록되면 여기에 표시됩니다
+        </p>
+      </div>
+    );
+  }
+
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  };
+
+  return (
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {images.map((img, idx) => (
+          <button
+            key={idx}
+            onClick={() => openLightbox(idx)}
+            className="group relative aspect-square rounded-xl overflow-hidden bg-surface-100 dark:bg-surface-800 ring-1 ring-surface-200 dark:ring-surface-700 hover:ring-surface-300 dark:hover:ring-surface-600 transition-all hover:shadow-lg"
+          >
+            <img
+              src={img}
+              alt={`Gallery ${idx + 1}`}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          </button>
+        ))}
+      </div>
+
+      {/* Lightbox */}
+      {lightboxOpen && (
+        <Lightbox
+          images={images}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxOpen(false)}
+          onPrev={() => setLightboxIndex((i) => (i > 0 ? i - 1 : images.length - 1))}
+          onNext={() => setLightboxIndex((i) => (i < images.length - 1 ? i + 1 : 0))}
+          onSelect={setLightboxIndex}
+        />
+      )}
+    </>
+  );
+}
+
+// Lightbox 컴포넌트
+function Lightbox({
+  images,
+  currentIndex,
+  onClose,
+  onPrev,
+  onNext,
+  onSelect,
+}: {
+  images: string[];
+  currentIndex: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  onSelect: (index: number) => void;
+}) {
+  useEffect(() => {
+    if (!images.length) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      } else if (e.key === "ArrowLeft") {
+        onPrev();
+      } else if (e.key === "ArrowRight") {
+        onNext();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [onClose, onPrev, onNext]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/95">
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4">
+        <span className="text-white/80 text-sm">
+          {currentIndex + 1} / {images.length}
+        </span>
+        <button
+          onClick={onClose}
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm transition-colors"
+          title="닫기 (ESC)"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Click to close overlay */}
+      <div className="absolute inset-0" onClick={onClose} />
+
+      {/* Image */}
+      <div className="absolute inset-0 flex items-center justify-center p-16 pointer-events-none">
+        <img
+          src={images[currentIndex]}
+          alt={`Gallery ${currentIndex + 1}`}
+          className="max-w-full max-h-full object-contain pointer-events-auto rounded-lg ring-1 ring-white/10"
+        />
+      </div>
+
+      {/* Navigation */}
+      {images.length > 1 && (
+        <>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPrev();
+            }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm transition-colors z-10"
+            title="이전 (←)"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onNext();
+            }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm transition-colors z-10"
+            title="다음 (→)"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
+        </>
+      )}
+
+      {/* Thumbnail strip */}
+      {images.length > 1 && (
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <div className="flex gap-2 justify-center overflow-x-auto pb-2">
+            {images.map((img, idx) => (
+              <button
+                key={idx}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(idx);
+                }}
+                className={cn(
+                  "shrink-0 w-16 h-12 rounded-lg overflow-hidden ring-2 transition-all",
+                  currentIndex === idx
+                    ? "ring-white"
+                    : "ring-transparent opacity-60 hover:opacity-100"
+                )}
+              >
+                <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

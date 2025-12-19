@@ -1,7 +1,6 @@
 import { Link } from "react-router";
 import { Users } from "lucide-react";
 import { Avatar, Badge } from "@/shared/ui";
-import { ProjectGallery } from "./ProjectGallery";
 import { ProjectCommentsSection } from "./ProjectCommentsSection";
 import type { Project } from "@/entities/project";
 import type { CommentNode } from "@/shared/ui/comment";
@@ -48,10 +47,8 @@ export function ProjectOverviewTab({
 }: ProjectOverviewTabProps) {
   return (
     <>
-      <ProjectGallery images={galleryImages} />
-
-      {/* 팀 */}
-      <div className="mb-8 p-4 rounded-lg bg-surface-50/50 dark:bg-surface-900/50 ring-1 ring-surface-100 dark:ring-surface-800/50">
+      {/* 팀 카드 */}
+      <div className="mb-8 p-4 rounded-xl bg-surface-50/50 dark:bg-surface-900/50 ring-1 ring-surface-100 dark:ring-surface-800/50">
         <div className="flex items-center gap-2 mb-3">
           <Users className="h-4 w-4 text-surface-400" />
           <h3 className="text-sm font-medium text-surface-600 dark:text-surface-400">팀</h3>

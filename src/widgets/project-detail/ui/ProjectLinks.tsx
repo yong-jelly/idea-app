@@ -25,7 +25,7 @@ export function ProjectLinks({ project }: ProjectLinksProps) {
   }
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5">
       {project.repositoryUrl && (
         <a
           href={project.repositoryUrl}
