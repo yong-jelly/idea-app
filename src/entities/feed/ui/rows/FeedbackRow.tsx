@@ -115,7 +115,7 @@ export function FeedbackRow({
 
       {/* 제목 강조 */}
       <h3 className={cn(
-        "font-semibold text-lg text-surface-900 dark:text-surface-50 mb-2",
+        "font-medium text-base text-surface-800 dark:text-surface-200 mb-2",
         "leading-tight"
       )}>
         {feedback.title}

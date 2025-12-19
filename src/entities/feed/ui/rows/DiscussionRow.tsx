@@ -104,7 +104,7 @@ export function DiscussionRow({
               </div>
 
               {/* Title */}
-              <h3 className="font-semibold text-surface-900 dark:text-surface-50 mb-2 text-lg">
+              <h3 className="font-medium text-base text-surface-800 dark:text-surface-200 mb-2">
                 💬 {post.title}
               </h3>
               

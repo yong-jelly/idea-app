@@ -1007,10 +1007,10 @@ export function FeedbackDetailPage() {
                       {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Link2 className="h-4 w-4" />}
                       {copied ? "복사됨" : "링크"}
                     </button>
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-surface-500 hover:text-primary-500 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
+                    {/* <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-surface-500 hover:text-primary-500 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
                       <Share2 className="h-4 w-4" />
                       공유
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               </CardContent>
