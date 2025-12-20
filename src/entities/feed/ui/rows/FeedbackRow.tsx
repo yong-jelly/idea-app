@@ -87,6 +87,17 @@ export function FeedbackRow({
   const TypeIcon = FEEDBACK_ICONS[feedback.type];
   const typeInfo = FEEDBACK_TYPE_INFO[feedback.type];
   const statusInfo = FEEDBACK_STATUS_INFO[feedback.status];
+  
+  // 프로젝트/커뮤니티에서 온 포스트인지 확인
+  const hasSource = feedback.source && feedback.source.type !== "direct" && feedback.source.type !== "following";
+  const projectSource = hasSource && feedback.source && (feedback.source.type === "project" || feedback.source.type === "subscribed" || feedback.source.type === "community")
+    ? {
+        id: feedback.source.id!,
+        name: feedback.source.name!,
+        emoji: feedback.source.emoji,
+        isBookmarked: feedback.source.isBookmarked,
+      }
+    : undefined;
 
   return (
     <FeedRowWrapper
@@ -100,7 +111,12 @@ export function FeedbackRow({
         />
       }
     >
-      <AuthorHeader author={feedback.author} createdAt={feedback.createdAt} showMoreButton={false} />
+      <AuthorHeader 
+        author={feedback.author} 
+        createdAt={feedback.createdAt} 
+        showMoreButton={false}
+        projectSource={projectSource}
+      />
       
       {/* 타입 및 상태 배지 */}
       <div className="mb-2 flex items-center gap-2">

@@ -64,6 +64,7 @@ export function ProjectUpdateRow({
         bgClass="bg-primary-50 dark:bg-primary-950/30"
         projectTitle={post.projectTitle}
         projectId={post.projectId}
+        isBookmarked={post.source?.isBookmarked}
       />
       
       <ContentArea 

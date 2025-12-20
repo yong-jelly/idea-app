@@ -56,6 +56,7 @@ export function convertToUnifiedFeedPost(response: UnifiedFeedResponse): Unified
         name: response.source_name || undefined,
         emoji: response.source_emoji || undefined,
         thumbnail: response.project_thumbnail || undefined,
+        isBookmarked: false, // TODO: API에서 프로젝트 북마크 정보를 받아올 수 있도록 수정 필요
       }
     : undefined;
 
@@ -170,7 +171,7 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
     }
 
     if (data) {
-      const convertedPosts = data.map(convertToUnifiedFeedPost);
+      const convertedPosts = (data as unknown as UnifiedFeedResponse[]).map(convertToUnifiedFeedPost);
       setPosts(convertedPosts);
       setOffset(50);
       setHasMore(data.length === 50);
@@ -192,7 +193,7 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
     }
 
     if (data && data.length > 0) {
-      const convertedPosts = data.map(convertToUnifiedFeedPost);
+      const convertedPosts = (data as unknown as UnifiedFeedResponse[]).map(convertToUnifiedFeedPost);
       setPosts((prev) => [...prev, ...convertedPosts]);
       setOffset((prev) => prev + data.length);
       setHasMore(data.length === 50);

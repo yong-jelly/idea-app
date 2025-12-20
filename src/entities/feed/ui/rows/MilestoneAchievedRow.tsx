@@ -64,6 +64,7 @@ export function MilestoneAchievedRow({
         bgClass="bg-emerald-50 dark:bg-emerald-950/30"
         projectTitle={post.projectTitle}
         projectId={post.projectId}
+        isBookmarked={post.source?.isBookmarked}
       />
       
       {/* 마일스톤 제목 */}

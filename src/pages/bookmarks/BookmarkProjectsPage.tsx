@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { Bookmark } from "lucide-react";
 import { LeftSidebar } from "@/widgets";
-import { fetchSavedProjects, ProjectList, useProjectStore, type Project } from "@/entities/project";
+import { fetchSavedProjects, ProjectList, type Project, toggleProjectLike as toggleProjectLikeAPI } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { SignUpModal } from "@/pages/auth";
 
 export function BookmarkProjectsPage() {
-  const { toggleProjectLike } = useProjectStore();
   const { isAuthenticated } = useUserStore();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -14,6 +13,83 @@ export function BookmarkProjectsPage() {
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+
+  // 프로젝트 좋아요 토글 핸들러
+  const handleToggleLike = async (projectId: string) => {
+    if (!isAuthenticated) {
+      setShowSignUpModal(true);
+      return;
+    }
+
+    // 낙관적 업데이트
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    const previousIsLiked = project.isLiked || false;
+    const previousLikesCount = project.likesCount || 0;
+
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === projectId
+          ? {
+              ...p,
+              isLiked: !previousIsLiked,
+              likesCount: previousIsLiked ? previousLikesCount - 1 : previousLikesCount + 1,
+            }
+          : p
+      )
+    );
+
+    try {
+      const { data, error: toggleError } = await toggleProjectLikeAPI(projectId);
+
+      if (toggleError) {
+        console.error("좋아요 토글 실패:", toggleError);
+        // 롤백
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  isLiked: previousIsLiked,
+                  likesCount: previousLikesCount,
+                }
+              : p
+          )
+        );
+        return;
+      }
+
+      // API 응답으로 상태 업데이트
+      if (data && !data.error) {
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  isLiked: data.isLiked,
+                  likesCount: data.likesCount,
+                }
+              : p
+          )
+        );
+      }
+    } catch (err) {
+      console.error("좋아요 토글 예외:", err);
+      // 롤백
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? {
+                ...p,
+                isLiked: previousIsLiked,
+                likesCount: previousLikesCount,
+              }
+            : p
+        )
+      );
+    }
+  };
 
   // 저장한 프로젝트 목록 조회
   useEffect(() => {
@@ -155,7 +231,7 @@ export function BookmarkProjectsPage() {
               </p>
             </div>
           }
-          onUpvote={(projectId) => toggleProjectLike(projectId)}
+          onUpvote={handleToggleLike}
           showRank={true}
           hasMore={hasMore}
           onLoadMore={loadMore}

@@ -12,6 +12,7 @@ import { convertToUnifiedFeedPost } from "@/widgets/feed-timeline/FeedTimeline";
 import type { UnifiedFeedPost } from "@/entities/feed";
 import { FEEDBACK_TYPE_INFO, FEEDBACK_STATUS_INFO, DEV_POST_TYPE_INFO } from "@/entities/feed";
 import { getProjectImageUrl, normalizeImageUrls } from "@/shared/lib/storage";
+import { AuthorHeader } from "@/entities/feed/ui/FeedRowBase";
 
 // 분리된 모듈 import
 import { usePostComments } from "./post-detail/usePostComments";
@@ -236,49 +237,41 @@ export function PostDetailPage() {
         {/* Post Detail */}
         <article className="px-4 py-3">
           {/* Author Header */}
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-3">
-              <Link 
-                to={isBot(post.author) ? "#" : `/profile/${post.author.username}`}
-                onClick={(e) => {
-                  if (isBot(post.author)) {
-                    e.preventDefault();
-                  }
-                }}
-              >
-                <Avatar
-                  src={post.author.avatar}
-                  alt={post.author.displayName}
-                  fallback={post.author.displayName}
-                  size="md"
-                />
-              </Link>
-              <div className="flex items-center gap-1.5 min-w-0 text-sm">
-                <Link 
-                  to={isBot(post.author) ? "#" : `/profile/${post.author.username}`}
-                  className={cn(
-                    "font-semibold text-surface-900 dark:text-surface-50 truncate",
-                    isBot(post.author) ? "cursor-default" : "hover:underline"
-                  )}
-                  onClick={(e) => {
-                    if (isBot(post.author)) {
-                      e.preventDefault();
-                    }
-                  }}
-                >
-                  {post.author.displayName}
-                </Link>
-                {isBot(post.author) && post.author.botRole && (
-                  <BotBadge role={post.author.botRole} size="sm" />
-                )}
-                <span className="text-surface-400 dark:text-surface-500 truncate">
-                  @{post.author.username}
-                </span>
-                <span className="text-surface-300 dark:text-surface-600">·</span>
-                <span className="text-surface-400 dark:text-surface-500 shrink-0">
-                  {getRelativeTime(post.createdAt)}
-                </span>
-              </div>
+          <div className="flex items-start gap-3 mb-1">
+            <Link 
+              to={isBot(post.author) ? "#" : `/profile/${post.author.username}`}
+              onClick={(e) => {
+                if (isBot(post.author)) {
+                  e.preventDefault();
+                }
+              }}
+            >
+              <Avatar
+                src={post.author.avatar}
+                alt={post.author.displayName}
+                fallback={post.author.displayName}
+                size="md"
+              />
+            </Link>
+            <div className="flex-1 min-w-0">
+              <AuthorHeader
+                author={post.author}
+                createdAt={post.createdAt}
+                showMoreButton={false}
+                projectSource={
+                  post.source && 
+                  post.source.type !== "direct" && 
+                  post.source.type !== "following" &&
+                  (post.source.type === "project" || post.source.type === "subscribed" || post.source.type === "community")
+                    ? {
+                        id: post.source.id!,
+                        name: post.source.name!,
+                        emoji: post.source.emoji,
+                        isBookmarked: post.source.isBookmarked,
+                      }
+                    : undefined
+                }
+              />
             </div>
           </div>
 

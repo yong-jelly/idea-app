@@ -26,6 +26,26 @@ export function formatNumber(num: number): string {
 }
 
 /**
+ * 좋아요 수를 k 단위로 포맷합니다.
+ * 예: 0 -> "0", 100 -> "100", 1000 -> "1k", 1300 -> "1.3k", 15000 -> "15k"
+ */
+export function formatLikesCount(count: number): string {
+  if (count === 0) {
+    return "0";
+  }
+  if (count < 1000) {
+    return count.toString();
+  }
+  const k = count / 1000;
+  // 소수점이 0이면 정수로 표시 (예: 1k, 2k)
+  if (k % 1 === 0) {
+    return `${k}k`;
+  }
+  // 소수점이 있으면 한 자리까지 표시 (예: 1.3k, 2.5k)
+  return `${k.toFixed(1)}k`;
+}
+
+/**
  * 날짜를 상대적 시간으로 포맷합니다.
  * 예: "방금 전", "5분 전", "3시간 전", "2일 전"
  */

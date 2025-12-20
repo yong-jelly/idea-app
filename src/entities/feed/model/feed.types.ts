@@ -50,6 +50,8 @@ export interface FeedSourceInfo {
   thumbnail?: string;
   /** 내가 참여/팔로우 중인지 여부 */
   isJoined?: boolean;
+  /** 내가 저장한 프로젝트인지 여부 */
+  isBookmarked?: boolean;
 }
 
 // ========== 일반 피드 타입 ==========

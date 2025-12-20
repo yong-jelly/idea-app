@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Menu, X, Sun, Moon, LogOut, Coins, User, UserX, Settings, PlusCircle } from "lucide-react";
+import { Menu, X, Sun, Moon, LogOut, Coins, User, UserX, Settings, PlusCircle, Bookmark, FolderOpen } from "lucide-react";
 import { Button, Avatar, Badge } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
@@ -141,6 +141,22 @@ export function Header() {
                         >
                           <PlusCircle className="h-4 w-4 text-surface-400" />
                           프로젝트 등록
+                        </Link>
+                        <Link
+                          to="/bookmark/project"
+                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-surface-700 hover:bg-surface-50 dark:text-surface-300 dark:hover:bg-surface-800 transition-colors"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <FolderOpen className="h-4 w-4 text-surface-400" />
+                          저장한 프로젝트
+                        </Link>
+                        <Link
+                          to="/bookmarks"
+                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-surface-700 hover:bg-surface-50 dark:text-surface-300 dark:hover:bg-surface-800 transition-colors"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <Bookmark className="h-4 w-4 text-surface-400" />
+                          북마크
                         </Link>
                         <button
                           onClick={() => {

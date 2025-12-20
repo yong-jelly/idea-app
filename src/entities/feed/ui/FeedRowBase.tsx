@@ -36,6 +36,12 @@ const ArrowRightIcon = () => (
   </svg>
 );
 
+const ProjectBookmarkIconSmall = () => (
+  <svg className="h-2.5 w-2.5" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M4 2a2 2 0 012-2h4a2 2 0 012 2v12l-4-2.5L4 14V2z"/>
+  </svg>
+);
+
 export interface FeedSourceHeaderProps {
   source: FeedSourceInfo;
   author: BaseAuthor;
@@ -58,21 +64,32 @@ export function FeedSourceHeader({ source, author, createdAt, showMoreButton = t
     ? `/project/${source.id}/community` 
     : `/project/${source.id}`;
 
+  const ProjectBookmarkIcon = () => (
+    <svg className="h-3 w-3" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M4 2a2 2 0 012-2h4a2 2 0 012 2v12l-4-2.5L4 14V2z"/>
+    </svg>
+  );
+
   return (
     <div className="flex items-start justify-between mb-2">
       <div className="min-w-0">
         {/* 1줄: 출처 이름 */}
         <Link 
           to={link}
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-surface-500 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors mb-1"
+          className="inline-flex items-center gap-1.5 text-[11px] font-medium text-surface-500 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors mb-1"
           onClick={(e) => e.stopPropagation()}
         >
           {source.emoji ? (
-            <span className="text-sm">{source.emoji}</span>
+            <span className="text-xs">{source.emoji}</span>
           ) : (
             <Icon />
           )}
           <span className="truncate">{source.name}</span>
+          {isProject && source.isBookmarked && (
+            <span className="text-primary-500 dark:text-primary-400 shrink-0" title="저장한 프로젝트">
+              <ProjectBookmarkIcon />
+            </span>
+          )}
           {isCommunity && <span className="text-surface-400 dark:text-surface-500 font-normal">커뮤니티</span>}
         </Link>
         
@@ -83,7 +100,7 @@ export function FeedSourceHeader({ source, author, createdAt, showMoreButton = t
             className="font-semibold text-surface-900 dark:text-surface-50 hover:text-primary-600 dark:hover:text-primary-400 transition-colors truncate"
             onClick={(e) => e.stopPropagation()}
           >
-            {author.displayName}
+            @{author.displayName}
           </Link>
           <span className="text-surface-300 dark:text-surface-600">·</span>
           <time className="text-surface-400 dark:text-surface-500 shrink-0 tabular-nums">
@@ -159,15 +176,22 @@ export interface AuthorHeaderProps {
   showMoreButton?: boolean;
   badge?: React.ReactNode;
   onMoreClick?: () => void;
+  /** 프로젝트 정보 (프로젝트 이름을 우측에 표시) */
+  projectSource?: {
+    id: string;
+    name: string;
+    emoji?: string;
+    isBookmarked?: boolean;
+  };
 }
 
-export function AuthorHeader({ author, createdAt, showMoreButton = true, badge, onMoreClick }: AuthorHeaderProps) {
+export function AuthorHeader({ author, createdAt, showMoreButton = true, badge, onMoreClick, projectSource }: AuthorHeaderProps) {
   const role = "role" in author ? author.role : undefined;
   const isAuthorBot = isBot(author);
 
   return (
     <div className="flex items-center justify-between mb-2">
-      <div className="flex items-center gap-2 min-w-0 text-[14px]">
+      <div className="flex items-center gap-2 min-w-0 text-[14px] flex-1">
         <Link
           to={isAuthorBot ? "#" : `/profile/${author.username}`}
           className={cn(
@@ -183,7 +207,7 @@ export function AuthorHeader({ author, createdAt, showMoreButton = true, badge, 
             }
           }}
         >
-          {author.displayName}
+          @{author.displayName}
         </Link>
         {role && (
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 font-medium">
@@ -193,14 +217,33 @@ export function AuthorHeader({ author, createdAt, showMoreButton = true, badge, 
         {isAuthorBot && author.botRole && (
           <BotBadge role={author.botRole} size="sm" />
         )}
-        <span className="text-surface-400 dark:text-surface-500 truncate font-normal">
-          @{author.username}
-        </span>
         <span className="text-surface-300 dark:text-surface-600">·</span>
         <time className="text-surface-400 dark:text-surface-500 shrink-0 tabular-nums">
           {formatRelativeTime(createdAt)}
         </time>
         {badge}
+        
+        {/* 프로젝트 이름을 우측 끝에 배치 */}
+        {projectSource && (
+          <>
+            <span className="text-surface-300 dark:text-surface-600 ml-auto">·</span>
+            <Link
+              to={`/project/${projectSource.id}`}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-surface-500 dark:text-surface-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {projectSource.emoji && (
+                <span className="text-xs">{projectSource.emoji}</span>
+              )}
+              <span className="truncate">{projectSource.name}</span>
+              {projectSource.isBookmarked && (
+                <span className="text-primary-500 dark:text-primary-400 shrink-0" title="저장한 프로젝트">
+                  <ProjectBookmarkIconSmall />
+                </span>
+              )}
+            </Link>
+          </>
+        )}
       </div>
       {showMoreButton && (
         <button 
@@ -361,9 +404,10 @@ export interface PostTypeBadgeProps {
   bgClass: string;
   projectTitle?: string;
   projectId?: string;
+  isBookmarked?: boolean;
 }
 
-export function PostTypeBadge({ icon, label, colorClass, bgClass, projectTitle, projectId }: PostTypeBadgeProps) {
+export function PostTypeBadge({ icon, label, colorClass, bgClass, projectTitle, projectId, isBookmarked }: PostTypeBadgeProps) {
   return (
     <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full mb-2 text-xs font-medium", bgClass, colorClass)}>
       {icon}
@@ -373,11 +417,16 @@ export function PostTypeBadge({ icon, label, colorClass, bgClass, projectTitle, 
           <span className="opacity-50 mx-0.5">·</span>
           <Link
             to={`/project/${projectId}`}
-            className="hover:underline"
+            className="hover:underline text-[10px] font-normal"
             onClick={(e) => e.stopPropagation()}
           >
             {projectTitle}
           </Link>
+          {isBookmarked && (
+            <span className="text-primary-500 dark:text-primary-400 shrink-0 ml-0.5" title="저장한 프로젝트">
+              <ProjectBookmarkIconSmall />
+            </span>
+          )}
         </>
       )}
     </div>

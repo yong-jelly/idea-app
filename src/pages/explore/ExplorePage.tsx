@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
-import { useProjectStore, fetchProjects, ProjectList, type Project } from "@/entities/project";
+import { fetchProjects, toggleProjectLike, ProjectList, type Project } from "@/entities/project";
+import { useUserStore } from "@/entities/user";
 import { ensureMinDelay, type MinLoadingDelay } from "@/shared/lib/utils";
 
 interface ExplorePageProps {
@@ -8,7 +9,7 @@ interface ExplorePageProps {
 }
 
 export function ExplorePage({ minLoadingDelay }: ExplorePageProps = {}) {
-  const { toggleProjectLike } = useProjectStore();
+  const { isAuthenticated } = useUserStore();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +51,81 @@ export function ExplorePage({ minLoadingDelay }: ExplorePageProps = {}) {
     loadProjects();
   }, []); // 의존성 배열을 비워서 마운트 시 한 번만 실행
 
+  // 좋아요 핸들러
+  const handleLike = async (projectId: string) => {
+    if (!isAuthenticated) {
+      // TODO: 로그인 모달 표시
+      return;
+    }
+
+    // 프로젝트 찾기
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    // 낙관적 업데이트
+    const previousIsLiked = project.isLiked || false;
+    const previousLikesCount = project.likesCount || 0;
+    
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === projectId
+          ? {
+              ...p,
+              isLiked: !previousIsLiked,
+              likesCount: previousIsLiked ? previousLikesCount - 1 : previousLikesCount + 1,
+            }
+          : p
+      )
+    );
+
+    try {
+      const { isLiked, likesCount, error: likeError } = await toggleProjectLike(projectId);
+
+      if (likeError) {
+        console.error("좋아요 토글 실패:", likeError);
+        // 롤백
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  isLiked: previousIsLiked,
+                  likesCount: previousLikesCount,
+                }
+              : p
+          )
+        );
+      } else {
+        // 성공 시 서버 응답으로 업데이트
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  isLiked,
+                  likesCount,
+                }
+              : p
+          )
+        );
+      }
+    } catch (err) {
+      console.error("좋아요 토글 예외:", err);
+      // 롤백
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? {
+                ...p,
+                isLiked: previousIsLiked,
+                likesCount: previousLikesCount,
+              }
+            : p
+        )
+      );
+    }
+  };
+
   // TODO: 인기 프로젝트 섹션 (커뮤니티 구현 후)
   // const trendingProjects = projects.slice().sort((a, b) => b.likesCount - a.likesCount);
 
@@ -72,7 +148,7 @@ export function ExplorePage({ minLoadingDelay }: ExplorePageProps = {}) {
             projects={projects}
             isLoading={isLoading}
             error={error}
-            onUpvote={toggleProjectLike}
+            onUpvote={handleLike}
             showRank={true}
           />
         </section>

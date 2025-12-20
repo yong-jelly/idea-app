@@ -521,6 +521,7 @@ export async function fetchProjects(
         status: row.status as Project["status"],
         featured: row.featured || false,
         createdAt: row.created_at,
+        isLiked: row.is_liked || false,
       };
     });
 
@@ -664,6 +665,7 @@ export async function fetchProjectDetail(
       status: row.status as Project["status"],
       featured: row.featured || false,
       createdAt: row.created_at,
+      isLiked: row.is_liked || false,
     };
 
     return {
@@ -2100,6 +2102,65 @@ export async function toggleProjectBookmark(
 }
 
 /**
+ * 프로젝트 좋아요 토글 결과
+ */
+export interface ToggleProjectLikeResult {
+  isLiked: boolean;
+  likesCount: number;
+  error: Error | null;
+}
+
+/**
+ * 프로젝트 좋아요 토글
+ * 
+ * @param projectId - 프로젝트 ID
+ * @returns 좋아요 상태 및 카운트 또는 에러
+ */
+export async function toggleProjectLike(
+  projectId: string
+): Promise<ToggleProjectLikeResult> {
+  try {
+    if (!projectId) {
+      return {
+        isLiked: false,
+        likesCount: 0,
+        error: new Error("프로젝트 ID가 필요합니다"),
+      };
+    }
+
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_toggle_project_like", {
+        p_project_id: projectId,
+      });
+
+    if (error) {
+      console.error("프로젝트 좋아요 토글 에러:", error);
+      return {
+        isLiked: false,
+        likesCount: 0,
+        error: new Error(error.message || "좋아요 처리에 실패했습니다"),
+      };
+    }
+
+    const result = data as { is_liked: boolean; likes_count: number };
+
+    return {
+      isLiked: result.is_liked,
+      likesCount: result.likes_count,
+      error: null,
+    };
+  } catch (err) {
+    console.error("프로젝트 좋아요 토글 예외:", err);
+    return {
+      isLiked: false,
+      likesCount: 0,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
  * 프로젝트 저장 상태 확인 결과
  */
 export interface CheckProjectBookmarkResult {
@@ -2230,7 +2291,7 @@ export async function fetchSavedProjects(
       daysLeft: row.days_left || 0,
       status: row.status as Project["status"],
       featured: row.featured || false,
-      isLiked: false, // 저장 목록에서는 좋아요 상태를 확인하지 않음
+      isLiked: row.is_liked || false, // 현재 사용자의 좋아요 상태
       isMyProject: row.is_my_project || false, // 내가 생성한 프로젝트 여부
       createdAt: row.created_at,
     }));

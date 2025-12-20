@@ -64,6 +64,7 @@ export function FeatureAcceptedRow({
         bgClass="bg-sky-50 dark:bg-sky-950/30"
         projectTitle={post.projectTitle}
         projectId={post.projectId}
+        isBookmarked={post.source?.isBookmarked}
       />
       
       {/* 수락된 기능 제목 */}

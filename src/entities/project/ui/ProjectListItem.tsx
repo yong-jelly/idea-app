@@ -1,6 +1,7 @@
+
 import { Link } from "react-router";
-import { MessageSquare, ChevronUp, Star } from "lucide-react";
-import { cn, formatNumber } from "@/shared/lib/utils";
+import { MessageSquare, Heart, Star } from "lucide-react";
+import { cn, formatLikesCount, formatNumber } from "@/shared/lib/utils";
 import { CATEGORY_INFO, type Project } from "../model/project.types";
 
 export interface ProjectListItemProps {
@@ -36,9 +37,9 @@ export function ProjectListItem({ project, rank, onUpvote }: ProjectListItemProp
             to={`/project/${project.id}`}
             className="font-semibold text-surface-900 hover:underline dark:text-surface-50 flex items-center gap-1.5"
           >
-            {rank !== undefined && (
+            {/* {rank !== undefined && (
               <span className="text-surface-500 dark:text-surface-400">{rank}. </span>
-            )}
+            )} */}
             {project.isMyProject && (
               <Star className="h-3 w-3 text-primary-500 fill-primary-500 shrink-0" />
             )}
@@ -78,7 +79,7 @@ export function ProjectListItem({ project, rank, onUpvote }: ProjectListItemProp
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-2 pt-1">
+      <div className="hidden md:flex items-center gap-2 pt-1">
         {/* Comments */}
         <Link
           to={`/project/${project.id}#comments`}
@@ -94,7 +95,7 @@ export function ProjectListItem({ project, rank, onUpvote }: ProjectListItemProp
           </span>
         </Link>
 
-        {/* Upvote */}
+        {/* Like */}
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -102,13 +103,24 @@ export function ProjectListItem({ project, rank, onUpvote }: ProjectListItemProp
           }}
           className={cn(
             "flex flex-col items-center justify-center min-w-[52px] h-14 rounded-lg border transition-all",
-            "border-surface-200 bg-white hover:border-primary-400 hover:bg-primary-50",
-            "dark:border-surface-700 dark:bg-surface-800 dark:hover:border-primary-500 dark:hover:bg-primary-950/50"
+            project.isLiked
+              ? "border-primary-500 bg-primary-50 hover:bg-primary-100 dark:border-primary-400 dark:bg-primary-950/30 dark:hover:bg-primary-950/50"
+              : "border-surface-200 bg-white hover:border-primary-400 hover:bg-primary-50 dark:border-surface-700 dark:bg-surface-800 dark:hover:border-primary-500 dark:hover:bg-primary-950/50"
           )}
         >
-          <ChevronUp className="h-4 w-4 text-primary-500 dark:text-primary-400 -mb-0.5" />
-          <span className="text-sm font-semibold text-surface-900 dark:text-surface-50">
-            {formatNumber(project.likesCount)}
+          <Heart className={cn(
+            "h-4 w-4 -mb-0.5",
+            project.isLiked
+              ? "text-primary-500 dark:text-primary-400 fill-current"
+              : "text-surface-500 dark:text-surface-400"
+          )} />
+          <span className={cn(
+            "text-sm font-semibold",
+            project.isLiked
+              ? "text-primary-600 dark:text-primary-400"
+              : "text-surface-900 dark:text-surface-50"
+          )}>
+            {formatLikesCount(project.likesCount || 0)}
           </span>
         </button>
       </div>

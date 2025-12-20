@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
-import { MessageSquare, ChevronUp, MessageCircle, ArrowRight, ChevronLeft, ChevronRight, X, Bookmark, Link2, Check } from "lucide-react";
+import { MessageSquare, ChevronUp, MessageCircle, ArrowRight, ChevronLeft, ChevronRight, X, Bookmark, Link2, Check, Heart } from "lucide-react";
 import { Button, Avatar } from "@/shared/ui";
-import { cn, formatNumber } from "@/shared/lib/utils";
-import { useProjectStore, fetchProjectDetail, toggleProjectBookmark, checkProjectBookmark, type Project, CATEGORY_INFO } from "@/entities/project";
+import { cn, formatLikesCount, formatNumber } from "@/shared/lib/utils";
+import { fetchProjectDetail, toggleProjectLike, toggleProjectBookmark, checkProjectBookmark, type Project, CATEGORY_INFO } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { SignUpModal } from "@/pages/auth";
 import { useProjectComments } from "./hooks/useProjectComments";
@@ -17,8 +17,8 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { toggleProjectLike } = useProjectStore();
   const { user, isAuthenticated } = useUserStore();
+  const [isLiking, setIsLiking] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "gallery" | "team">(
     "overview"
   );
@@ -144,6 +144,60 @@ export function ProjectDetailPage() {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // 좋아요 버튼 핸들러
+  const handleLike = async () => {
+    if (!isAuthenticated) {
+      setShowSignUpModal(true);
+      return;
+    }
+
+    if (!project || !id || isLiking) {
+      return;
+    }
+
+    setIsLiking(true);
+
+    // 낙관적 업데이트
+    const previousIsLiked = project.isLiked || false;
+    const previousLikesCount = project.likesCount || 0;
+    setProject({
+      ...project,
+      isLiked: !previousIsLiked,
+      likesCount: previousIsLiked ? previousLikesCount - 1 : previousLikesCount + 1,
+    });
+
+    try {
+      const { isLiked, likesCount, error: likeError } = await toggleProjectLike(id);
+
+      if (likeError) {
+        console.error("좋아요 토글 실패:", likeError);
+        // 에러 발생 시 이전 상태로 롤백
+        setProject({
+          ...project,
+          isLiked: previousIsLiked,
+          likesCount: previousLikesCount,
+        });
+      } else {
+        // 성공 시 서버 응답으로 업데이트
+        setProject({
+          ...project,
+          isLiked,
+          likesCount,
+        });
+      }
+    } catch (err) {
+      console.error("좋아요 토글 예외:", err);
+      // 에러 발생 시 이전 상태로 롤백
+      setProject({
+        ...project,
+        isLiked: previousIsLiked,
+        likesCount: previousLikesCount,
+      });
+    } finally {
+      setIsLiking(false);
+    }
   };
 
   // 저장하기 버튼 핸들러
@@ -287,9 +341,72 @@ export function ProjectDetailPage() {
                 </div>
               </div>
               
-              <p className="text-lg text-surface-600 dark:text-surface-400 leading-relaxed">
+              <p className="text-lg text-surface-600 dark:text-surface-400 leading-relaxed mb-6">
                 {project.shortDescription}
               </p>
+
+              {/* 모바일 액션 버튼 - 미니멀 스타일 */}
+              <div className="lg:hidden flex items-center gap-3 mb-6">
+                <button
+                  onClick={() => navigate(`/project/${id}/community`)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700 shadow-md hover:shadow-lg transition-all border border-primary-600/20 font-medium"
+                >
+                  <span className="text-sm font-semibold">
+                    커뮤니티 참여
+                  </span>
+                  <ArrowRight className="h-3.5 w-3.5 ml-0.5" />
+                </button>
+
+                <div className="flex-1" />
+
+                {/* 좋아요 버튼 - 아이콘과 숫자만 */}
+                <button
+                  onClick={handleLike}
+                  disabled={isLiking}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2 py-1.5 rounded-full transition-all",
+                    project.isLiked
+                      ? "bg-primary-100 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400"
+                      : "bg-surface-50 dark:bg-surface-900 hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-600 dark:text-surface-400"
+                  )}
+                  title="좋아요"
+                >
+                  <Heart className={cn("h-4 w-4", project.isLiked && "fill-current")} />
+                  <span className="text-xs font-medium tabular-nums">
+                    {formatLikesCount(project.likesCount || 0)}
+                  </span>
+                </button>
+
+                {/* 북마크 버튼 */}
+                <button
+                  onClick={handleBookmark}
+                  disabled={isBookmarking || !!isAuthor}
+                  className={cn(
+                    "flex items-center justify-center w-9 h-9 rounded-full transition-all",
+                    project.isBookmarked
+                      ? "bg-primary-100 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400"
+                      : "bg-surface-50 dark:bg-surface-900 hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-600 dark:text-surface-400",
+                    isAuthor && "opacity-50 cursor-not-allowed"
+                  )}
+                  title={project.isBookmarked ? "저장됨" : "저장"}
+                >
+                  <Bookmark className={cn("h-4 w-4", project.isBookmarked && "fill-current")} />
+                </button>
+
+                {/* 링크 복사 버튼 */}
+                <button
+                  onClick={handleCopyLink}
+                  className={cn(
+                    "flex items-center justify-center w-9 h-9 rounded-full transition-all",
+                    copied
+                      ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400"
+                      : "bg-surface-50 dark:bg-surface-900 hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-600 dark:text-surface-400"
+                  )}
+                  title={copied ? "복사됨" : "링크 복사"}
+                >
+                  {copied ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             {/* Links */}
@@ -421,7 +538,7 @@ export function ProjectDetailPage() {
           </main>
 
           {/* Sidebar - Sticky */}
-          <aside className="lg:col-span-1">
+          <aside className="hidden lg:block lg:col-span-1">
             <div className="sticky top-24 space-y-5">
               {/* Community Card - 메인 CTA */}
               <div className="rounded-2xl border border-surface-200 dark:border-surface-800 overflow-hidden shadow-sm">
@@ -455,13 +572,8 @@ export function ProjectDetailPage() {
               {/* Action Buttons */}
               <div className="rounded-2xl border border-surface-200 dark:border-surface-800 p-5 shadow-sm">
                 <button
-                  onClick={() => {
-                    if (!isAuthenticated) {
-                      setShowSignUpModal(true);
-                      return;
-                    }
-                    toggleProjectLike(project.id);
-                  }}
+                  onClick={handleLike}
+                  disabled={isLiking}
                   className={cn(
                     "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all mb-3",
                     project.isLiked
@@ -469,10 +581,10 @@ export function ProjectDetailPage() {
                       : "bg-surface-100 text-surface-700 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700"
                   )}
                 >
-                  <ChevronUp className={cn("h-5 w-5", project.isLiked && "fill-current")} />
-                  응원하기
+                  <Heart className={cn("h-5 w-5", project.isLiked && "fill-current")} />
+                  좋아요
                   <span className="ml-1 text-sm opacity-90">
-                    {formatNumber(project.likesCount)}
+                    {formatLikesCount(project.likesCount || 0)}
                   </span>
                 </button>
                 

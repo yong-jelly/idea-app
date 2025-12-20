@@ -37,6 +37,17 @@ export function TextPostRow({
   isAuthenticated = true,
   onSignUpPrompt,
 }: TextPostRowProps) {
+  // 프로젝트/커뮤니티에서 온 포스트인지 확인
+  const hasSource = post.source && post.source.type !== "direct" && post.source.type !== "following";
+  const projectSource = hasSource && post.source && (post.source.type === "project" || post.source.type === "subscribed" || post.source.type === "community")
+    ? {
+        id: post.source.id!,
+        name: post.source.name!,
+        emoji: post.source.emoji,
+        isBookmarked: post.source.isBookmarked,
+      }
+    : undefined;
+
   return (
     <FeedRowWrapper
       className={className}
@@ -49,7 +60,12 @@ export function TextPostRow({
         />
       }
     >
-      <AuthorHeader author={post.author} createdAt={post.createdAt} showMoreButton={false} />
+      <AuthorHeader 
+        author={post.author} 
+        createdAt={post.createdAt} 
+        showMoreButton={false}
+        projectSource={projectSource}
+      />
       
       <ContentArea 
         content={post.content} 

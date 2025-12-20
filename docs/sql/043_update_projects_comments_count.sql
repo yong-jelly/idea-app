@@ -48,7 +48,9 @@ RETURNS TABLE (
     -- 작성자 정보
     author_username text,
     author_display_name text,
-    author_avatar_url text
+    author_avatar_url text,
+    -- 현재 사용자 인터랙션 상태
+    is_liked boolean
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -59,6 +61,7 @@ AS $$
  * 함수 설명: 프로젝트 목록을 조회합니다.
  *           필터링, 정렬, 페이지네이션을 지원하며 작성자 정보도 함께 반환합니다.
  *           실제 댓글 개수를 계산하여 반환합니다.
+ *           현재 사용자의 좋아요 상태도 함께 반환합니다.
  * 
  * 매개변수:
  *   - p_featured: 주목할 프로젝트만 조회 (NULL이면 모든 프로젝트)
@@ -72,18 +75,30 @@ AS $$
  *                        'asc', 'desc' 중 하나
  * 
  * 반환값:
- *   - 프로젝트 목록 (작성자 정보 포함, 실제 댓글 개수 포함)
+ *   - 프로젝트 목록 (작성자 정보 포함, 실제 댓글 개수 포함, 좋아요 상태 포함)
  * 
  * 보안:
  *   - SECURITY DEFINER: 함수 소유자 권한으로 실행
  *   - 공개 조회이므로 인증 없이도 접근 가능 (RLS 정책에 따라)
  *   - RLS 정책: 모든 사용자가 프로젝트를 읽을 수 있음 (공개)
+ *   - 인증된 사용자의 경우 좋아요 상태를 반환하고, 비인증 사용자는 false 반환
  */
 DECLARE
     v_query text;
     v_order_by text;
     v_order_direction text;
+    v_auth_id uuid;
+    v_user_id bigint;
 BEGIN
+    -- 현재 로그인한 사용자 확인 (인증되지 않은 경우 NULL)
+    v_auth_id := auth.uid();
+    
+    -- auth_id로 사용자 ID 조회 (인증되지 않은 경우 NULL)
+    IF v_auth_id IS NOT NULL THEN
+        SELECT u.id INTO v_user_id
+        FROM odd.tbl_users u
+        WHERE u.auth_id = v_auth_id;
+    END IF;
     -- 정렬 기준 유효성 검사
     IF p_order_by NOT IN ('created_at', 'likes_count', 'comments_count') THEN
         RAISE EXCEPTION '유효하지 않은 정렬 기준입니다: %', p_order_by;
@@ -160,7 +175,14 @@ BEGIN
         -- 작성자 정보
         u.username AS author_username,
         u.display_name AS author_display_name,
-        u.avatar_url AS author_avatar_url
+        u.avatar_url AS author_avatar_url,
+        -- 현재 사용자 좋아요 상태
+        CASE WHEN v_user_id IS NOT NULL THEN
+            EXISTS (
+                SELECT 1 FROM odd.tbl_project_likes pl
+                WHERE pl.project_id = p.id AND pl.user_id = v_user_id
+            )
+        ELSE false END AS is_liked
     FROM odd.projects p
     INNER JOIN odd.tbl_users u ON p.author_id = u.id
     LEFT JOIN LATERAL (
@@ -382,7 +404,7 @@ GRANT EXECUTE ON FUNCTION odd.v1_fetch_saved_projects TO authenticated;
 -- 4. 코멘트 추가
 -- =====================================================
 
-COMMENT ON FUNCTION odd.v1_fetch_projects IS '프로젝트 목록을 조회하는 함수. 필터링, 정렬, 페이지네이션을 지원하며 작성자 정보도 함께 반환합니다. 실제 댓글 개수를 계산하여 반환합니다.';
+COMMENT ON FUNCTION odd.v1_fetch_projects IS '프로젝트 목록을 조회하는 함수. 필터링, 정렬, 페이지네이션을 지원하며 작성자 정보도 함께 반환합니다. 실제 댓글 개수를 계산하여 반환합니다. 현재 사용자의 좋아요 상태도 함께 반환합니다.';
 
 COMMENT ON FUNCTION odd.v1_fetch_saved_projects IS '현재 사용자가 저장한 프로젝트 목록을 조회하는 함수. 내가 생성한 프로젝트와 저장한 프로젝트를 구분하여 반환합니다. 실제 댓글 개수를 계산하여 반환합니다.';
 
@@ -421,7 +443,9 @@ RETURNS TABLE (
     -- 작성자 정보
     author_username text,
     author_display_name text,
-    author_avatar_url text
+    author_avatar_url text,
+    -- 현재 사용자 인터랙션 상태
+    is_liked boolean
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -430,22 +454,25 @@ STABLE
 AS $$
 /*
  * 함수 설명: 프로젝트 상세 정보를 조회합니다.
- *           작성자 정보도 함께 반환합니다.
+ *           작성자 정보와 현재 사용자의 좋아요 상태도 함께 반환합니다.
  *           실제 댓글 개수를 계산하여 반환합니다.
  * 
  * 매개변수:
  *   - p_project_id: 프로젝트 ID (UUID)
  * 
  * 반환값:
- *   - 프로젝트 상세 정보 (작성자 정보 포함, 실제 댓글 개수 포함)
+ *   - 프로젝트 상세 정보 (작성자 정보 포함, 실제 댓글 개수 포함, 좋아요 상태 포함)
  * 
  * 보안:
  *   - SECURITY DEFINER: 함수 소유자 권한으로 실행
  *   - 공개 조회이므로 인증 없이도 접근 가능 (RLS 정책에 따라)
  *   - RLS 정책: 모든 사용자가 프로젝트를 읽을 수 있음 (공개)
+ *   - 인증된 사용자의 경우 좋아요 상태를 반환하고, 비인증 사용자는 false 반환
  */
 DECLARE
     v_project_id uuid;
+    v_auth_id uuid;
+    v_user_id bigint;
 BEGIN
     -- 프로젝트 ID 유효성 검사
     IF p_project_id IS NULL THEN
@@ -453,6 +480,16 @@ BEGIN
     END IF;
     
     v_project_id := p_project_id;
+    
+    -- 현재 로그인한 사용자 확인 (인증되지 않은 경우 NULL)
+    v_auth_id := auth.uid();
+    
+    -- auth_id로 사용자 ID 조회 (인증되지 않은 경우 NULL)
+    IF v_auth_id IS NOT NULL THEN
+        SELECT u.id INTO v_user_id
+        FROM odd.tbl_users u
+        WHERE u.auth_id = v_auth_id;
+    END IF;
     
     -- 프로젝트 상세 조회
     RETURN QUERY
@@ -485,7 +522,14 @@ BEGIN
         -- 작성자 정보
         u.username AS author_username,
         u.display_name AS author_display_name,
-        u.avatar_url AS author_avatar_url
+        u.avatar_url AS author_avatar_url,
+        -- 현재 사용자 좋아요 상태
+        CASE WHEN v_user_id IS NOT NULL THEN
+            EXISTS (
+                SELECT 1 FROM odd.tbl_project_likes pl
+                WHERE pl.project_id = p.id AND pl.user_id = v_user_id
+            )
+        ELSE false END AS is_liked
     FROM odd.projects p
     INNER JOIN odd.tbl_users u ON p.author_id = u.id
     LEFT JOIN LATERAL (
@@ -512,5 +556,5 @@ $$;
 GRANT EXECUTE ON FUNCTION odd.v1_fetch_project_detail(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION odd.v1_fetch_project_detail(uuid) TO anon;
 
-COMMENT ON FUNCTION odd.v1_fetch_project_detail IS '프로젝트 상세 정보를 조회하는 함수. 작성자 정보도 함께 반환합니다. 실제 댓글 개수를 계산하여 반환합니다.';
+COMMENT ON FUNCTION odd.v1_fetch_project_detail IS '프로젝트 상세 정보를 조회하는 함수. 작성자 정보와 현재 사용자의 좋아요 상태도 함께 반환합니다. 실제 댓글 개수를 계산하여 반환합니다.';
 

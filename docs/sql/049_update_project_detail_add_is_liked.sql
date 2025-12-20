@@ -1,20 +1,18 @@
 -- =====================================================
--- odd.v1_fetch_project_detail: 프로젝트 상세 조회 함수
+-- v1_fetch_project_detail 함수에 is_liked 필드 추가
 -- =====================================================
 -- 
--- 프로젝트 상세 정보를 조회하는 함수입니다.
--- 작성자 정보와 함께 반환합니다.
--- 
--- 사용 위치:
---   - ProjectDetailPage에서 프로젝트 상세 조회 시 호출
---   - 프론트엔드: supabase.schema('odd').rpc('v1_fetch_project_detail', {...})
+-- 프로젝트 상세 조회 함수에 현재 사용자의 좋아요 상태를 추가합니다.
 -- 
 -- 실행 방법:
---   psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:ZNDqDunnaydr0aFQ@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" -f docs/sql/011_v1_fetch_project_detail.sql
+--   psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:ZNDqDunnaydr0aFQ@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" -f docs/sql/049_update_project_detail_add_is_liked.sql
 -- 
 -- =====================================================
--- 1. 프로젝트 상세 조회 함수
+-- 1. v1_fetch_project_detail 함수 업데이트
 -- =====================================================
+
+-- 기존 함수 삭제 (반환 타입 변경을 위해 필요)
+DROP FUNCTION IF EXISTS odd.v1_fetch_project_detail(uuid);
 
 CREATE OR REPLACE FUNCTION odd.v1_fetch_project_detail(
     p_project_id uuid
@@ -59,23 +57,19 @@ AS $$
 /*
  * 함수 설명: 프로젝트 상세 정보를 조회합니다.
  *           작성자 정보와 현재 사용자의 좋아요 상태도 함께 반환합니다.
+ *           실제 댓글 개수를 계산하여 반환합니다.
  * 
  * 매개변수:
  *   - p_project_id: 프로젝트 ID (UUID)
  * 
  * 반환값:
- *   - 프로젝트 상세 정보 (작성자 정보, 좋아요 상태 포함)
+ *   - 프로젝트 상세 정보 (작성자 정보 포함, 실제 댓글 개수 포함, 좋아요 상태 포함)
  * 
  * 보안:
  *   - SECURITY DEFINER: 함수 소유자 권한으로 실행
  *   - 공개 조회이므로 인증 없이도 접근 가능 (RLS 정책에 따라)
  *   - RLS 정책: 모든 사용자가 프로젝트를 읽을 수 있음 (공개)
  *   - 인증된 사용자의 경우 좋아요 상태를 반환하고, 비인증 사용자는 false 반환
- * 
- * 예시 쿼리:
- *   SELECT * FROM odd.v1_fetch_project_detail(
- *     '123e4567-e89b-12d3-a456-426614174000'::uuid
- *   );
  */
 DECLARE
     v_project_id uuid;
@@ -117,7 +111,8 @@ BEGIN
         p.mac_store_url,
         p.author_id,
         p.likes_count,
-        p.comments_count,
+        -- 실제 댓글 개수 계산 (is_deleted = false인 댓글만 카운트)
+        COALESCE(actual_comments_count, 0)::integer AS comments_count,
         p.backers_count,
         p.current_funding,
         p.target_funding,
@@ -139,6 +134,12 @@ BEGIN
         ELSE false END AS is_liked
     FROM odd.projects p
     INNER JOIN odd.tbl_users u ON p.author_id = u.id
+    LEFT JOIN LATERAL (
+        SELECT COUNT(*)::integer AS actual_comments_count
+        FROM odd.tbl_comments c
+        WHERE c.post_id = p.id
+        AND c.is_deleted = false
+    ) comment_counts ON true
     WHERE p.id = v_project_id
     LIMIT 1;
 
@@ -165,18 +166,5 @@ GRANT EXECUTE ON FUNCTION odd.v1_fetch_project_detail(uuid) TO anon;
 -- 3. 코멘트 추가
 -- =====================================================
 
-COMMENT ON FUNCTION odd.v1_fetch_project_detail IS '프로젝트 상세 정보를 조회하는 함수. 작성자 정보와 현재 사용자의 좋아요 상태도 함께 반환합니다.';
-
--- =====================================================
--- 4. 테스트 쿼리
--- =====================================================
-
-/*
- * 테스트 쿼리:
- * 
- * -- 프로젝트 상세 조회
- * SELECT * FROM odd.v1_fetch_project_detail(
- *     '123e4567-e89b-12d3-a456-426614174000'::uuid
- * );
- */
+COMMENT ON FUNCTION odd.v1_fetch_project_detail IS '프로젝트 상세 정보를 조회하는 함수. 작성자 정보와 현재 사용자의 좋아요 상태도 함께 반환합니다. 실제 댓글 개수를 계산하여 반환합니다.';
 
