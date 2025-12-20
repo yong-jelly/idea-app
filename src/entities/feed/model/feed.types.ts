@@ -164,6 +164,9 @@ export interface FeedbackPostExtended extends FeedbackPost {
   projectTitle?: string;
   /** 피드 출처 정보 */
   source?: FeedSourceInfo;
+  /** 인터랙션 정보 */
+  interactions: ExtendedInteractions;
+  images?: string[];
 }
 
 // ========== 통합 피드 타입 ==========

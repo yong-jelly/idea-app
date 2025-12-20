@@ -153,9 +153,9 @@ export function FeedbackRow({
         interactions={{
           likesCount: feedback.votesCount, // 피드백은 votesCount를 likesCount로 사용
           commentsCount: feedback.commentsCount,
-          bookmarksCount: 0,
+          bookmarksCount: feedback.interactions.bookmarksCount,
           isLiked: feedback.isVoted,
-          isBookmarked: false,
+          isBookmarked: feedback.interactions.isBookmarked,
         }}
         onLike={onVote || onLike}
         onComment={onComment}

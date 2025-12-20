@@ -11,8 +11,8 @@ import { supabase } from "@/shared/lib/supabase";
 import { getProfileImageUrl } from "@/shared/lib/storage";
 
 const navigation = [
-  { name: "피드", href: "/" },
-  { name: "탐색", href: "/explore" },
+  { name: "홈", href: "/" },
+  { name: "프로젝트", href: "/explore" },
 ];
 
 export function Header() {

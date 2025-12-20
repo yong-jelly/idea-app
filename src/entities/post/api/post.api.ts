@@ -214,6 +214,88 @@ export async function fetchBookmarkedPostsFeed(
   }
 }
 
+/**
+ * 사용자가 작성한 포스트 피드 조회
+ * 
+ * 특정 사용자가 작성한 포스트의 피드를 조회합니다.
+ * 일반 포스트, 커뮤니티 공지, 피드백, 프로젝트 생성 정보를 포함합니다.
+ */
+export async function fetchUserPostsFeed(
+  username: string,
+  options: FetchUnifiedFeedOptions = {}
+): Promise<{ data: UnifiedFeedPost[] | null; error: Error | null }> {
+  try {
+    if (!username) {
+      return { data: null, error: new Error("username이 필요합니다") };
+    }
+
+    const { limit = 50, offset = 0 } = options;
+
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_fetch_user_posts_feed", {
+        p_username: username,
+        p_limit: limit,
+        p_offset: offset,
+      });
+
+    if (error) {
+      console.error("사용자 포스트 피드 조회 에러:", error);
+      return { data: null, error: new Error(error.message) };
+    }
+
+    // 데이터 변환은 FeedTimeline에서 수행
+    return { data: data as any, error: null };
+  } catch (err) {
+    console.error("사용자 포스트 피드 조회 예외:", err);
+    return {
+      data: null,
+      error: err instanceof Error ? err : new Error("알 수 없는 에러가 발생했습니다"),
+    };
+  }
+}
+
+/**
+ * 사용자가 좋아요한 포스트 피드 조회
+ * 
+ * 특정 사용자가 좋아요한 포스트의 피드를 조회합니다.
+ * 일반 포스트, 커뮤니티 공지, 피드백, 프로젝트 생성 정보를 포함합니다.
+ */
+export async function fetchUserLikedPostsFeed(
+  username: string,
+  options: FetchUnifiedFeedOptions = {}
+): Promise<{ data: UnifiedFeedPost[] | null; error: Error | null }> {
+  try {
+    if (!username) {
+      return { data: null, error: new Error("username이 필요합니다") };
+    }
+
+    const { limit = 50, offset = 0 } = options;
+
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_fetch_user_liked_posts_feed", {
+        p_username: username,
+        p_limit: limit,
+        p_offset: offset,
+      });
+
+    if (error) {
+      console.error("사용자 좋아요 포스트 피드 조회 에러:", error);
+      return { data: null, error: new Error(error.message) };
+    }
+
+    // 데이터 변환은 FeedTimeline에서 수행
+    return { data: data as any, error: null };
+  } catch (err) {
+    console.error("사용자 좋아요 포스트 피드 조회 예외:", err);
+    return {
+      data: null,
+      error: err instanceof Error ? err : new Error("알 수 없는 에러가 발생했습니다"),
+    };
+  }
+}
+
 // ========== 댓글 관련 타입 및 함수 ==========
 
 export interface FetchPostCommentsOptions {

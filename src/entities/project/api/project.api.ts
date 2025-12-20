@@ -2264,6 +2264,16 @@ export interface FetchMyProjectsResult {
   error: Error | null;
 }
 
+export interface FetchUserProjectsOptions {
+  limit?: number;
+  offset?: number;
+}
+
+export interface FetchUserProjectsResult {
+  projects: Project[];
+  error: Error | null;
+}
+
 /**
  * 사용자가 생성한 프로젝트 목록 조회
  * 
@@ -2445,6 +2455,128 @@ export async function fetchMyProjects(
     };
   } catch (err) {
     console.error("내 프로젝트 조회 예외:", err);
+    return {
+      projects: [],
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 사용자가 생성한 프로젝트 목록 조회
+ * 
+ * @param username - 조회할 사용자의 username
+ * @param options - 조회 옵션
+ * @returns 사용자가 생성한 프로젝트 목록
+ */
+export async function fetchUserProjects(
+  username: string,
+  options: FetchUserProjectsOptions = {}
+): Promise<FetchUserProjectsResult> {
+  try {
+    if (!username) {
+      return {
+        projects: [],
+        error: new Error("username이 필요합니다"),
+      };
+    }
+
+    const { limit = 50, offset = 0 } = options;
+
+    // 사용자가 생성한 프로젝트 조회 (RPC 함수 사용)
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_fetch_user_projects", {
+        p_username: username,
+        p_limit: limit,
+        p_offset: offset,
+      });
+
+    if (error) {
+      console.error("사용자 프로젝트 조회 에러:", error);
+      return {
+        projects: [],
+        error: new Error(error.message || "사용자 프로젝트를 불러오는데 실패했습니다"),
+      };
+    }
+
+    if (!data || data.length === 0) {
+      return {
+        projects: [],
+        error: null,
+      };
+    }
+
+    // 데이터 변환
+    const projects: Project[] = data.map((row: any) => {
+      const author = {
+        id: row.author_id?.toString() || "",
+        username: row.author_username || "",
+        displayName: row.author_display_name || "",
+        avatar: row.author_avatar_url ? getProfileImageUrl(row.author_avatar_url, "sm") : undefined,
+      };
+      
+      // 썸네일 URL 변환
+      let thumbnailUrl: string | undefined = undefined;
+      if (row.thumbnail) {
+        if (row.thumbnail.startsWith("http://") || row.thumbnail.startsWith("https://")) {
+          thumbnailUrl = row.thumbnail;
+        } else {
+          thumbnailUrl = getProjectImageUrl(row.thumbnail);
+        }
+      }
+
+      // 갤러리 이미지 URL 변환
+      const galleryImages: string[] = [];
+      if (row.gallery_images && Array.isArray(row.gallery_images)) {
+        row.gallery_images.forEach((path: string) => {
+          if (path.startsWith("http://") || path.startsWith("https://")) {
+            galleryImages.push(path);
+          } else {
+            galleryImages.push(getProjectImageUrl(path));
+          }
+        });
+      }
+
+      // 기술 스택 파싱
+      const techStack: string[] = [];
+      if (row.tech_stack && Array.isArray(row.tech_stack)) {
+        techStack.push(...row.tech_stack);
+      }
+
+      return {
+        id: row.id,
+        title: row.title,
+        shortDescription: row.short_description,
+        fullDescription: row.full_description || undefined,
+        category: row.category as ProjectCategory,
+        techStack,
+        author,
+        thumbnail: thumbnailUrl,
+        galleryImages: galleryImages.length > 0 ? galleryImages : undefined,
+        repositoryUrl: row.repository_url || undefined,
+        demoUrl: row.demo_url || undefined,
+        androidStoreUrl: row.android_store_url || undefined,
+        iosStoreUrl: row.ios_store_url || undefined,
+        macStoreUrl: row.mac_store_url || undefined,
+        currentFunding: row.current_funding || 0,
+        targetFunding: row.target_funding || 0,
+        backersCount: row.backers_count || 0,
+        likesCount: row.likes_count || 0,
+        commentsCount: row.comments_count || 0,
+        daysLeft: row.days_left || 0,
+        status: row.status as Project["status"],
+        featured: row.featured || false,
+        createdAt: row.created_at,
+      };
+    });
+
+    return {
+      projects,
+      error: null,
+    };
+  } catch (err) {
+    console.error("사용자 프로젝트 조회 예외:", err);
     return {
       projects: [],
       error: err instanceof Error ? err : new Error("알 수 없는 오류"),

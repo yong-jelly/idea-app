@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Home, Bookmark } from "lucide-react";
+import { Home, Bookmark, Rss } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { PostComposerModal } from "@/features/feed";
 import { useUserStore } from "@/entities/user";
 import { ProjectSection } from "./ProjectSection";
 
 const navigation = [
-  { name: "홈", href: "/", icon: Home },
+  { name: "피드", href: "/", icon: Rss },
   { name: "북마크", href: "/bookmarks", icon: Bookmark },
 ];
 
