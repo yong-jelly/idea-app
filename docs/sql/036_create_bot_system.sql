@@ -105,3 +105,4 @@ END $$;
 COMMENT ON COLUMN odd.tbl_users.user_type IS '사용자 타입: user(일반 사용자) 또는 bot(봇 계정)';
 COMMENT ON COLUMN odd.tbl_users.auth_id IS 'Supabase Auth ID. Bot 계정은 NULL일 수 있음';
 
+

@@ -54,7 +54,7 @@ export async function fetchUserProfile(
       id: dbUser.id.toString(),
       username: dbUser.username || "",
       displayName: dbUser.display_name || "",
-      avatar: dbUser.avatar_url ? getProfileImageUrl(dbUser.avatar_url, "lg") : undefined,
+      avatar: dbUser.avatar_url || undefined, // 원본 avatar_url 저장 (표시 시 변환)
       bio: dbUser.bio || undefined,
       website: dbUser.website || undefined,
       github: dbUser.github || undefined,

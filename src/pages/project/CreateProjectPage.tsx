@@ -135,6 +135,7 @@ export function CreateProjectPage() {
           short_description: formData.shortDescription.trim(),
           full_description: formData.fullDescription.trim() || undefined,
           category: categoryInfo.mappedCategory,
+          category_id: formData.category, // 원본 카테고리 ID 저장
           tech_stack: formData.techStack,
           repository_url: formData.repositoryUrl.trim() || undefined,
           demo_url: formData.demoUrl.trim() || undefined,

@@ -11,6 +11,7 @@ export interface CreateProjectData {
   short_description: string;
   full_description?: string;
   category: ProjectCategory;
+  category_id?: string; // 원본 카테고리 ID (예: devtool, utility 등)
   tech_stack: string[]; // JSON 배열로 저장
   thumbnail?: string; // Storage 경로 또는 URL
   gallery_images?: string[]; // Storage 경로 배열 (JSON으로 저장)
@@ -75,6 +76,7 @@ export async function createProject(
       short_description: data.short_description,
       full_description: data.full_description || null,
       category: data.category,
+      category_id: data.category_id || null,
       tech_stack: data.tech_stack,
       repository_url: data.repository_url || null,
       demo_url: data.demo_url || null,
@@ -219,6 +221,7 @@ export interface UpdateProjectData {
   short_description?: string;
   full_description?: string;
   category?: ProjectCategory;
+  category_id?: string; // 원본 카테고리 ID (예: devtool, utility 등)
   tech_stack?: string[]; // JSON 배열로 저장
   thumbnail?: string; // Storage 경로 또는 URL
   gallery_images?: string[]; // Storage 경로 배열 (JSON으로 저장)
@@ -356,6 +359,7 @@ export async function updateProject(
     if (data.short_description !== undefined) updateData.short_description = data.short_description;
     if (data.full_description !== undefined) updateData.full_description = data.full_description || null;
     if (data.category !== undefined) updateData.category = data.category;
+    if (data.category_id !== undefined) updateData.category_id = data.category_id || null;
     if (data.tech_stack !== undefined) updateData.tech_stack = data.tech_stack;
     if (thumbnailPath !== undefined) updateData.thumbnail = thumbnailPath;
     // gallery_images는 항상 업데이트 (기존 이미지 + 새 이미지 합친 배열)
@@ -498,6 +502,7 @@ export async function fetchProjects(
         shortDescription: row.short_description,
         fullDescription: row.full_description || undefined,
         category: row.category as ProjectCategory,
+        categoryId: row.category_id || undefined,
         techStack,
         author: {
           id: String(row.author_id || ""),
@@ -642,6 +647,7 @@ export async function fetchProjectDetail(
       shortDescription: row.short_description,
       fullDescription: row.full_description || undefined,
       category: row.category as ProjectCategory,
+      categoryId: row.category_id || undefined,
       techStack,
       author: {
         id: String(row.author_id || ""),
@@ -2269,6 +2275,7 @@ export async function fetchSavedProjects(
       shortDescription: row.short_description,
       fullDescription: row.full_description || undefined,
       category: row.category as ProjectCategory,
+      categoryId: row.category_id || undefined,
       techStack: (row.tech_stack as string[]) || [],
       author: {
         id: String(row.author_id),
@@ -2484,6 +2491,7 @@ export async function fetchMyProjects(
         shortDescription: row.short_description,
         fullDescription: row.full_description || undefined,
         category: row.category as ProjectCategory,
+        categoryId: row.category_id || undefined,
         techStack,
         author: {
           id: String(author.id || ""),
@@ -2611,6 +2619,7 @@ export async function fetchUserProjects(
         shortDescription: row.short_description,
         fullDescription: row.full_description || undefined,
         category: row.category as ProjectCategory,
+        categoryId: row.category_id || undefined,
         techStack,
         author,
         thumbnail: thumbnailUrl,

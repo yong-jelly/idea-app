@@ -85,10 +85,11 @@ export function EditProjectPage() {
 
       setProject(loadedProject);
 
-      // 카테고리 ID 찾기 (mappedCategory로 역매핑)
-      const categoryId = CATEGORIES.find(
-        (c) => c.mappedCategory === loadedProject.category
-      )?.id || "";
+      // 카테고리 ID 찾기 (categoryId가 있으면 사용, 없으면 역매핑 시도)
+      const categoryId = loadedProject.categoryId || 
+        CATEGORIES.find(
+          (c) => c.mappedCategory === loadedProject.category
+        )?.id || "";
 
       // 기존 이미지들을 preview로 설정
       const thumbnailPreview = loadedProject.thumbnail || "";
@@ -213,6 +214,7 @@ export function EditProjectPage() {
           short_description: formData.shortDescription.trim(),
           full_description: formData.fullDescription.trim() || undefined,
           category: categoryInfo.mappedCategory,
+          category_id: formData.category, // 원본 카테고리 ID 저장
           tech_stack: formData.techStack,
           repository_url: formData.repositoryUrl.trim() || undefined,
           demo_url: formData.demoUrl.trim() || undefined,

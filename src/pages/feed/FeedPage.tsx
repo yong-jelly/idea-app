@@ -33,7 +33,7 @@ export function FeedPage() {
 
       {/* Main Content */}
       <main className="min-w-0 flex-1 min-h-[calc(100vh-4rem)] bg-white dark:bg-surface-950 border-x border-surface-100/80 dark:border-surface-800/50">
-        {/* Feed Content */}
+        {/* Feed Content */}        
         <FeedTimeline onSignUpPrompt={() => setShowSignUpModal(true)} />
       </main>
 

@@ -170,3 +170,4 @@ GRANT EXECUTE ON FUNCTION odd.v1_fetch_saved_projects TO authenticated;
 -- 코멘트 추가
 COMMENT ON FUNCTION odd.v1_fetch_saved_projects IS '현재 사용자가 저장한 프로젝트 목록을 조회하는 함수. 내가 생성한 프로젝트와 저장한 프로젝트를 구분하여 반환합니다.';
 
+

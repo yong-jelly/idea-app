@@ -1,8 +1,8 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useNavigate } from "react-router";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageSquare } from "lucide-react";
 import { useUserStore } from "@/entities/user";
-import { Skeleton } from "@/shared/ui";
+import { Skeleton, EmptyState } from "@/shared/ui";
 import { fetchUnifiedFeed, togglePostLike, togglePostBookmark, type UnifiedFeedResponse } from "@/entities/post/api/post.api";
 import {
   TextPostRow,
@@ -230,6 +230,17 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
 
   if (posts.length === 0 && isLoading) {
     return <FeedSkeleton />;
+  }
+
+  if (posts.length === 0 && !isLoading) {
+    return (
+      <EmptyState
+        icon={<MessageSquare className="h-8 w-8" />}
+        title="피드가 비어있습니다"
+        description="아직 포스트가 없습니다. 첫 번째 포스트를 작성해보세요!"
+        size="lg"
+      />
+    );
   }
 
   const handlePostClick = (post: UnifiedFeedPost) => {

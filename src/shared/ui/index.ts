@@ -14,4 +14,5 @@ export { SignUpPromptModal, type SignUpPromptModalProps } from "./SignUpPromptMo
 export { CommentsLoading } from "./CommentsLoading";
 export { ProjectsLoading } from "./ProjectsLoading";
 export { BotBadge, BotBadgeIcon, type BotBadgeProps } from "./BotBadge";
+export { EmptyState, type EmptyStateProps } from "./EmptyState";
 

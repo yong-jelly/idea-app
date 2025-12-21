@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { MessageSquare, Heart, Star } from "lucide-react";
 import { cn, formatLikesCount, formatNumber } from "@/shared/lib/utils";
 import { CATEGORY_INFO, type Project } from "../model/project.types";
+import { CATEGORIES } from "@/features/project-create";
 
 export interface ProjectListItemProps {
   project: Project;
@@ -12,6 +13,11 @@ export interface ProjectListItemProps {
 
 export function ProjectListItem({ project, rank, onUpvote }: ProjectListItemProps) {
   const categoryInfo = CATEGORY_INFO[project.category];
+  
+  // category_id에 따라 카테고리 텍스트 결정
+  const categoryText = project.categoryId
+    ? CATEGORIES.find((c) => c.id === project.categoryId)?.label || "-"
+    : "-";
 
   return (
     <div className="group flex items-start gap-4 py-5 px-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/40">
@@ -65,7 +71,7 @@ export function ProjectListItem({ project, rank, onUpvote }: ProjectListItemProp
             to={`/explore?category=${project.category}`} 
             className="hover:text-surface-900 dark:hover:text-surface-200 transition-colors"
           >
-            {categoryInfo.name}
+            {categoryText}
           </Link>
           {project.techStack.slice(0, 2).map((tech) => (
             <span key={tech} className="flex items-center gap-1.5">

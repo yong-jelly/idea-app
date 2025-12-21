@@ -10,6 +10,7 @@ export interface Project {
   shortDescription: string;
   fullDescription?: string;
   category: ProjectCategory;
+  categoryId?: string; // 원본 카테고리 ID (예: devtool, utility 등)
   techStack: string[];
   author: Pick<User, "id" | "username" | "displayName" | "avatar">;
   thumbnail?: string;
