@@ -418,41 +418,43 @@ export function MilestonesTab({ projectId }: MilestonesTabProps) {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenModal(milestone);
-                          }}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(milestone.id);
-                          }}
-                          className="h-8 w-8 p-0 text-surface-400 hover:text-rose-500"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant={milestone.status === "open" ? "primary" : "outline"}
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleStatus(milestone.id);
-                          }}
-                          className="h-8 text-xs ml-1"
-                        >
-                          {milestone.status === "open" ? "완료" : "재개"}
-                        </Button>
-                      </div>
+                      {isProjectOwner && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenModal(milestone);
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(milestone.id);
+                            }}
+                            className="h-8 w-8 p-0 text-surface-400 hover:text-rose-500"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant={milestone.status === "open" ? "primary" : "outline"}
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleStatus(milestone.id);
+                            }}
+                            className="h-8 text-xs ml-1"
+                          >
+                            {milestone.status === "open" ? "완료" : "재개"}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>
