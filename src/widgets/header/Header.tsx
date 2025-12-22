@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router";
 import { Menu, X, Sun, Moon, LogOut, Coins, User, UserX, Settings, PlusCircle, Bookmark, FolderOpen } from "lucide-react";
 import { Button, Avatar, Badge } from "@/shared/ui";
@@ -26,6 +26,29 @@ export function Header() {
   const { theme, toggleTheme } = useUIStore();
   
   const isDev = import.meta.env.DEV;
+
+  // 라우트 변경 시 메뉴 닫기
+  useEffect(() => {
+    setUserMenuOpen(false);
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // ESC 키로 메뉴 닫기
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setUserMenuOpen(false);
+        setMobileMenuOpen(false);
+      }
+    };
+
+    if (userMenuOpen || mobileMenuOpen) {
+      document.addEventListener("keydown", handleEscape);
+      return () => {
+        document.removeEventListener("keydown", handleEscape);
+      };
+    }
+  }, [userMenuOpen, mobileMenuOpen]);
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-surface-100 dark:bg-surface-950/80 dark:border-surface-800/50 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
