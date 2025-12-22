@@ -94,9 +94,8 @@ export function MilestonesTab({ projectId }: MilestonesTabProps) {
   }, [projectId, filter]);
 
   const sortedMilestones = [...milestones].sort((a, b) => {
-    if (a.status === "open" && b.status === "closed") return -1;
-    if (a.status === "closed" && b.status === "open") return 1;
-    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    // 생성일 기준으로 정렬 (최신이 가장 위)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   const filteredMilestones = filter === "all" 

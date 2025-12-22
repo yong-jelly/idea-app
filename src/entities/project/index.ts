@@ -3,6 +3,7 @@ export { useProjectStore } from "./model/project.store";
 export { 
   createProject, 
   updateProject,
+  deleteProject,
   fetchProjects,
   fetchProjectDetail,
   fetchProjectComments,
@@ -31,6 +32,7 @@ export {
   type CreateProjectResult,
   type UpdateProjectData,
   type UpdateProjectResult,
+  type DeleteProjectResult,
   type FetchProjectsOptions,
   type FetchProjectsResult,
   type FetchProjectDetailResult,

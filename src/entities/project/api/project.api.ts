@@ -2759,3 +2759,55 @@ export async function deleteChangelog(
   }
 }
 
+/**
+ * 프로젝트 삭제 결과
+ */
+export interface DeleteProjectResult {
+  success: boolean;
+  error: Error | null;
+}
+
+/**
+ * 프로젝트 삭제 (소프트 삭제)
+ * 
+ * @param projectId - 삭제할 프로젝트 ID
+ * @returns 삭제 성공 여부 또는 에러
+ */
+export async function deleteProject(
+  projectId: string
+): Promise<DeleteProjectResult> {
+  try {
+    if (!projectId) {
+      return {
+        success: false,
+        error: new Error("프로젝트 ID가 필요합니다"),
+      };
+    }
+
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_delete_project", {
+        p_project_id: projectId,
+      });
+
+    if (error) {
+      console.error("프로젝트 삭제 에러:", error);
+      return {
+        success: false,
+        error: new Error(error.message || "프로젝트 삭제에 실패했습니다"),
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (err) {
+    console.error("프로젝트 삭제 에러:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+

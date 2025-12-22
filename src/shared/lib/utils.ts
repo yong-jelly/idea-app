@@ -73,6 +73,47 @@ export function formatCurrency(amount: number): string {
   return `₩${amount.toLocaleString("ko-KR")}`;
 }
 
+/**
+ * 날짜를 D-n 형식으로 포맷합니다.
+ * 예: 오늘 -> "D-0", 내일 -> "D-1", 어제 -> "D+1", 3일 후 -> "D-3"
+ * 
+ * @param date - 목표 날짜 (Date 객체 또는 ISO 문자열)
+ * @returns "D-n" 형식의 문자열 (n은 오늘 기준 일수 차이)
+ */
+export function formatDueDate(date: Date | string): string {
+  const now = new Date();
+  const target = typeof date === "string" ? new Date(date) : date;
+  
+  // 날짜만 비교 (시간 제외)
+  const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDate = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  
+  const diffMs = targetDate.getTime() - nowDate.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return "D-0";
+  } else if (diffDays > 0) {
+    return `D-${diffDays}`;
+  } else {
+    return `D+${Math.abs(diffDays)}`;
+  }
+}
+
+/**
+ * 날짜를 YY월DD일 형식으로 포맷합니다.
+ * 예: "12월25일", "1월5일"
+ * 
+ * @param date - 날짜 (Date 객체 또는 ISO 문자열)
+ * @returns "YY월DD일" 형식의 문자열
+ */
+export function formatDateShort(date: Date | string): string {
+  const target = typeof date === "string" ? new Date(date) : date;
+  const month = target.getMonth() + 1;
+  const day = target.getDate();
+  return `${month}월${day}일`;
+}
+
 // ============================================================================
 // 로딩 지연 시간 관리 유틸리티
 // ============================================================================

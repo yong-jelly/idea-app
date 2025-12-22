@@ -7,4 +7,5 @@ export { ProjectOverviewTab } from "./ProjectOverviewTab";
 export { ProjectSidebar } from "./ProjectSidebar";
 export { ProjectTeamTab } from "./ProjectTeamTab";
 export { ProjectCommentsSection } from "./ProjectCommentsSection";
+export { ProjectMilestonesTab, getMilestoneTabLabel } from "./ProjectMilestonesTab";
 

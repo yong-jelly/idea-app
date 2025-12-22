@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
-import { MessageSquare, ChevronUp, MessageCircle, ArrowRight, ChevronLeft, ChevronRight, X, Bookmark, Link2, Check, Heart } from "lucide-react";
+import { MessageSquare, ChevronUp, MessageCircle, ArrowRight, ChevronLeft, ChevronRight, X, Bookmark, Link2, Check, Heart, Trash2 } from "lucide-react";
 import { Button, Avatar } from "@/shared/ui";
 import { cn, formatLikesCount, formatNumber } from "@/shared/lib/utils";
-import { fetchProjectDetail, toggleProjectLike, toggleProjectBookmark, checkProjectBookmark, type Project, CATEGORY_INFO } from "@/entities/project";
+import { fetchProjectDetail, toggleProjectLike, toggleProjectBookmark, checkProjectBookmark, deleteProject, type Project, CATEGORY_INFO } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { SignUpModal } from "@/pages/auth";
 import { useProjectComments } from "./hooks/useProjectComments";
@@ -11,7 +11,10 @@ import {
   ProjectOverviewTab,
   ProjectTeamTab,
   ProjectLinks,
+  ProjectMilestonesTab,
+  getMilestoneTabLabel,
 } from "@/widgets/project-detail";
+import { fetchMilestones, fetchTasks, type Milestone, type MilestoneTask } from "@/entities/project";
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,15 +22,18 @@ export function ProjectDetailPage() {
   const location = useLocation();
   const { user, isAuthenticated } = useUserStore();
   const [isLiking, setIsLiking] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "gallery" | "team">(
+  const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "gallery" | "team" | "milestones">(
     "overview"
   );
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [allTasks, setAllTasks] = useState<Array<MilestoneTask & { milestoneId: string }>>([]);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 댓글 관련 로직을 hook으로 분리
   const {
@@ -93,6 +99,58 @@ export function ProjectDetailPage() {
 
     loadProject();
   }, [id, isAuthenticated]);
+
+  // 모든 마일스톤의 Task 목록 조회
+  useEffect(() => {
+    if (!id) return;
+
+    const loadAllTasks = async () => {
+      try {
+        // 1. 모든 마일스톤 가져오기
+        const { milestones: milestonesData, error: milestonesError } = await fetchMilestones(id, {
+          status: "all",
+          limit: 100,
+        });
+
+        if (milestonesError) {
+          console.error("마일스톤 목록 조회 실패:", milestonesError);
+          return;
+        }
+
+        if (!milestonesData || milestonesData.length === 0) {
+          setAllTasks([]);
+          return;
+        }
+
+        // 2. 각 마일스톤의 모든 Task 가져오기
+        const allTasksPromises = milestonesData.map(async (milestone) => {
+          const { tasks: milestoneTasks, error: tasksError } = await fetchTasks(milestone.id, {
+            status: "all",
+            limit: 200,
+          });
+
+          if (tasksError) {
+            console.error(`마일스톤 ${milestone.id}의 Task 조회 실패:`, tasksError);
+            return [];
+          }
+
+          // 각 Task에 milestoneId 추가
+          return (milestoneTasks || []).map((task) => ({
+            ...task,
+            milestoneId: milestone.id,
+          }));
+        });
+
+        const tasksArrays = await Promise.all(allTasksPromises);
+        const allTasksData = tasksArrays.flat();
+        setAllTasks(allTasksData);
+      } catch (err) {
+        console.error("Task 목록 조회 에러:", err);
+      }
+    };
+
+    loadAllTasks();
+  }, [id]);
 
   // 갤러리 이미지 (프로젝트의 gallery_images 사용, 없으면 썸네일 사용)
   const galleryImages =
@@ -292,11 +350,42 @@ export function ProjectDetailPage() {
 
   const categoryInfo = CATEGORY_INFO[project.category];
   const isAuthor = user && user.id === project.author.id;
+  // user_89bf5abb 사용자만 삭제 가능
+  const canDelete = user && user.username === "user_89bf5abb";
   const launchDate = new Date(project.createdAt).toLocaleDateString("ko-KR", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
+
+  // 프로젝트 삭제 핸들러
+  const handleDelete = async () => {
+    if (!id || !canDelete || isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const { success, error: deleteError } = await deleteProject(id);
+
+      if (deleteError) {
+        console.error("프로젝트 삭제 실패:", deleteError);
+        alert("프로젝트 삭제에 실패했습니다: " + deleteError.message);
+        setIsDeleting(false);
+        return;
+      }
+
+      if (success) {
+        // 삭제 성공 시 프로젝트 목록으로 이동
+        navigate("/explore");
+      }
+    } catch (err) {
+      console.error("프로젝트 삭제 예외:", err);
+      alert("프로젝트 삭제 중 오류가 발생했습니다");
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
@@ -332,6 +421,17 @@ export function ProjectDetailPage() {
                         >
                           수정하기
                         </Link>
+                      </>
+                    )}
+                    {canDelete && (
+                      <>
+                        <span>·</span>
+                        <button
+                          onClick={() => setShowDeleteModal(true)}
+                          className="text-red-600 dark:text-red-400 hover:underline"
+                        >
+                          삭제하기
+                        </button>
                       </>
                     )}
                   </div>
@@ -457,6 +557,10 @@ export function ProjectDetailPage() {
                   { id: "overview", label: "개요" },
                   { id: "gallery", label: "갤러리" },
                   { id: "team", label: "팀" },
+                  { 
+                    id: "milestones", 
+                    label: allTasks.length > 0 ? getMilestoneTabLabel(allTasks) : "마일스톤" 
+                  },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -516,6 +620,10 @@ export function ProjectDetailPage() {
 
             {activeTab === "team" && project && (
               <ProjectTeamTab project={project} />
+            )}
+
+            {activeTab === "milestones" && id && (
+              <ProjectMilestonesTab projectId={id} />
             )}
 
             {activeTab === "reviews" && (
@@ -647,6 +755,36 @@ export function ProjectDetailPage() {
         open={showSignUpModal}
         onOpenChange={setShowSignUpModal}
       />
+
+      {/* 삭제 확인 모달 */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-surface-900 rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-50 mb-2">
+              프로젝트 삭제
+            </h3>
+            <p className="text-surface-600 dark:text-surface-400 mb-6">
+              정말로 이 프로젝트를 삭제하시겠습니까? 삭제된 프로젝트는 목록에서 보이지 않게 됩니다. 관련 자료(댓글, 좋아요 등)는 삭제되지 않습니다.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+              >
+                취소
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "삭제 중..." : "삭제"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
