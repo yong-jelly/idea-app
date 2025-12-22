@@ -26,6 +26,7 @@ import type {
   FeedSourceInfo,
 } from "@/entities/feed";
 import type { BaseAuthor } from "@/entities/feed";
+import { getProfileImageUrl } from "@/shared/lib/storage";
 
 interface FeedTimelineProps {
   onSignUpPrompt?: () => void;
@@ -37,7 +38,7 @@ export function convertToUnifiedFeedPost(response: UnifiedFeedResponse): Unified
     id: response.author_id.toString(),
     username: response.author_username,
     displayName: response.author_display_name,
-    avatar: response.author_avatar_url || undefined,
+    avatar: response.author_avatar_url ? getProfileImageUrl(response.author_avatar_url, "sm") : undefined,
     userType: response.author_user_type,
   };
 

@@ -123,3 +123,4 @@ COMMENT ON COLUMN odd.tbl_changelogs.updated_at IS '수정일시';
 
 
 
+
