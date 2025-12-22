@@ -7,6 +7,7 @@ import {
 } from "react-router";
 import { Header } from "@/widgets";
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
+import { trackPageView } from "@/shared/lib/gtm";
 import {
   FeedPage,
   PostDetailPage,
@@ -37,10 +38,22 @@ function ScrollToTop() {
   return null;
 }
 
+function PageViewTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    // 페이지 전환 시 GTM에 페이지뷰 이벤트 전송
+    trackPageView(location.pathname + location.search, document.title);
+  }, [location.pathname, location.search]);
+
+  return null;
+}
+
 function RootLayout() {
   return (
     <div className="min-h-screen bg-surface-50/30 dark:bg-surface-950">
       <ScrollToTop />
+      <PageViewTracker />
       <Header />
       <Outlet />
     </div>
