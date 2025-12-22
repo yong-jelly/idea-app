@@ -191,21 +191,17 @@ export function SignUpModal({ open, onOpenChange }: SignUpModalProps) {
                       <div className="space-y-3">
                         <Input
                           type="email"
-                          placeholder="이메일"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="준비중입니다."
+                          value=""
+                          onChange={() => {}}
+                          disabled
                           className="h-[52px] text-[15px] rounded-full"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && email.trim()) {
-                              handleEmailSubmit();
-                            }
-                          }}
-                          autoFocus
+                          onKeyDown={() => {}}
                         />
                         <Button
                           className="w-full h-[52px] text-[15px] font-semibold rounded-full"
-                          onClick={handleEmailSubmit}
-                          disabled={!email.trim()}
+                          onClick={() => {}}
+                          disabled
                         >
                           이메일로 가입하기
                         </Button>

@@ -201,14 +201,25 @@ export function ProjectCommunityPage() {
 
           {/* 리워드 */}
           {activeTab === "rewards" && (
-            <RewardsTab 
-              rewards={dummyRewards}
-              pointRules={dummyPointRules}
-              topSupporters={dummyTopSupporters}
-              claimedRewards={dummyClaimedRewards}
-              projectId={id || "1"}
-              isOwner={project.author.id === user?.id}
-            />
+            <div className="relative">
+              <div className="opacity-30 pointer-events-none">
+                <RewardsTab 
+                  rewards={dummyRewards}
+                  pointRules={dummyPointRules}
+                  topSupporters={dummyTopSupporters}
+                  claimedRewards={dummyClaimedRewards}
+                  projectId={id || "1"}
+                  isOwner={project.author.id === user?.id}
+                />
+              </div>
+              <div className="absolute inset-0 flex items-start justify-center pt-16 bg-white/30 dark:bg-surface-950/50 z-10">
+                <div className="bg-white dark:bg-surface-800 px-8 py-6 rounded-lg border border-surface-200 dark:border-surface-700 shadow-lg">
+                  <p className="text-2xl font-semibold text-surface-900 dark:text-surface-50">
+                    열심히 준비중입니다.  (//'ㅅ')
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* 마일스톤 */}
