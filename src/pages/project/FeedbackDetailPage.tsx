@@ -899,7 +899,11 @@ export function FeedbackDetailPage() {
 
                   {/* Author Info */}
                   <div className="flex items-center gap-3">
-                    <Avatar fallback={feedback.author.displayName} size="md" />
+                    <Avatar 
+                      src={feedback.author.avatar}
+                      fallback={feedback.author.displayName} 
+                      size="md" 
+                    />
                     <div>
                       <p className="font-medium text-surface-900 dark:text-surface-50">
                         {feedback.author.displayName}
