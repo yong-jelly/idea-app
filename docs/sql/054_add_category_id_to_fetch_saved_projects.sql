@@ -1,14 +1,11 @@
 -- =====================================================
--- 저장한 프로젝트 조회 함수 수정
+-- 저장한 프로젝트 조회 함수에 category_id 필드 추가
 -- =====================================================
 -- 
--- 내가 생성한 프로젝트와 저장한 프로젝트를 구분하여 반환하도록 수정합니다.
--- - is_my_project: 내가 생성한 프로젝트 여부 (true: 생성한 프로젝트, false: 저장한 프로젝트)
--- - 내가 생성한 프로젝트는 생성일 최신순으로 정렬
--- - 내가 저장한 프로젝트는 저장일 순으로 정렬 (내가 생성한 프로젝트 제외)
+-- v1_fetch_saved_projects 함수에 category_id 필드를 추가하여 원본 카테고리 ID를 반환하도록 합니다.
 -- 
 -- 실행 방법:
---   psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:ZNDqDunnaydr0aFQ@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" -f docs/sql/041_update_fetch_saved_projects.sql
+--   psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:ZNDqDunnaydr0aFQ@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" -f docs/sql/054_add_category_id_to_fetch_saved_projects.sql
 -- 
 -- =====================================================
 
@@ -24,6 +21,7 @@ RETURNS TABLE (
     short_description text,
     full_description text,
     category text,
+    category_id text,
     tech_stack jsonb,
     thumbnail text,
     gallery_images jsonb,
@@ -68,7 +66,7 @@ AS $$
  *   - p_offset: 페이지네이션 오프셋 (기본값: 0)
  * 
  * 반환값:
- *   - 저장한 프로젝트 목록 (작성자 정보, 저장 일시, 내가 생성한 프로젝트 여부 포함)
+ *   - 저장한 프로젝트 목록 (작성자 정보, 저장 일시, 내가 생성한 프로젝트 여부, category_id 포함)
  * 
  * 보안:
  *   - SECURITY DEFINER: 함수 소유자 권한으로 실행
@@ -119,6 +117,7 @@ BEGIN
         p.short_description,
         p.full_description,
         p.category,
+        p.category_id,
         p.tech_stack,
         p.thumbnail,
         p.gallery_images,
@@ -168,7 +167,17 @@ $$;
 GRANT EXECUTE ON FUNCTION odd.v1_fetch_saved_projects TO authenticated;
 
 -- 코멘트 추가
-COMMENT ON FUNCTION odd.v1_fetch_saved_projects IS '현재 사용자가 저장한 프로젝트 목록을 조회하는 함수. 내가 생성한 프로젝트와 저장한 프로젝트를 구분하여 반환합니다.';
+COMMENT ON FUNCTION odd.v1_fetch_saved_projects IS '현재 사용자가 저장한 프로젝트 목록을 조회하는 함수. 내가 생성한 프로젝트와 저장한 프로젝트를 구분하여 반환합니다. category_id 필드를 포함합니다.';
 
+-- =====================================================
+-- 참고사항
+-- =====================================================
+
+/*
+ * category_id 필드:
+ *   - 원본 카테고리 ID를 저장합니다 (예: devtool, utility, productivity 등)
+ *   - category 필드와 함께 사용하여 편집 시 정확한 카테고리를 표시합니다
+ *   - 기존 프로젝트의 경우 category_id가 NULL일 수 있습니다
+ */
 
 

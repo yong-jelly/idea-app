@@ -21,7 +21,9 @@ import {
   updateMilestone,
   deleteMilestone,
   toggleMilestoneStatus,
+  fetchProjectDetail,
 } from "@/entities/project/api/project.api";
+import { useUserStore } from "@/entities/user";
 
 interface MilestonesTabProps {
   projectId: string;
@@ -29,17 +31,44 @@ interface MilestonesTabProps {
 
 export function MilestonesTab({ projectId }: MilestonesTabProps) {
   const navigate = useNavigate();
+  const { user } = useUserStore();
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [projectAuthorId, setProjectAuthorId] = useState<string>("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     dueDate: "",
   });
+
+  // 프로젝트 소유자 여부 확인
+  const isProjectOwner = user && projectAuthorId && user.id === projectAuthorId;
+
+  // 프로젝트 정보 조회 (소유자 확인용)
+  useEffect(() => {
+    if (!projectId) return;
+
+    const loadProject = async () => {
+      try {
+        const result = await fetchProjectDetail(projectId);
+        if (result.error) {
+          console.error("프로젝트 조회 실패:", result.error);
+          return;
+        }
+        if (result.overview?.project) {
+          setProjectAuthorId(result.overview.project.author.id);
+        }
+      } catch (err) {
+        console.error("프로젝트 조회 에러:", err);
+      }
+    };
+
+    loadProject();
+  }, [projectId]);
 
   // 마일스톤 목록 로드
   useEffect(() => {
@@ -254,10 +283,12 @@ export function MilestonesTab({ projectId }: MilestonesTabProps) {
             </button>
           ))}
         </div>
-        <Button onClick={() => handleOpenModal()} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          새 목표
-        </Button>
+        {isProjectOwner && (
+          <Button onClick={() => handleOpenModal()} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            새 목표
+          </Button>
+        )}
       </div>
 
       {/* Milestones List */}
@@ -274,7 +305,7 @@ export function MilestonesTab({ projectId }: MilestonesTabProps) {
             <p className="text-surface-500 dark:text-surface-400">
               {filter === "all" ? "아직 목표가 없습니다" : filter === "open" ? "진행 중인 목표가 없습니다" : "완료된 목표가 없습니다"}
             </p>
-            {(filter === "all" || filter === "open") && (
+            {isProjectOwner && (filter === "all" || filter === "open") && (
               <Button onClick={() => handleOpenModal()} variant="outline" size="sm" className="mt-4">
                 <Plus className="h-4 w-4 mr-1" />
                 첫 목표 추가

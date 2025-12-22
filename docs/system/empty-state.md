@@ -179,3 +179,4 @@ if (posts.length === 0 && !isLoading) {
 - `Skeleton`: 로딩 상태 표시
 - `ProjectsLoading`: 프로젝트 목록 로딩 상태
 
+
