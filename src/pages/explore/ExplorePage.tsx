@@ -1,7 +1,11 @@
 import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router";
+import { Plus } from "lucide-react";
 import { fetchProjects, toggleProjectLike, ProjectList, type Project } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { ensureMinDelay, type MinLoadingDelay } from "@/shared/lib/utils";
+import { Button } from "@/shared/ui";
+import { SignUpModal } from "@/pages/auth";
 
 interface ExplorePageProps {
   /** 최소 로딩 지연 시간 (기본값: { min: 300, max: 1000 }) */
@@ -9,10 +13,12 @@ interface ExplorePageProps {
 }
 
 export function ExplorePage({ minLoadingDelay }: ExplorePageProps = {}) {
+  const navigate = useNavigate();
   const { isAuthenticated } = useUserStore();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
 
   // minLoadingDelay를 메모이제이션하여 무한 루프 방지
   // ExplorePage는 0.8초 ~ 1.5초 지연 시간 사용
@@ -134,15 +140,32 @@ export function ExplorePage({ minLoadingDelay }: ExplorePageProps = {}) {
   //   new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   // );
 
+  // 프로젝트 등록 버튼 핸들러
+  const handleCreateProject = () => {
+    if (!isAuthenticated) {
+      setShowSignUpModal(true);
+      return;
+    }
+    navigate("/create-project");
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
       <div className="mx-auto max-w-5xl">
         {/* 전체 프로젝트 섹션 */}
         <section>
-          <div className="px-4 pt-6 pb-3">
+          <div className="px-4 pt-6 pb-3 flex items-center justify-between">
             <h2 className="text-lg font-bold text-surface-900 dark:text-surface-50">
               프로젝트
             </h2>
+            <Button
+              onClick={handleCreateProject}
+              size="sm"
+              className="flex items-center gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              프로젝트 등록
+            </Button>
           </div>
           <ProjectList
             projects={projects}
@@ -225,6 +248,12 @@ export function ExplorePage({ minLoadingDelay }: ExplorePageProps = {}) {
           </Button>
         </div> */}
       </div>
+
+      {/* 회원 가입 모달 */}
+      <SignUpModal
+        open={showSignUpModal}
+        onOpenChange={setShowSignUpModal}
+      />
     </div>
   );
 }
