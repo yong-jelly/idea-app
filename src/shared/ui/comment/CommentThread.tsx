@@ -45,6 +45,8 @@ export interface CommentThreadProps {
   maxDepth?: number;
   enableAttachments?: boolean;
   maxImages?: number;
+  /** 댓글 최대 길이 (기본값: 150) */
+  maxLength?: number;
   /** 현재 사용자 인증 여부 - 비회원이면 좋아요/답글 시 onSignUpPrompt 호출 */
   isAuthenticated?: boolean;
   /** 비회원이 회원용 기능(좋아요, 답글) 클릭 시 호출되는 콜백 */
@@ -296,6 +298,7 @@ interface CommentItemProps {
   maxDepth: number;
   enableAttachments: boolean;
   maxImages: number;
+  maxLength?: number;
   isAuthenticated?: boolean;
   /** 비회원이 회원용 기능 클릭 시 호출 */
   onSignUpPrompt?: () => void;
@@ -318,6 +321,7 @@ function CommentItem({
   maxDepth,
   enableAttachments,
   maxImages,
+  maxLength = DEFAULT_MAX_COMMENT_LENGTH,
   isAuthenticated = true,
   onSignUpPrompt,
   onReply,
@@ -451,7 +455,7 @@ function CommentItem({
                 initialImages={comment.images || []}
                 enableAttachments={enableAttachments}
                 maxImages={maxImages}
-                maxLength={DEFAULT_MAX_COMMENT_LENGTH}
+                maxLength={maxLength}
               />
             ) : (
               <>
@@ -585,7 +589,7 @@ function CommentItem({
                       autoFocus
                       enableAttachments={enableAttachments}
                       maxImages={maxImages}
-                      maxLength={DEFAULT_MAX_COMMENT_LENGTH}
+                      maxLength={maxLength}
                     />
                   </div>
                 )}
@@ -655,6 +659,7 @@ export function CommentThread({
   maxDepth = DEFAULT_MAX_DEPTH,
   enableAttachments = true,
   maxImages = DEFAULT_MAX_IMAGES,
+  maxLength = DEFAULT_MAX_COMMENT_LENGTH,
   isAuthenticated = true,
   onSignUpPrompt,
   onCreate,
@@ -693,7 +698,7 @@ export function CommentThread({
               onSubmit={onCreate}
               enableAttachments={enableAttachments}
               maxImages={maxImages}
-              maxLength={DEFAULT_MAX_COMMENT_LENGTH}
+              maxLength={maxLength}
               disabled={isLoadingComments}
             />
           </div>
@@ -720,6 +725,7 @@ export function CommentThread({
                 maxDepth={maxDepth}
                 enableAttachments={enableAttachments}
                 maxImages={maxImages}
+                maxLength={maxLength}
                 isAuthenticated={isAuthenticated}
                 onSignUpPrompt={onSignUpPrompt}
                 onReply={onReply}

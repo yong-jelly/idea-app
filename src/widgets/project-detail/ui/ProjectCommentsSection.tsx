@@ -79,6 +79,7 @@ export function ProjectCommentsSection({
           maxDepth={maxDepth}
           enableAttachments={false}
           maxImages={0}
+          maxLength={1500}
           isAuthenticated={isAuthenticated}
           onSignUpPrompt={onSignUpPrompt}
           onCreate={onCreate}
