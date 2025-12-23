@@ -442,11 +442,16 @@ BEGIN
     WHERE post_id = p_post_id;
     
     -- 포스트 수정
+    -- p_images: NULL 또는 빈 배열 '[]' 둘 다 "모든 이미지 제거"를 의미
     IF p_content IS NOT NULL OR p_images IS NOT NULL OR p_is_pinned IS NOT NULL THEN
         UPDATE odd.tbl_posts
         SET 
             content = COALESCE(p_content, content),
-            images = COALESCE(p_images, images),
+            -- p_images가 NULL이면 빈 배열로, 아니면 p_images 사용 (빈 배열도 포함)
+            images = CASE 
+                WHEN p_images IS NULL THEN '[]'::jsonb
+                ELSE p_images
+            END,
             is_pinned = COALESCE(p_is_pinned, is_pinned)
         WHERE id = p_post_id;
     END IF;

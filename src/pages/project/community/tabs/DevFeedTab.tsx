@@ -27,7 +27,7 @@ import { cn, ensureMinDelay } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
 import { fetchProjectDetail, type Project } from "@/entities/project";
 import { supabase } from "@/shared/lib/supabase";
-import { getProfileImageUrl, getImageUrl, uploadPostImages } from "@/shared/lib/storage";
+import { getProfileImageUrl, getImageUrl, uploadPostImages, extractStoragePath } from "@/shared/lib/storage";
 import { DevPostCard } from "../components/DevPostCard";
 import { DevPostCardSkeleton } from "../components/DevPostCardSkeleton";
 import type { DevPost, VoteOption } from "../types";
@@ -418,17 +418,21 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
 
       if (editingPost) {
         // 포스트 수정
-        // 기존 이미지 URL 유지 (file이 null인 경우)
-        const existingImageUrls = formData.images
-          .filter((img) => img.file === null)
-          .map((img) => img.preview);
+        // 기존 이미지: file이 null이고 preview가 있는 경우 (Storage URL에서 경로 추출)
+        const existingImagePaths = formData.images
+          .filter((img) => img.file === null && img.preview)
+          .map((img) => {
+            // preview가 Storage URL이면 경로 추출, 이미 경로면 그대로 사용
+            // 외부 URL인 경우는 그대로 유지 (extractStoragePath가 외부 URL이면 그대로 반환)
+            return extractStoragePath(img.preview);
+          });
         
         // 새로 업로드할 이미지 파일만 필터링
         const newImageFiles = formData.images
           .filter((img) => img.file !== null)
           .map((img) => img.file as File);
         
-        let allImagePaths: string[] = [...existingImageUrls];
+        let allImagePaths: string[] = [...existingImagePaths];
         
         // 새 이미지가 있으면 업로드
         if (newImageFiles.length > 0) {
@@ -446,9 +450,13 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
             return;
           }
 
-          // 기존 이미지 URL과 새로 업로드한 경로를 합침
-          allImagePaths = [...existingImageUrls, ...paths];
+          // 기존 이미지 경로와 새로 업로드한 경로를 합침
+          allImagePaths = [...existingImagePaths, ...paths];
         }
+
+        // 이미지가 모두 제거된 경우 빈 배열 또는 null 전달 (둘 다 "모든 이미지 제거" 의미)
+        // SQL 함수에서 NULL과 빈 배열 둘 다 빈 배열로 처리하므로, 빈 배열로 통일
+        const finalImages = allImagePaths.length > 0 ? allImagePaths : [];
 
         const { error } = await supabase
           .schema("odd")
@@ -456,7 +464,7 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
             p_post_id: editingPost.id,
             p_title: formData.title.trim(),
             p_content: formData.content.trim(),
-            p_images: allImagePaths.length > 0 ? allImagePaths : null,
+            p_images: finalImages,
             p_is_pinned: formData.isPinned,
             p_vote_options: formData.type === "vote" ? formData.voteOptions.filter(opt => opt.trim()) : null,
           });

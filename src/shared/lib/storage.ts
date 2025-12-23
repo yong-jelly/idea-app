@@ -98,6 +98,34 @@ export async function deleteProfileImage(
 }
 
 /**
+ * Supabase Storage URL에서 경로 추출
+ * 
+ * @param url - Supabase Storage URL 또는 경로
+ * @returns Storage 경로 (URL이면 경로 추출, 이미 경로면 그대로 반환)
+ */
+export function extractStoragePath(url: string): string {
+  // 이미 경로인 경우 (http로 시작하지 않음)
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return url;
+  }
+
+  try {
+    const urlObj = new URL(url);
+    // Supabase Storage URL 패턴: /storage/v1/object/public/{bucket}/{path}
+    const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
+    if (pathMatch && pathMatch[1]) {
+      // URL 디코딩하여 원본 경로 반환
+      return decodeURIComponent(pathMatch[1]);
+    }
+  } catch (err) {
+    console.warn("[Storage] URL 파싱 실패:", url, err);
+  }
+
+  // 추출 실패 시 원본 반환 (외부 URL일 수 있음)
+  return url;
+}
+
+/**
  * 이미지 URL 가져오기 (리사이즈 옵션 포함)
  * 
  * @param filePath - 파일 경로 또는 이미지 URL

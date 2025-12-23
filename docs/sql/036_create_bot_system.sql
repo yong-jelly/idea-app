@@ -109,3 +109,4 @@ COMMENT ON COLUMN odd.tbl_users.auth_id IS 'Supabase Auth ID. Bot 계정은 NULL
 
 
 
+
