@@ -15,4 +15,5 @@ export { CommentsLoading } from "./CommentsLoading";
 export { ProjectsLoading } from "./ProjectsLoading";
 export { BotBadge, BotBadgeIcon, type BotBadgeProps } from "./BotBadge";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
+export { ImageViewer, type ImageViewerProps } from "./ImageViewer";
 

@@ -1,6 +1,6 @@
 import { useParams, useNavigate, Link } from "react-router";
 import { ArrowLeft, MessageCircle, Bookmark, ExternalLink, CheckCircle2, Plus, Heart } from "lucide-react";
-import { Button, Avatar, BotBadge } from "@/shared/ui";
+import { Button, Avatar, BotBadge, ImageViewer } from "@/shared/ui";
 import { cn, formatNumber } from "@/shared/lib/utils";
 import { CommentThread } from "@/shared/ui/comment";
 import { useUserStore, isBot } from "@/entities/user";
@@ -30,6 +30,8 @@ export function PostDetailPage() {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [bookmarksCount, setBookmarksCount] = useState(0);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
 
   // 댓글 관련 로직은 커스텀 훅으로 분리
   const {
@@ -396,30 +398,53 @@ export function PostDetailPage() {
           {'images' in post && post.images && post.images.length > 0 && (() => {
             const normalizedImages = normalizeImageUrls(post.images);
             return (
-              <div className={cn(
-                "mb-3 rounded-xl overflow-hidden",
-                normalizedImages.length === 1 ? "" : "grid gap-0.5",
-                normalizedImages.length === 2 ? "grid-cols-2" : "",
-                normalizedImages.length === 3 ? "grid-cols-2" : "",
-                normalizedImages.length >= 4 ? "grid-cols-2" : ""
-              )}>
-                {normalizedImages.slice(0, 4).map((img, idx) => (
-                  <div 
-                    key={idx} 
-                    className={cn(
-                      "relative overflow-hidden bg-surface-100 dark:bg-surface-800",
-                      normalizedImages.length === 1 ? "max-w-md aspect-[16/9]" : "aspect-square max-w-[200px]",
-                      normalizedImages.length === 3 && idx === 0 ? "row-span-2 aspect-auto max-h-[400px]" : ""
-                    )}
-                  >
-                    <img
-                      src={img}
-                      alt={`Image ${idx + 1}`}
-                      className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
-                    />
-                  </div>
-                ))}
-              </div>
+              <>
+                <div className={cn(
+                  "mb-3 rounded-xl overflow-hidden",
+                  normalizedImages.length === 1 ? "" : "grid gap-0.5",
+                  normalizedImages.length === 2 ? "grid-cols-2" : "",
+                  normalizedImages.length === 3 ? "grid-cols-2" : "",
+                  normalizedImages.length >= 4 ? "grid-cols-2" : ""
+                )}>
+                  {normalizedImages.slice(0, 4).map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setImageViewerIndex(idx);
+                        setImageViewerOpen(true);
+                      }}
+                      className={cn(
+                        "relative overflow-hidden bg-surface-100 dark:bg-surface-800 cursor-pointer",
+                        normalizedImages.length === 1 
+                          ? "w-full h-64 aspect-[16/9]" 
+                          : normalizedImages.length === 2
+                          ? "h-52"
+                          : normalizedImages.length === 3 && idx === 0
+                          ? "row-span-2 h-52"
+                          : "h-40"
+                      )}
+                    >
+                      <img
+                        src={img}
+                        alt={`Image ${idx + 1}`}
+                        className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
+                      />
+                      {/* 4개 이상일 때 4번째 이미지에 +N 오버레이 */}
+                      {normalizedImages.length > 4 && idx === 3 && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-surface-900/60 dark:bg-black/50 backdrop-blur-sm pointer-events-none">
+                          <span className="text-white text-lg font-semibold">+{normalizedImages.length - 4}</span>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <ImageViewer
+                  images={normalizedImages}
+                  initialIndex={imageViewerIndex}
+                  isOpen={imageViewerOpen}
+                  onClose={() => setImageViewerOpen(false)}
+                />
+              </>
             );
           })()}
 
