@@ -10,7 +10,7 @@
 -- =====================================================
 -- 1. 커뮤니티 포스트 조회 함수
 -- =====================================================
-
+DROP FUNCTION IF EXISTS odd.v1_update_community_post CASCADE;
 CREATE OR REPLACE FUNCTION odd.v1_fetch_community_posts(
     p_project_id uuid,
     p_post_type text DEFAULT NULL,
@@ -377,6 +377,7 @@ CREATE OR REPLACE FUNCTION odd.v1_update_community_post(
     p_content text DEFAULT NULL,
     p_images jsonb DEFAULT NULL,
     p_is_pinned boolean DEFAULT NULL,
+    p_post_type text DEFAULT NULL,  -- 'announcement' | 'update' | 'vote' (선택, NULL이면 변경하지 않음)
     p_vote_options text[] DEFAULT NULL  -- 투표 타입일 때만 사용
 )
 RETURNS boolean
@@ -394,6 +395,7 @@ AS $$
  *   - p_content: 내용 (선택, NULL이면 변경하지 않음)
  *   - p_images: 이미지 URL 배열 (선택, NULL이면 변경하지 않음)
  *   - p_is_pinned: 상단 고정 여부 (선택, NULL이면 변경하지 않음)
+ *   - p_post_type: 포스트 타입 (선택, NULL이면 변경하지 않음)
  *   - p_vote_options: 투표 옵션 배열 (투표 타입일 때만, NULL이면 변경하지 않음)
  * 
  * 반환값:
@@ -441,6 +443,17 @@ BEGIN
     FROM odd.tbl_post_announcements
     WHERE post_id = p_post_id;
     
+    -- 포스트 타입 유효성 검사 (제공된 경우)
+    IF p_post_type IS NOT NULL AND p_post_type NOT IN ('announcement', 'update', 'vote') THEN
+        RAISE EXCEPTION '유효하지 않은 포스트 타입입니다: %', p_post_type;
+    END IF;
+    
+    -- 포스트 타입 변경 시 투표 타입에서 다른 타입으로 변경하면 투표 옵션 삭제
+    IF p_post_type IS NOT NULL AND v_post_type = 'vote' AND p_post_type != 'vote' THEN
+        DELETE FROM odd.tbl_post_votes
+        WHERE post_id = p_post_id;
+    END IF;
+    
     -- 포스트 수정
     -- p_images: NULL 또는 빈 배열 '[]' 둘 다 "모든 이미지 제거"를 의미
     IF p_content IS NOT NULL OR p_images IS NOT NULL OR p_is_pinned IS NOT NULL THEN
@@ -457,12 +470,18 @@ BEGIN
     END IF;
     
     -- 공지사항 정보 수정
-    IF p_title IS NOT NULL OR p_is_pinned IS NOT NULL THEN
+    IF p_title IS NOT NULL OR p_is_pinned IS NOT NULL OR p_post_type IS NOT NULL THEN
         UPDATE odd.tbl_post_announcements
         SET 
             title = COALESCE(p_title, title),
-            is_pinned = COALESCE(p_is_pinned, is_pinned)
+            is_pinned = COALESCE(p_is_pinned, is_pinned),
+            post_type = COALESCE(p_post_type, post_type)
         WHERE post_id = p_post_id;
+    END IF;
+    
+    -- 포스트 타입이 변경된 경우 v_post_type 업데이트
+    IF p_post_type IS NOT NULL THEN
+        v_post_type := p_post_type;
     END IF;
     
     -- 투표 타입일 때 투표 옵션 수정
@@ -651,16 +670,16 @@ $$;
 -- 5. 권한 부여
 -- =====================================================
 
-GRANT EXECUTE ON FUNCTION odd.v1_fetch_community_posts TO authenticated;
-GRANT EXECUTE ON FUNCTION odd.v1_fetch_community_posts TO anon;
+GRANT EXECUTE ON FUNCTION odd.v1_fetch_community_posts(uuid, text, integer, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION odd.v1_fetch_community_posts(uuid, text, integer, integer) TO anon;
 
-GRANT EXECUTE ON FUNCTION odd.v1_create_community_post TO authenticated;
+GRANT EXECUTE ON FUNCTION odd.v1_create_community_post(uuid, text, text, text, jsonb, boolean, text[]) TO authenticated;
 
-GRANT EXECUTE ON FUNCTION odd.v1_update_community_post TO authenticated;
+GRANT EXECUTE ON FUNCTION odd.v1_update_community_post(uuid, text, text, jsonb, boolean, text, text[]) TO authenticated;
 
-GRANT EXECUTE ON FUNCTION odd.v1_create_vote_response TO authenticated;
+GRANT EXECUTE ON FUNCTION odd.v1_create_vote_response(uuid, uuid) TO authenticated;
 
-GRANT EXECUTE ON FUNCTION odd.v1_delete_community_post TO authenticated;
+GRANT EXECUTE ON FUNCTION odd.v1_delete_community_post(uuid) TO authenticated;
 
 -- =====================================================
 -- 5. 커뮤니티 포스트 삭제 함수 (소프트 삭제)
@@ -744,15 +763,15 @@ EXCEPTION
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION odd.v1_delete_community_post TO authenticated;
+GRANT EXECUTE ON FUNCTION odd.v1_delete_community_post(uuid) TO authenticated;
 
 -- =====================================================
 -- 6. 코멘트 추가
 -- =====================================================
 
-COMMENT ON FUNCTION odd.v1_fetch_community_posts IS '커뮤니티 포스트 목록을 조회하는 함수. 공지사항, 업데이트, 투표 포스트를 포함하며 투표 정보도 함께 반환합니다.';
-COMMENT ON FUNCTION odd.v1_create_community_post IS '커뮤니티 포스트를 생성하는 함수. 프로젝트 생성자만 포스트 생성 가능.';
-COMMENT ON FUNCTION odd.v1_update_community_post IS '커뮤니티 포스트를 수정하는 함수. 작성자만 수정 가능.';
-COMMENT ON FUNCTION odd.v1_delete_community_post IS '커뮤니티 포스트를 소프트 삭제하는 함수. 작성자 또는 프로젝트 작성자만 삭제 가능.';
-COMMENT ON FUNCTION odd.v1_create_vote_response IS '투표 응답을 생성하거나 취소하는 함수. 이미 투표한 경우 취소하고, 다른 옵션에 투표한 경우 변경합니다.';
+COMMENT ON FUNCTION odd.v1_fetch_community_posts(uuid, text, integer, integer) IS '커뮤니티 포스트 목록을 조회하는 함수. 공지사항, 업데이트, 투표 포스트를 포함하며 투표 정보도 함께 반환합니다.';
+COMMENT ON FUNCTION odd.v1_create_community_post(uuid, text, text, text, jsonb, boolean, text[]) IS '커뮤니티 포스트를 생성하는 함수. 프로젝트 생성자만 포스트 생성 가능.';
+COMMENT ON FUNCTION odd.v1_update_community_post(uuid, text, text, jsonb, boolean, text, text[]) IS '커뮤니티 포스트를 수정하는 함수. 작성자만 수정 가능.';
+COMMENT ON FUNCTION odd.v1_delete_community_post(uuid) IS '커뮤니티 포스트를 소프트 삭제하는 함수. 작성자 또는 프로젝트 작성자만 삭제 가능.';
+COMMENT ON FUNCTION odd.v1_create_vote_response(uuid, uuid) IS '투표 응답을 생성하거나 취소하는 함수. 이미 투표한 경우 취소하고, 다른 옵션에 투표한 경우 변경합니다.';
 

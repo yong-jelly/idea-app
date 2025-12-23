@@ -466,6 +466,7 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
             p_content: formData.content.trim(),
             p_images: finalImages,
             p_is_pinned: formData.isPinned,
+            p_post_type: formData.type,
             p_vote_options: formData.type === "vote" ? formData.voteOptions.filter(opt => opt.trim()) : null,
           });
 
