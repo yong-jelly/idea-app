@@ -13,6 +13,7 @@ import {
   ProjectLinks,
   ProjectMilestonesTab,
   getMilestoneTabLabel,
+  ProjectUpdatesTab,
 } from "@/widgets/project-detail";
 import { fetchMilestones, fetchTasks, type Milestone, type MilestoneTask } from "@/entities/project";
 
@@ -22,7 +23,7 @@ export function ProjectDetailPage() {
   const location = useLocation();
   const { user, isAuthenticated } = useUserStore();
   const [isLiking, setIsLiking] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "gallery" | "team" | "milestones">(
+  const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "gallery" | "team" | "milestones" | "updates">(
     "overview"
   );
   const [project, setProject] = useState<Project | null>(null);
@@ -561,6 +562,7 @@ export function ProjectDetailPage() {
                     id: "milestones", 
                     label: allTasks.length > 0 ? getMilestoneTabLabel(allTasks) : "마일스톤" 
                   },
+                  { id: "updates", label: "업데이트" },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -624,6 +626,10 @@ export function ProjectDetailPage() {
 
             {activeTab === "milestones" && id && (
               <ProjectMilestonesTab projectId={id} />
+            )}
+
+            {activeTab === "updates" && id && (
+              <ProjectUpdatesTab projectId={id} />
             )}
 
             {activeTab === "reviews" && (

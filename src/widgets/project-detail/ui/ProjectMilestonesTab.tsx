@@ -174,7 +174,7 @@ export function ProjectMilestonesTab({ projectId }: ProjectMilestonesTabProps) {
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span
                         className={cn(
-                          "text-xs text-surface-900 dark:text-surface-50",
+                          "text-sm text-surface-900 dark:text-surface-50",
                           isCompleted && "line-through opacity-60"
                         )}
                       >
