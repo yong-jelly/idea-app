@@ -80,7 +80,7 @@ export function FeatureAcceptedRow({
       <ContentArea 
         content={post.content}
         maxLength={300}
-        collapseNewlines={true}
+        collapseNewlines={false}
       />
       
       <InteractionButtons

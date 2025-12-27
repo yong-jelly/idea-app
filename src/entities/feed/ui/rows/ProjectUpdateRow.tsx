@@ -71,7 +71,7 @@ export function ProjectUpdateRow({
         content={post.content} 
         images={post.images}
         maxLength={300}
-        collapseNewlines={true}
+        collapseNewlines={false}
       />
       
       <InteractionButtons

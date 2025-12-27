@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Link, useParams, useNavigate } from "react-router";
 import {
   ChevronLeft,
   ThumbsUp,
   MessageCircle,
-  Share2,
   Bug,
   Lightbulb,
   Sparkles,
@@ -16,7 +15,6 @@ import {
   Clock,
   AlertCircle,
   Settings,
-  User,
   Tag,
   Flag,
   MessageSquarePlus,
@@ -25,18 +23,18 @@ import {
   Link2,
   Check,
   Trash2,
-  Image as ImageIcon,
 } from "lucide-react";
-import { Button, Avatar, Badge, Textarea, Card, CardContent, Separator, Input } from "@/shared/ui";
+import { Button, Avatar, Badge, Textarea, Card, CardContent, Separator } from "@/shared/ui";
 import { CommentThread } from "@/shared/ui/comment";
 import { cn, formatNumber, formatRelativeTime, ensureMinDelay } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
 import { supabase } from "@/shared/lib/supabase";
-import { getProfileImageUrl, getImageUrl, uploadPostImages } from "@/shared/lib/storage";
-import { fetchProjectDetail } from "@/entities/project";
+import { getProfileImageUrl, getImageUrl } from "@/shared/lib/storage";
+import { fetchProjectDetail, CATEGORY_INFO, type Project } from "@/entities/project";
 import { useDevFeedComments } from "./community/tabs/hooks/useDevFeedComments";
 import { LoginModal } from "@/pages/auth";
 import { FeedbackDetailSkeleton } from "./feedback/components/FeedbackDetailSkeleton";
+import { UserFeedbackModal } from "@/widgets/modal/feedback.modal";
 
 // ========== 타입 정의 ==========
 
@@ -126,222 +124,6 @@ const COMMENT_MAX_DEPTH = 3;
 const COMMENT_ENABLE_ATTACHMENTS = true;
 const COMMENT_MAX_IMAGES = 1;
 
-// ========== 더미 데이터 ==========
-
-const dummyFeedbacks: Feedback[] = [
-  {
-    id: "fb1",
-    type: "feature",
-    status: "in_progress",
-    priority: "high",
-    title: "다국어 지원 요청",
-    content: `영어, 일본어 등 다국어 지원이 되면 좋겠습니다. 해외 사용자들도 많이 관심을 가지고 있어요!
-
-현재 한국어만 지원되어서 해외 유저들이 사용하기 어려운 상황입니다.
-
-## 제안하는 우선순위
-1. 영어 (EN)
-2. 일본어 (JA)
-3. 중국어 간체 (ZH-CN)
-
-다국어 지원이 되면 더 많은 사용자들이 이용할 수 있을 것 같습니다!`,
-    images: [],
-    author: {
-      id: "u3",
-      username: "global_user",
-      displayName: "글로벌유저",
-    },
-    assignee: { id: "u1", username: "indiemaker", displayName: "인디메이커", role: "Founder" },
-    votesCount: 156,
-    isVoted: true,
-    commentsCount: 8,
-    isPinned: true,
-    comments: [
-      {
-        id: "c1",
-        author: { id: "u1", username: "indiemaker", displayName: "인디메이커", role: "Founder" },
-        content: "좋은 제안 감사합니다! 다국어 지원은 저희도 계획하고 있던 기능입니다. 영어부터 시작해서 점진적으로 확대할 예정이에요 🌏",
-        images: [],
-        likesCount: 45,
-        isLiked: true,
-        depth: 0,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(),
-        replies: [
-          {
-            id: "c1-1",
-            author: { id: "u3", username: "global_user", displayName: "글로벌유저" },
-            content: "와 정말요? 기대됩니다! 혹시 예상 일정이 있을까요?",
-            images: [],
-            likesCount: 12,
-            isLiked: false,
-            depth: 1,
-            parentId: "c1",
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3.5).toISOString(),
-            replies: [
-              {
-                id: "c1-1-1",
-                author: { id: "u1", username: "indiemaker", displayName: "인디메이커", role: "Founder" },
-                content: "다음 분기 중으로 영어 버전 출시 목표입니다. 마일스톤에도 추가해둘게요!",
-                images: [],
-                likesCount: 28,
-                isLiked: true,
-                depth: 2,
-                parentId: "c1-1",
-                createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-                replies: [
-                  {
-                    id: "c1-1-1-1",
-                    author: { id: "u3", username: "global_user", displayName: "글로벌유저" },
-                    content: "감사합니다! 기다리고 있을게요 🙏",
-                    images: [],
-                    likesCount: 5,
-                    isLiked: false,
-                    depth: 3,
-                    parentId: "c1-1-1",
-                    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2.5).toISOString(),
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            id: "c1-2",
-            author: { id: "u7", username: "translator", displayName: "번역가김" },
-            content: "번역 작업에 참여하고 싶습니다! 일본어 네이티브예요.",
-            images: [],
-            likesCount: 18,
-            isLiked: false,
-            depth: 1,
-            parentId: "c1",
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-          },
-        ],
-      },
-      {
-        id: "c2",
-        author: { id: "u5", username: "power_user", displayName: "파워유저" },
-        content: "저도 다국어 지원 강력 희망합니다! 특히 영어는 필수인 것 같아요.",
-        images: [],
-        likesCount: 23,
-        isLiked: false,
-        depth: 0,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-      },
-    ],
-    developerResponse: "다음 분기 중 영어 버전 출시를 목표로 작업 중입니다!",
-    history: [
-      { id: "h1", type: "status_change", actor: { id: "u1", username: "indiemaker", displayName: "인디메이커", role: "Founder" }, oldValue: "open", newValue: "in_progress", createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString() },
-      { id: "h2", type: "priority_change", actor: { id: "u1", username: "indiemaker", displayName: "인디메이커", role: "Founder" }, oldValue: "medium", newValue: "high", createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString() },
-      { id: "h3", type: "assignee_change", actor: { id: "u1", username: "indiemaker", displayName: "인디메이커", role: "Founder" }, newValue: "인디메이커", createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString() },
-    ],
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-  },
-  {
-    id: "fb2",
-    type: "bug",
-    status: "resolved",
-    priority: "critical",
-    title: "Safari에서 이미지 로딩 오류",
-    content: `Safari 브라우저에서 이미지가 간헐적으로 로딩되지 않는 문제가 있습니다.
-
-## 재현 방법
-1. Safari 브라우저로 접속
-2. 피드 페이지에서 스크롤
-3. 일부 이미지가 깨져서 표시됨
-
-## 환경
-- macOS Sonoma 14.0
-- Safari 17.0
-- M1 MacBook Pro`,
-    images: [
-      "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400",
-    ],
-    author: {
-      id: "u4",
-      username: "mac_user",
-      displayName: "맥유저",
-    },
-    assignee: { id: "u2", username: "dev_kim", displayName: "김개발", role: "Developer" },
-    votesCount: 23,
-    isVoted: false,
-    commentsCount: 5,
-    comments: [
-      {
-        id: "c3",
-        author: { id: "u2", username: "dev_kim", displayName: "김개발", role: "Developer" },
-        content: "리포트 감사합니다! 확인해보니 Safari의 이미지 캐싱 관련 이슈인 것 같습니다. 수정 작업 진행하겠습니다.",
-        images: [],
-        likesCount: 8,
-        isLiked: false,
-        depth: 0,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2.5).toISOString(),
-        replies: [
-          {
-            id: "c3-1",
-            author: { id: "u2", username: "dev_kim", displayName: "김개발", role: "Developer" },
-            content: "v1.5.2에서 수정되었습니다. 확인 부탁드려요!",
-            images: [],
-            likesCount: 15,
-            isLiked: true,
-            depth: 1,
-            parentId: "c3",
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-          },
-        ],
-      },
-      {
-        id: "c4",
-        author: { id: "u4", username: "mac_user", displayName: "맥유저" },
-        content: "업데이트 후 확인했는데 잘 됩니다! 빠른 수정 감사합니다 🙏",
-        images: [],
-        likesCount: 10,
-        isLiked: false,
-        depth: 0,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-      },
-    ],
-    developerResponse: "v1.5.2에서 수정 완료되었습니다.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-  },
-  {
-    id: "fb3",
-    type: "improvement",
-    status: "open",
-    priority: "medium",
-    title: "검색 기능 개선 제안",
-    content: `현재 검색이 제목만 검색하는데, 내용도 함께 검색되면 좋겠습니다.
-
-## 제안 사항
-1. **전체 텍스트 검색** - 제목뿐만 아니라 내용도 검색
-2. **필터 기능** - 타입, 상태, 날짜 등으로 필터링
-3. **정렬 옵션** - 최신순, 인기순, 댓글순 등
-
-현재는 원하는 피드백을 찾기가 어렵습니다.`,
-    images: [],
-    author: {
-      id: "u5",
-      username: "power_user",
-      displayName: "파워유저",
-    },
-    votesCount: 89,
-    isVoted: false,
-    commentsCount: 3,
-    comments: [
-      {
-        id: "c5",
-        author: { id: "u6", username: "search_lover", displayName: "검색마니아" },
-        content: "저도 동의합니다! 특히 필터 기능이 있으면 좋겠어요.",
-        images: [],
-        likesCount: 12,
-        isLiked: false,
-        depth: 0,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1.5).toISOString(),
-      },
-    ],
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-  },
-];
 
 // 개발자 답변 작성 모달
 interface DevResponseModalProps {
@@ -479,6 +261,7 @@ export function FeedbackDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projectAuthorId, setProjectAuthorId] = useState<string>("");
+  const [project, setProject] = useState<Project | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   // 프로젝트 멤버 여부 (프로젝트 작성자와 현재 사용자 비교)
@@ -489,15 +272,6 @@ export function FeedbackDetailPage() {
   
   // 수정 모달 상태
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editFormData, setEditFormData] = useState({
-    type: "feature" as FeedbackType,
-    title: "",
-    content: "",
-    images: [] as File[],
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadingImages, setIsUploadingImages] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 댓글 시스템 hook 사용
   const {
@@ -531,6 +305,7 @@ export function FeedbackDetailPage() {
           return;
         }
         if (result.overview?.project) {
+          setProject(result.overview.project);
           setProjectAuthorId(result.overview.project.author.id);
         }
       } catch (err) {
@@ -641,6 +416,34 @@ export function FeedbackDetailPage() {
       setFeedback({ ...originalFeedback });
     }
   };
+
+  /**
+   * 모달 저장 후 콜백 - 피드백 데이터 새로고침
+   */
+  const handleModalSave = useCallback(async () => {
+    if (!feedbackId) return;
+
+    try {
+      // 피드백 데이터 새로고침
+      const { data, error: fetchError } = await supabase
+        .schema("odd")
+        .rpc("v1_fetch_feedback_detail", {
+          p_post_id: feedbackId,
+        });
+
+      if (fetchError) {
+        throw new Error(fetchError.message || "피드백을 불러오는데 실패했습니다");
+      }
+
+      if (data && data.length > 0) {
+        const updatedFeedback = convertRowToFeedback(data[0]);
+        setFeedback(updatedFeedback);
+        setOriginalFeedback(updatedFeedback);
+      }
+    } catch (err) {
+      console.error("피드백 새로고침 에러:", err);
+    }
+  }, [feedbackId]);
 
   if (isLoading) {
     return <FeedbackDetailSkeleton />;
@@ -800,120 +603,7 @@ export function FeedbackDetailPage() {
   // 수정 모달 열기
   const handleOpenEditModal = () => {
     if (!feedback) return;
-    setEditFormData({
-      type: feedback.type,
-      title: feedback.title,
-      content: feedback.content,
-      images: [], // 기존 이미지는 URL이므로 File로 변환하지 않음
-    });
     setIsEditModalOpen(true);
-  };
-
-  // 이미지 업로드 핸들러
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    
-    const remainingSlots = 3 - editFormData.images.length;
-    const filesToProcess = Array.from(files).slice(0, remainingSlots);
-    
-    setEditFormData((prev) => ({
-      ...prev,
-      images: [...prev.images, ...filesToProcess].slice(0, 3),
-    }));
-    
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  // 이미지 제거 핸들러
-  const removeImage = (index: number) => {
-    setEditFormData((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
-  };
-
-  // 피드백 수정 핸들러
-  const handleUpdateFeedback = async () => {
-    if (!feedbackId || !feedback) return;
-    if (!editFormData.title.trim() || !editFormData.content.trim()) return;
-
-    setIsSubmitting(true);
-    setIsUploadingImages(editFormData.images.length > 0);
-
-    try {
-      // 이미지 업로드
-      let imagePaths: string[] = [];
-      if (editFormData.images.length > 0) {
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-        if (authError || !authUser) {
-          alert("로그인이 필요합니다.");
-          setIsSubmitting(false);
-          setIsUploadingImages(false);
-          return;
-        }
-
-        const tempPostId = `temp-${Date.now()}`;
-        const { paths, error: uploadError } = await uploadPostImages(
-          editFormData.images,
-          authUser.id,
-          tempPostId
-        );
-
-        if (uploadError) {
-          alert(`이미지 업로드 실패: ${uploadError.message}`);
-          setIsSubmitting(false);
-          setIsUploadingImages(false);
-          return;
-        }
-
-        imagePaths = paths;
-      }
-
-      // 피드백 수정
-      const { error } = await supabase
-        .schema("odd")
-        .rpc("v1_update_feedback", {
-          p_post_id: feedbackId,
-          p_title: editFormData.title.trim(),
-          p_content: editFormData.content.trim(),
-          p_images: imagePaths.length > 0 ? imagePaths : null,
-          p_feedback_type: editFormData.type,
-        });
-
-      if (error) {
-        throw new Error(error.message || "피드백 수정에 실패했습니다");
-      }
-
-      // 피드백 데이터 새로고침
-      const { data, error: fetchError } = await supabase
-        .schema("odd")
-        .rpc("v1_fetch_feedback_detail", {
-          p_post_id: feedbackId,
-        });
-
-      if (fetchError) {
-        throw new Error(fetchError.message || "피드백을 불러오는데 실패했습니다");
-      }
-
-      if (data && data.length > 0) {
-        const updatedFeedback = convertRowToFeedback(data[0]);
-        setFeedback(updatedFeedback);
-        setOriginalFeedback(updatedFeedback);
-      }
-
-      setIsEditModalOpen(false);
-      alert("피드백이 수정되었습니다.");
-    } catch (err) {
-      console.error("피드백 수정 에러:", err);
-      alert(err instanceof Error ? err.message : "피드백 수정에 실패했습니다");
-    } finally {
-      setIsSubmitting(false);
-      setIsUploadingImages(false);
-    }
   };
 
   // 피드백 삭제 핸들러
@@ -961,19 +651,80 @@ export function FeedbackDetailPage() {
     }
   };
 
+  const categoryInfo = project ? CATEGORY_INFO[project.category] : null;
+
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950">
-      <div className="mx-auto max-w-5xl px-4 py-6">
-        {/* Header */}
-        <div className="mb-6">
-          <Link
-            to={`/project/${id}/community/feedback`}
-            className="inline-flex items-center gap-1 text-sm text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200 mb-4"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            피드백 목록으로 돌아가기
-          </Link>
+      {/* Mobile Header - 모바일에서만 표시 */}
+      {project && (
+        <div className="md:hidden sticky top-0 z-40 bg-white/95 dark:bg-surface-950/95 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800">
+          <div className="h-14 flex items-center gap-3 px-4">
+            <button
+              onClick={() => navigate(`/project/${id}/community/feedback`)}
+              className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+              aria-label="피드백 목록으로 돌아가기"
+            >
+              <ChevronLeft className="h-5 w-5 text-surface-600 dark:text-surface-400" />
+            </button>
+            
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-100 text-lg ring-1 ring-surface-200 dark:bg-surface-800 dark:ring-surface-700 overflow-hidden shrink-0">
+                {project.thumbnail ? (
+                  <img
+                    src={project.thumbnail}
+                    alt={project.title}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  categoryInfo?.icon
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-base font-bold text-surface-900 dark:text-surface-50 truncate">
+                  {project.title}
+                </h1>
+              </div>
+            </div>
+          </div>
         </div>
+      )}
+
+      <div className="mx-auto max-w-5xl px-4 md:py-6 pt-4 pb-6">
+        {/* Desktop Header */}
+        {project && (
+          <div className="mb-6 hidden md:block">
+            <Link
+              to={`/project/${id}/community/feedback`}
+              className="inline-flex items-center gap-1 text-sm text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200 transition-colors mb-4"
+              aria-label="피드백 목록으로 돌아가기"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>피드백 목록으로 돌아가기</span>
+            </Link>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-surface-100 text-3xl ring-1 ring-surface-200 dark:bg-surface-800 dark:ring-surface-700 overflow-hidden shrink-0">
+                {project.thumbnail ? (
+                  <img
+                    src={project.thumbnail}
+                    alt={project.title}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  categoryInfo?.icon
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl font-bold text-surface-900 dark:text-surface-50">
+                  {project.title} 커뮤니티
+                </h1>
+                <p className="text-sm text-surface-500 dark:text-surface-400">
+                  {project.shortDescription || "개발팀과 소통하고 프로젝트 진행 상황을 확인하세요"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
           {/* Main Content */}
@@ -1213,7 +964,7 @@ export function FeedbackDetailPage() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4">
+          <div className="hidden lg:block space-y-4">
             {/* Vote Card */}
             <Card>
               <CardContent className="p-4">
@@ -1477,220 +1228,34 @@ export function FeedbackDetailPage() {
       />
 
       {/* Edit Feedback Modal */}
-      {isEditModalOpen && feedback && createPortal(
-        <div className="fixed inset-0 z-50">
-          {/* 배경 오버레이 */}
-          <div
-            className="hidden md:block fixed inset-0 bg-surface-950/40 backdrop-blur-[2px]"
-            onClick={() => setIsEditModalOpen(false)}
-          />
-
-          {/* 모달 컨테이너 */}
-          <div className="fixed inset-0 md:flex md:items-center md:justify-center md:p-4">
-            <div className="h-full w-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-lg md:rounded-xl bg-white dark:bg-surface-900 md:border md:border-surface-200 md:dark:border-surface-800 md:shadow-xl flex flex-col overflow-hidden">
-              
-              {/* 헤더 */}
-              <header className="shrink-0 h-14 flex items-center justify-between px-4 border-b border-surface-100 dark:border-surface-800 bg-white dark:bg-surface-900">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setIsEditModalOpen(false)}
-                    className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
-                  >
-                    <ChevronLeft className="h-5 w-5 text-surface-600 dark:text-surface-400" />
-                  </button>
-                  <h1 className="text-lg font-bold text-surface-900 dark:text-surface-50">
-                    피드백 수정
-                  </h1>
-                </div>
-                <Button 
-                  size="sm" 
-                  onClick={handleUpdateFeedback} 
-                  disabled={
-                    isSubmitting ||
-                    isUploadingImages ||
-                    !editFormData.title.trim() || 
-                    !editFormData.content.trim()
-                  }
-                  className="rounded-full"
-                >
-                  {isUploadingImages ? "이미지 업로드 중..." : isSubmitting ? "저장 중..." : "저장"}
-                </Button>
-              </header>
-
-              {/* 콘텐츠 */}
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-4 md:p-6 space-y-6">
-                  {/* 피드백 타입 선택 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                      타입 <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {(["feature", "bug", "improvement", "question"] as const).map((type) => {
-                        const info = FEEDBACK_TYPE_INFO[type];
-                        const Icon = info.icon;
-                        return (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => setEditFormData((prev) => ({ ...prev, type }))}
-                            disabled={isSubmitting || isUploadingImages}
-                            className={cn(
-                              "flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-colors",
-                              editFormData.type === type
-                                ? cn(info.color, info.color.includes("rose") ? "border-rose-300 dark:border-rose-700" : info.color.includes("amber") ? "border-amber-300 dark:border-amber-700" : info.color.includes("blue") ? "border-blue-300 dark:border-blue-700" : "border-primary-300 dark:border-primary-700")
-                                : "border-transparent bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700"
-                            )}
-                          >
-                            <Icon className="h-4 w-4" />
-                            {info.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 제목 입력 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                      제목 <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      value={editFormData.title}
-                      onChange={(e) => setEditFormData((prev) => ({ ...prev, title: e.target.value }))}
-                      placeholder="피드백 제목을 입력하세요"
-                      maxLength={100}
-                      disabled={isSubmitting || isUploadingImages}
-                    />
-                    <p className="text-xs text-surface-500 text-right">
-                      {editFormData.title.length}/100
-                    </p>
-                  </div>
-
-                  {/* 내용 입력 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                      내용 <span className="text-red-500">*</span>
-                    </label>
-                    <Textarea
-                      value={editFormData.content}
-                      onChange={(e) => setEditFormData((prev) => ({ ...prev, content: e.target.value }))}
-                      placeholder="피드백 내용을 자세히 작성해주세요. 버그의 경우 재현 방법, 기능 요청의 경우 사용 시나리오를 포함해주세요."
-                      maxLength={2000}
-                      rows={6}
-                      disabled={isSubmitting || isUploadingImages}
-                    />
-                    <p className="text-xs text-surface-500 text-right">
-                      {editFormData.content.length}/2000
-                    </p>
-                  </div>
-
-                  {/* 이미지 업로드 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                      이미지 (최대 3개)
-                    </label>
-                    
-                    {/* 기존 이미지 표시 */}
-                    {feedback.images && feedback.images.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {feedback.images.map((img, index) => (
-                          <div key={index} className="relative">
-                            <img
-                              src={img}
-                              alt={`기존 이미지 ${index + 1}`}
-                              className="h-24 w-24 rounded-lg object-cover border border-surface-200 dark:border-surface-700"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {/* 새 이미지 미리보기 */}
-                    {editFormData.images.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {editFormData.images.map((file, index) => {
-                          const imageUrl = URL.createObjectURL(file);
-                          return (
-                            <div key={index} className="relative">
-                              <img
-                                src={imageUrl}
-                                alt={`첨부 이미지 ${index + 1}`}
-                                className="h-24 w-24 rounded-lg object-cover border border-surface-200 dark:border-surface-700"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  URL.revokeObjectURL(imageUrl);
-                                  removeImage(index);
-                                }}
-                                className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-surface-900 text-white flex items-center justify-center hover:bg-rose-500 transition-colors"
-                                disabled={isSubmitting || isUploadingImages}
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    
-                    {/* 이미지 업로드 버튼 */}
-                    {editFormData.images.length < 3 && (
-                      <>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          className="hidden"
-                          onChange={handleImageUpload}
-                          disabled={isSubmitting || isUploadingImages}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-surface-200 dark:border-surface-700 rounded-lg text-surface-500 hover:border-primary-300 hover:text-primary-500 dark:hover:border-primary-700 transition-colors"
-                          disabled={isSubmitting || isUploadingImages}
-                        >
-                          <ImageIcon className="h-5 w-5" />
-                          <span className="text-sm">이미지 추가 ({editFormData.images.length}/3)</span>
-                        </button>
-                      </>
-                    )}
-                    <p className="text-xs text-surface-400">
-                      스크린샷이나 관련 이미지를 첨부하면 더 명확하게 전달할 수 있습니다.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* 푸터 - 삭제 버튼 */}
-              <footer className="shrink-0 px-4 py-3 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-900">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    handleDeleteFeedback();
-                    setIsEditModalOpen(false);
-                  }}
-                  className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-                  disabled={isSubmitting || isUploadingImages}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  피드백 삭제
-                </Button>
-              </footer>
-            </div>
-          </div>
-        </div>,
-        document.body
+      {isEditModalOpen && feedback && (
+        <UserFeedbackModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          editingFeedback={{
+            id: feedback.id,
+            feedbackId: feedback.feedbackId,
+            type: feedback.type,
+            title: feedback.title,
+            content: feedback.content,
+            images: feedback.images,
+            author: feedback.author,
+            status: feedback.status,
+            votesCount: feedback.votesCount,
+            isVoted: feedback.isVoted,
+            commentsCount: feedback.commentsCount,
+            createdAt: feedback.createdAt,
+          }}
+          projectId={id || ""}
+          onSave={handleModalSave}
+          onDelete={handleDeleteFeedback}
+        />
       )}
 
       {/* Login Modal */}
       <LoginModal
         open={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
+        onOpenChange={setShowLoginModal}
       />
     </div>
   );

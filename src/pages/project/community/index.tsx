@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import {
   Megaphone,
@@ -126,15 +126,48 @@ export function ProjectCommunityPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
-      <div className="mx-auto max-w-5xl px-4 py-6">
-        {/* Header */}
-        <div className="mb-6">
+      {/* Mobile Header - 모바일에서만 표시 */}
+      <div className="md:hidden sticky top-0 z-40 bg-white/95 dark:bg-surface-950/95 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800">
+        <div className="h-14 flex items-center gap-3 px-4">
+          <button
+            onClick={() => navigate(`/project/${id}`)}
+            className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+            aria-label="프로젝트로 돌아가기"
+          >
+            <ChevronLeft className="h-5 w-5 text-surface-600 dark:text-surface-400" />
+          </button>
+          
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-100 text-lg ring-1 ring-surface-200 dark:bg-surface-800 dark:ring-surface-700 overflow-hidden shrink-0">
+              {project.thumbnail ? (
+                <img
+                  src={project.thumbnail}
+                  alt={project.title}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                categoryInfo?.icon
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-base font-bold text-surface-900 dark:text-surface-50 truncate">
+                {project.title}
+              </h1>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-5xl px-4 md:py-6 pt-4 pb-6">
+        {/* Desktop Header */}
+        <div className="mb-6 hidden md:block">
           <Link
             to={`/project/${id}`}
-            className="inline-flex items-center gap-1 text-sm text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200 mb-4"
+            className="inline-flex items-center gap-1 text-sm text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200 transition-colors mb-4"
+            aria-label="프로젝트로 돌아가기"
           >
             <ChevronLeft className="h-4 w-4" />
-            프로젝트로 돌아가기
+            <span>프로젝트로 돌아가기</span>
           </Link>
           
           <div className="flex items-center gap-4">
@@ -149,9 +182,9 @@ export function ProjectCommunityPage() {
                 categoryInfo?.icon
               )}
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <h1 className="text-xl font-bold text-surface-900 dark:text-surface-50">
-                {project.title} 커뮤니티
+                {project.title}
               </h1>
               <p className="text-sm text-surface-500 dark:text-surface-400">
                 {project.shortDescription || "개발팀과 소통하고 프로젝트 진행 상황을 확인하세요"}
@@ -161,7 +194,7 @@ export function ProjectCommunityPage() {
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-surface-200 dark:border-surface-800 mb-6 overflow-x-auto">
+        <div className="border-b border-surface-200 dark:border-surface-800 mb-6 overflow-x-auto scrollbar-hide">
           <nav className="flex gap-1 min-w-max">
             {tabs.map((tab) => {
               const Icon = tab.icon;

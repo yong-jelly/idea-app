@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useNavigate } from "react-router";
 import {
   ChevronLeft,
   CheckCircle2,
@@ -19,6 +19,8 @@ import {
   deleteTask,
   toggleTaskStatus,
   toggleTaskLike,
+  CATEGORY_INFO,
+  type Project,
 } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { TaskModal } from "./milestone/components/TaskModal";
@@ -28,6 +30,7 @@ import { ensureMinDelay } from "@/shared/lib/utils";
 
 export function MilestoneDetailPage() {
   const { id, milestoneId } = useParams<{ id: string; milestoneId: string }>();
+  const navigate = useNavigate();
   const { user } = useUserStore();
 
   // 마일스톤 상태 관리
@@ -39,6 +42,7 @@ export function MilestoneDetailPage() {
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [projectAuthorId, setProjectAuthorId] = useState<string>("");
+  const [project, setProject] = useState<Project | null>(null);
 
   // 프로젝트 정보 조회
   useEffect(() => {
@@ -52,6 +56,7 @@ export function MilestoneDetailPage() {
           return;
         }
         if (result.overview?.project) {
+          setProject(result.overview.project);
           setProjectAuthorId(result.overview.project.author.id);
         }
       } catch (err) {
@@ -486,11 +491,47 @@ export function MilestoneDetailPage() {
     }
   };
 
+  const categoryInfo = project ? CATEGORY_INFO[project.category] : null;
+
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
-      <div className="mx-auto max-w-5xl px-4 py-6">
-        {/* Header */}
-        <div className="mb-6">
+      {/* Mobile Header - 모바일에서만 표시 */}
+      {project && (
+        <div className="md:hidden sticky top-0 z-40 bg-white/95 dark:bg-surface-950/95 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800">
+          <div className="h-14 flex items-center gap-3 px-4">
+            <button
+              onClick={() => navigate(`/project/${id}/community/milestones`)}
+              className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+              aria-label="마일스톤 목록으로 돌아가기"
+            >
+              <ChevronLeft className="h-5 w-5 text-surface-600 dark:text-surface-400" />
+            </button>
+            
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-100 text-lg ring-1 ring-surface-200 dark:bg-surface-800 dark:ring-surface-700 overflow-hidden shrink-0">
+                {project.thumbnail ? (
+                  <img
+                    src={project.thumbnail}
+                    alt={project.title}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  categoryInfo?.icon
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-base font-bold text-surface-900 dark:text-surface-50 truncate">
+                  {project.title}
+                </h1>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mx-auto max-w-5xl px-4 md:py-6 pt-4 pb-6">
+        {/* Desktop Header */}
+        <div className="mb-6 hidden md:block">
           <Link
             to={`/project/${id}/community/milestones`}
             className="inline-flex items-center gap-1 text-sm text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200 mb-4"
@@ -499,6 +540,33 @@ export function MilestoneDetailPage() {
             마일스톤 목록으로 돌아가기
           </Link>
 
+          {project && (
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-surface-100 text-3xl ring-1 ring-surface-200 dark:bg-surface-800 dark:ring-surface-700 overflow-hidden shrink-0">
+                {project.thumbnail ? (
+                  <img
+                    src={project.thumbnail}
+                    alt={project.title}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  categoryInfo?.icon
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl font-bold text-surface-900 dark:text-surface-50">
+                  {project.title} 커뮤니티
+                </h1>
+                <p className="text-sm text-surface-500 dark:text-surface-400">
+                  {project.shortDescription || "개발팀과 소통하고 프로젝트 진행 상황을 확인하세요"}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 마일스톤 헤더 */}
+        <div className="mb-6">
           <div className="flex items-start gap-4">
             {/* Progress Circle */}
             <div

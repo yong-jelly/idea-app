@@ -35,6 +35,7 @@ export function ProjectDetailPage() {
   const [copied, setCopied] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   // 댓글 관련 로직을 hook으로 분리
   const {
@@ -358,6 +359,13 @@ export function ProjectDetailPage() {
     month: "long",
     day: "numeric",
   });
+  
+  // 상세 설명 더보기 관련 상수 및 계산
+  const DESCRIPTION_MAX_LENGTH = 150;
+  const shouldTruncateDescription = project.fullDescription && project.fullDescription.length > DESCRIPTION_MAX_LENGTH;
+  const displayDescription = project.fullDescription && shouldTruncateDescription && !isDescriptionExpanded
+    ? project.fullDescription.slice(0, DESCRIPTION_MAX_LENGTH)
+    : project.fullDescription || "";
 
   // 프로젝트 삭제 핸들러
   const handleDelete = async () => {
@@ -390,15 +398,47 @@ export function ProjectDetailPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
+      {/* Mobile Header - 모바일에서만 표시 */}
+      <div className="md:hidden sticky top-0 z-40 bg-white/95 dark:bg-surface-950/95 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800">
+        <div className="h-14 flex items-center gap-3 px-4">
+          <button
+            onClick={() => navigate("/explore")}
+            className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+            aria-label="프로젝트 목록으로 돌아가기"
+          >
+            <ChevronLeft className="h-5 w-5 text-surface-600 dark:text-surface-400" />
+          </button>
+          
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-100 text-lg ring-1 ring-surface-200 dark:bg-surface-800 dark:ring-surface-700 overflow-hidden shrink-0">
+              {project.thumbnail ? (
+                <img
+                  src={project.thumbnail}
+                  alt={project.title}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                categoryInfo?.icon
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-base font-bold text-surface-900 dark:text-surface-50 truncate">
+                {project.title}
+              </h1>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Content Section */}
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-5xl px-4 md:py-8 pt-4 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Main Content */}
           <main className="lg:col-span-2">
             {/* Title & Meta */}
             <div className="mb-8">
-              {/* 프로젝트 헤더 */}
-              <div className="flex items-start gap-4 mb-4">
+              {/* 프로젝트 헤더 - 데스크톱 */}
+              <div className="hidden md:flex items-start gap-4 mb-4">
                 {project.thumbnail ? (
                   <img
                     src={project.thumbnail}
@@ -543,8 +583,19 @@ export function ProjectDetailPage() {
             {project.fullDescription && (
               <div className="mb-8">
                 <p className="text-surface-700 dark:text-surface-300 leading-relaxed whitespace-pre-wrap">
-                  {project.fullDescription}
+                  {displayDescription}
+                  {shouldTruncateDescription && !isDescriptionExpanded && (
+                    <span className="text-surface-400">...</span>
+                  )}
                 </p>
+                {shouldTruncateDescription && (
+                  <button
+                    onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                    className="mt-2 text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium"
+                  >
+                    {isDescriptionExpanded ? "간략히 보기" : "더보기"}
+                  </button>
+                )}
               </div>
             )}
 

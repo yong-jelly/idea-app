@@ -141,7 +141,7 @@ export function FeedbackRow({
         content={feedback.content} 
         images={feedback.images}
         maxLength={300}
-        collapseNewlines={true}
+        collapseNewlines={false}
       />
       
       {/* 투표 버튼 (선택적) */}

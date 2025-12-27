@@ -1,9 +1,7 @@
-import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import {
   Target,
-  ChevronLeft,
   CheckCircle2,
   Clock,
   Calendar,
@@ -12,18 +10,17 @@ import {
   Trash2,
   ChevronRight,
 } from "lucide-react";
-import { Button, Badge, Textarea, Card, CardContent, Input } from "@/shared/ui";
+import { Button, Badge, Card, CardContent } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
 import type { Milestone } from "@/entities/project";
 import {
   fetchMilestones,
-  createMilestone,
-  updateMilestone,
   deleteMilestone,
   toggleMilestoneStatus,
   fetchProjectDetail,
 } from "@/entities/project/api/project.api";
 import { useUserStore } from "@/entities/user";
+import { MilestoneModal } from "@/widgets/modal/milestone.modal";
 
 interface MilestonesTabProps {
   projectId: string;
@@ -37,13 +34,7 @@ export function MilestonesTab({ projectId }: MilestonesTabProps) {
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [projectAuthorId, setProjectAuthorId] = useState<string>("");
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    dueDate: "",
-  });
 
   // 프로젝트 소유자 여부 확인
   const isProjectOwner = user && projectAuthorId && user.id === projectAuthorId;
@@ -102,94 +93,27 @@ export function MilestonesTab({ projectId }: MilestonesTabProps) {
     ? sortedMilestones 
     : sortedMilestones.filter((m) => m.status === filter);
 
-  // ESC 키로 모달 닫기
-  useEffect(() => {
-    if (!isModalOpen) return;
-    
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsModalOpen(false);
-      }
-    };
-    
-    document.addEventListener("keydown", handleEscape);
-    document.body.style.overflow = "hidden";
-    
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = "";
-    };
-  }, [isModalOpen]);
-
   const handleOpenModal = (milestone?: Milestone) => {
     if (milestone) {
       setEditingMilestone(milestone);
-      setFormData({
-        title: milestone.title,
-        description: milestone.description,
-        dueDate: milestone.dueDate || "",
-      });
     } else {
       setEditingMilestone(null);
-      setFormData({ title: "", description: "", dueDate: "" });
     }
     setIsModalOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!formData.title.trim() || isSaving) return;
+  /**
+   * 모달 저장 후 콜백 - 마일스톤 목록 새로고침
+   */
+  const handleModalSave = useCallback(async () => {
+    const { milestones: data, error: fetchError } = await fetchMilestones(projectId, {
+      status: filter === "all" ? "all" : filter,
+    });
 
-    setIsSaving(true);
-
-    try {
-      if (editingMilestone) {
-        // 마일스톤 수정
-        const { error } = await updateMilestone(editingMilestone.id, {
-          title: formData.title,
-          description: formData.description,
-          dueDate: formData.dueDate || undefined,
-        });
-
-        if (error) {
-          console.error("마일스톤 수정 실패:", error);
-          alert(error.message || "마일스톤 수정에 실패했습니다");
-          setIsSaving(false);
-          return;
-        }
-      } else {
-        // 마일스톤 생성
-        const { milestoneId, error } = await createMilestone(projectId, {
-          title: formData.title,
-          description: formData.description,
-          dueDate: formData.dueDate || undefined,
-        });
-
-        if (error || !milestoneId) {
-          console.error("마일스톤 생성 실패:", error);
-          alert(error?.message || "마일스톤 생성에 실패했습니다");
-          setIsSaving(false);
-          return;
-        }
-      }
-
-      // 목록 새로고침
-      const { milestones: data, error: fetchError } = await fetchMilestones(projectId, {
-        status: filter === "all" ? "all" : filter,
-      });
-
-      if (!fetchError && data) {
-        setMilestones(data);
-      }
-
-      setIsModalOpen(false);
-      setFormData({ title: "", description: "", dueDate: "" });
-    } catch (err) {
-      console.error("마일스톤 저장 에러:", err);
-      alert("마일스톤 저장 중 오류가 발생했습니다");
-    } finally {
-      setIsSaving(false);
+    if (!fetchError && data) {
+      setMilestones(data);
     }
-  };
+  }, [projectId, filter]);
 
   const handleToggleStatus = async (id: string) => {
     try {
@@ -283,9 +207,9 @@ export function MilestonesTab({ projectId }: MilestonesTabProps) {
           ))}
         </div>
         {isProjectOwner && (
-          <Button onClick={() => handleOpenModal()} size="sm">
-            <Plus className="h-4 w-4 mr-1" />
-            새 목표
+          <Button onClick={() => handleOpenModal()} size="sm" className="lg:px-3 px-2">
+            <Plus className="h-4 w-4 lg:mr-1" />
+            <span className="hidden lg:inline">새 목표</span>
           </Button>
         )}
       </div>
@@ -463,96 +387,14 @@ export function MilestonesTab({ projectId }: MilestonesTabProps) {
         </div>
       )}
 
-      {/* Create/Edit Modal - ProfileEditModal 패턴 */}
-      {isModalOpen && createPortal(
-        <div className="fixed inset-0 z-50">
-          {/* 배경 오버레이 */}
-          <div
-            className="hidden md:block fixed inset-0 bg-surface-950/40 backdrop-blur-[2px]"
-            onClick={() => setIsModalOpen(false)}
-          />
-
-          {/* 모달 컨테이너 */}
-          <div className="fixed inset-0 md:flex md:items-center md:justify-center md:p-4">
-            <div className="h-full w-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-md md:rounded-xl bg-white dark:bg-surface-900 md:border md:border-surface-200 md:dark:border-surface-800 md:shadow-xl flex flex-col overflow-hidden">
-              
-              {/* 헤더 */}
-              <header className="shrink-0 h-14 flex items-center justify-between px-4 border-b border-surface-100 dark:border-surface-800 bg-white dark:bg-surface-900">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
-                  >
-                    <ChevronLeft className="h-5 w-5 text-surface-600 dark:text-surface-400" />
-                  </button>
-                  <h1 className="text-lg font-bold text-surface-900 dark:text-surface-50">
-                    {editingMilestone ? "목표 편집" : "새 목표"}
-                  </h1>
-                </div>
-                <Button 
-                  size="sm" 
-                  onClick={handleSave} 
-                  disabled={!formData.title.trim() || isSaving}
-                  className="rounded-full"
-                >
-                  {isSaving ? "처리 중..." : editingMilestone ? "저장" : "추가"}
-                </Button>
-              </header>
-
-              {/* 콘텐츠 */}
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-4 md:p-6 space-y-6">
-                  {/* 목표 이름 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                      목표 이름 <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      value={formData.title}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                      placeholder="예: v2.0 출시, 1000명 사용자 달성"
-                      maxLength={50}
-                    />
-                    <p className="text-xs text-surface-500 text-right">
-                      {formData.title.length}/50
-                    </p>
-                  </div>
-
-                  {/* 기한 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                      목표 기한
-                    </label>
-                    <Input
-                      type="date"
-                      value={formData.dueDate}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, dueDate: e.target.value }))}
-                    />
-                  </div>
-
-                  {/* 설명 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                      설명
-                    </label>
-                    <Textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                      placeholder="이 목표에 대해 간단히 설명해주세요"
-                      maxLength={200}
-                      rows={3}
-                    />
-                    <p className="text-xs text-surface-500 text-right">
-                      {formData.description.length}/200
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* 마일스톤 작성/수정 모달 */}
+      <MilestoneModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        editingMilestone={editingMilestone}
+        projectId={projectId}
+        onSave={handleModalSave}
+      />
     </div>
   );
 }

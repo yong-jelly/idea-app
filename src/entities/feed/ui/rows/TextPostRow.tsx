@@ -71,7 +71,7 @@ export function TextPostRow({
         content={post.content} 
         images={post.images}
         maxLength={300}
-        collapseNewlines={true}
+        collapseNewlines={false}
       />
       
       <InteractionButtons

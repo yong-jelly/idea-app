@@ -221,8 +221,8 @@ export function PostDetailPage() {
 
       {/* Main Content */}
       <main className="min-w-0 flex-1 min-h-[calc(100vh-4rem)] bg-white dark:bg-surface-950 border-x border-surface-100/80 dark:border-surface-800/50">
-        {/* Header */}
-        <div className="sticky top-16 z-10 bg-white/95 dark:bg-surface-950/95 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800/50">
+        {/* Header - 모바일에서는 top-0, 데스크톱에서는 top-16 */}
+        <div className="sticky top-0 md:top-16 z-10 bg-white/95 dark:bg-surface-950/95 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800/50">
           <div className="h-[53px] flex items-center gap-4 px-4">
             <Button 
               variant="ghost" 

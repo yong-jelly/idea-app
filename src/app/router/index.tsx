@@ -5,7 +5,7 @@ import {
   Outlet,
   useLocation,
 } from "react-router";
-import { Header } from "@/widgets";
+import { Header, MobileBottomNav } from "@/widgets";
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import { trackPageView } from "@/shared/lib/gtm";
 import {
@@ -55,7 +55,10 @@ function RootLayout() {
       <ScrollToTop />
       <PageViewTracker />
       <Header />
-      <Outlet />
+      <div className="pb-16 lg:pb-0">
+        <Outlet />
+      </div>
+      <MobileBottomNav />
     </div>
   );
 }

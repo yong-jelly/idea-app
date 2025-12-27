@@ -8,26 +8,24 @@
  * - 필터링 기능 (전체, 기능 요청, 버그, 개선 제안)
  * - 페이징 지원 (30개씩)
  */
-import { useState, useEffect, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import {
   MessageSquareText,
-  ChevronLeft,
   ThumbsUp,
   MessageCircle,
   Plus,
   Edit,
   Trash2,
   ChevronRight,
-  X,
   Image as ImageIcon,
 } from "lucide-react";
-import { Button, Badge, Textarea, Card, CardContent, Input } from "@/shared/ui";
+import { Button, Badge, Card, CardContent } from "@/shared/ui";
 import { cn, formatNumber, formatRelativeTime, ensureMinDelay } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
 import { supabase } from "@/shared/lib/supabase";
-import { getProfileImageUrl, getImageUrl, uploadPostImages } from "@/shared/lib/storage";
+import { getProfileImageUrl, getImageUrl } from "@/shared/lib/storage";
+import { UserFeedbackModal } from "@/widgets/modal/feedback.modal";
 import type { UserFeedback } from "../types";
 import { FEEDBACK_TYPE_INFO, FEEDBACK_STATUS_INFO } from "../constants";
 import { FeedbackCardSkeleton } from "../components/FeedbackCardSkeleton";
@@ -78,7 +76,6 @@ function convertRowToFeedback(row: any): UserFeedback {
 export function FeedbackTab({ projectId }: FeedbackTabProps) {
   const navigate = useNavigate();
   const { user } = useUserStore();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // 피드백 목록
   const [feedbacks, setFeedbacks] = useState<UserFeedback[]>([]);
@@ -90,14 +87,6 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
   const [filter, setFilter] = useState<"all" | "bug" | "feature" | "improvement" | "question">("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFeedback, setEditingFeedback] = useState<UserFeedback | null>(null);
-  const [formData, setFormData] = useState({
-    type: "feature" as "bug" | "feature" | "improvement" | "question",
-    title: "",
-    content: "",
-    images: [] as File[], // File 객체
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   // 피드백 목록 로드 (페이징 지원)
   const loadFeedbacks = useCallback(async (offset: number = 0, append: boolean = false) => {
@@ -181,25 +170,6 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
     ? feedbacks 
     : feedbacks.filter((fb) => fb.type === filter);
 
-  // ESC 키로 모달 닫기
-  useEffect(() => {
-    if (!isModalOpen) return;
-    
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsModalOpen(false);
-      }
-    };
-    
-    document.addEventListener("keydown", handleEscape);
-    document.body.style.overflow = "hidden";
-    
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = "";
-    };
-  }, [isModalOpen]);
-
   /**
    * 모달 열기 핸들러
    * @param feedback - 수정할 피드백 (없으면 새로 작성)
@@ -212,145 +182,19 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
 
     if (feedback) {
       setEditingFeedback(feedback);
-      setFormData({
-        type: feedback.type,
-        title: feedback.title,
-        content: feedback.content,
-        images: [], // 기존 이미지는 URL이므로 File로 변환하지 않음
-      });
     } else {
       setEditingFeedback(null);
-      setFormData({ type: "feature", title: "", content: "", images: [] });
     }
     setIsModalOpen(true);
   };
 
   /**
-   * 이미지 업로드 핸들러
-   * 최대 3개까지 업로드 가능
+   * 모달 저장 후 콜백 - 피드백 목록 새로고침
    */
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    
-    const remainingSlots = 3 - formData.images.length;
-    const filesToProcess = Array.from(files).slice(0, remainingSlots);
-    
-    setFormData((prev) => ({
-      ...prev,
-      images: [...prev.images, ...filesToProcess].slice(0, 3),
-    }));
-    
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  /**
-   * 이미지 제거 핸들러
-   */
-  const removeImage = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
-  };
-
-  /**
-   * 피드백 저장 핸들러
-   * 새 피드백 추가 또는 기존 피드백 수정
-   */
-  const handleSave = async () => {
-    if (!formData.title.trim() || !formData.content.trim()) return;
-    if (!projectId || !user) return;
-
-    setIsSubmitting(true);
-    setIsUploadingImages(formData.images.length > 0);
-
-    try {
-      // 이미지 업로드
-      let imagePaths: string[] = [];
-      if (formData.images.length > 0) {
-        // Supabase Auth에서 현재 사용자의 auth_id 가져오기
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-        if (authError || !authUser) {
-          alert("로그인이 필요합니다.");
-          setIsSubmitting(false);
-          setIsUploadingImages(false);
-          return;
-        }
-
-        // 임시 포스트 ID 생성 (실제 피드백 생성 후 업데이트)
-        const tempPostId = `temp-${Date.now()}`;
-        const { paths, error: uploadError } = await uploadPostImages(
-          formData.images,
-          authUser.id,
-          tempPostId
-        );
-
-        if (uploadError) {
-          alert(`이미지 업로드 실패: ${uploadError.message}`);
-          setIsSubmitting(false);
-          setIsUploadingImages(false);
-          return;
-        }
-
-        imagePaths = paths;
-      }
-
-      if (editingFeedback) {
-        // 피드백 수정
-        const { error } = await supabase
-          .schema("odd")
-          .rpc("v1_update_feedback", {
-            p_post_id: editingFeedback.id,
-            p_title: formData.title.trim(),
-            p_content: formData.content.trim(),
-            p_images: imagePaths.length > 0 ? imagePaths : null,
-            p_feedback_type: formData.type,
-          });
-
-        if (error) {
-          console.error("피드백 수정 실패:", error);
-          alert(`피드백 수정 실패: ${error.message}`);
-          setIsSubmitting(false);
-          setIsUploadingImages(false);
-          return;
-        }
-      } else {
-        // 새 피드백 생성
-        const { error } = await supabase
-          .schema("odd")
-          .rpc("v1_create_feedback", {
-            p_project_id: projectId,
-            p_feedback_type: formData.type,
-            p_title: formData.title.trim(),
-            p_content: formData.content.trim(),
-            p_images: imagePaths.length > 0 ? imagePaths : [],
-          });
-
-        if (error) {
-          console.error("피드백 생성 실패:", error);
-          alert(`피드백 생성 실패: ${error.message}`);
-          setIsSubmitting(false);
-          setIsUploadingImages(false);
-          return;
-        }
-      }
-
-      // 피드백 목록 새로고침
-      setIsModalOpen(false);
-      setFeedbackOffset(0);
-      await loadFeedbacks(0, false);
-    } catch (err) {
-      console.error("피드백 저장 에러:", err);
-      alert("피드백 저장 중 오류가 발생했습니다.");
-    } finally {
-      setIsSubmitting(false);
-      setIsUploadingImages(false);
-    }
-  };
+  const handleModalSave = useCallback(async () => {
+    setFeedbackOffset(0);
+    await loadFeedbacks(0, false);
+  }, [loadFeedbacks]);
 
   /**
    * 피드백 삭제 핸들러
@@ -454,9 +298,9 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
             </button>
           ))}
         </div>
-        <Button size="sm" onClick={() => handleOpenModal()}>
-          <Plus className="h-4 w-4 mr-1" />
-          피드백 작성
+        <Button size="sm" onClick={() => handleOpenModal()} className="lg:px-3 px-2">
+          <Plus className="h-4 w-4 lg:mr-1" />
+          <span className="hidden lg:inline">피드백 작성</span>
         </Button>
       </div>
 
@@ -593,202 +437,14 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
       )}
 
       {/* 피드백 작성/수정 모달 */}
-      {isModalOpen && createPortal(
-        <div className="fixed inset-0 z-50">
-          {/* 배경 오버레이 */}
-          <div
-            className="hidden md:block fixed inset-0 bg-surface-950/40 backdrop-blur-[2px]"
-            onClick={() => setIsModalOpen(false)}
-          />
-
-          {/* 모달 컨테이너 */}
-          <div className="fixed inset-0 md:flex md:items-center md:justify-center md:p-4">
-            <div className="h-full w-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-lg md:rounded-xl bg-white dark:bg-surface-900 md:border md:border-surface-200 md:dark:border-surface-800 md:shadow-xl flex flex-col overflow-hidden">
-              
-              {/* 헤더 */}
-              <header className="shrink-0 h-14 flex items-center justify-between px-4 border-b border-surface-100 dark:border-surface-800 bg-white dark:bg-surface-900">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
-                  >
-                    <ChevronLeft className="h-5 w-5 text-surface-600 dark:text-surface-400" />
-                  </button>
-                  <h1 className="text-lg font-bold text-surface-900 dark:text-surface-50">
-                    {editingFeedback ? "피드백 수정" : "피드백 작성"}
-                  </h1>
-                </div>
-                <Button 
-                  size="sm" 
-                  onClick={handleSave} 
-                  disabled={
-                    isSubmitting ||
-                    isUploadingImages ||
-                    !formData.title.trim() || 
-                    !formData.content.trim()
-                  }
-                  className="rounded-full"
-                >
-                  {isUploadingImages ? "이미지 업로드 중..." : isSubmitting ? "저장 중..." : editingFeedback ? "저장" : "작성"}
-                </Button>
-              </header>
-
-              {/* 콘텐츠 */}
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-4 md:p-6 space-y-6">
-                  {/* 피드백 타입 선택 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                      타입 <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {(["feature", "bug", "improvement", "question"] as const).map((type) => {
-                        const info = FEEDBACK_TYPE_INFO[type];
-                        const Icon = info.icon;
-                        return (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => setFormData((prev) => ({ ...prev, type }))}
-                            disabled={isSubmitting || isUploadingImages}
-                            className={cn(
-                              "flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-colors",
-                              formData.type === type
-                                ? cn(info.color, info.color.includes("rose") ? "border-rose-300 dark:border-rose-700" : info.color.includes("amber") ? "border-amber-300 dark:border-amber-700" : info.color.includes("blue") ? "border-blue-300 dark:border-blue-700" : "border-primary-300 dark:border-primary-700")
-                                : "border-transparent bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700"
-                            )}
-                          >
-                            <Icon className="h-4 w-4" />
-                            {info.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 제목 입력 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                      제목 <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      value={formData.title}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                      placeholder="피드백 제목을 입력하세요"
-                      maxLength={100}
-                      disabled={isSubmitting || isUploadingImages}
-                    />
-                    <p className="text-xs text-surface-500 text-right">
-                      {formData.title.length}/100
-                    </p>
-                  </div>
-
-                  {/* 내용 입력 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                      내용 <span className="text-red-500">*</span>
-                    </label>
-                    <Textarea
-                      value={formData.content}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, content: e.target.value }))}
-                      placeholder="피드백 내용을 자세히 작성해주세요. 버그의 경우 재현 방법, 기능 요청의 경우 사용 시나리오를 포함해주세요."
-                      maxLength={2000}
-                      rows={6}
-                      disabled={isSubmitting || isUploadingImages}
-                    />
-                    <p className="text-xs text-surface-500 text-right">
-                      {formData.content.length}/2000
-                    </p>
-                  </div>
-
-                  {/* 이미지 업로드 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
-                      이미지 (최대 3개)
-                    </label>
-                    
-                    {/* 이미지 미리보기 */}
-                    {formData.images.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {formData.images.map((file, index) => {
-                          const imageUrl = URL.createObjectURL(file);
-                          return (
-                            <div key={index} className="relative">
-                              <img
-                                src={imageUrl}
-                                alt={`첨부 이미지 ${index + 1}`}
-                                className="h-24 w-24 rounded-lg object-cover border border-surface-200 dark:border-surface-700"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  URL.revokeObjectURL(imageUrl);
-                                  removeImage(index);
-                                }}
-                                className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-surface-900 text-white flex items-center justify-center hover:bg-rose-500 transition-colors"
-                                disabled={isSubmitting || isUploadingImages}
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    
-                    {/* 이미지 업로드 버튼 */}
-                    {formData.images.length < 3 && (
-                      <>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          className="hidden"
-                          onChange={handleImageUpload}
-                          disabled={isSubmitting || isUploadingImages}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-surface-200 dark:border-surface-700 rounded-lg text-surface-500 hover:border-primary-300 hover:text-primary-500 dark:hover:border-primary-700 transition-colors"
-                          disabled={isSubmitting || isUploadingImages}
-                        >
-                          <ImageIcon className="h-5 w-5" />
-                          <span className="text-sm">이미지 추가 ({formData.images.length}/3)</span>
-                        </button>
-                      </>
-                    )}
-                    <p className="text-xs text-surface-400">
-                      스크린샷이나 관련 이미지를 첨부하면 더 명확하게 전달할 수 있습니다.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* 푸터 - 삭제 버튼 (수정 모드에서만) */}
-              {editingFeedback && (
-                <footer className="shrink-0 px-4 py-3 border-t border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-900">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      handleDelete(editingFeedback.id);
-                      setIsModalOpen(false);
-                    }}
-                    className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-                    disabled={isSubmitting || isUploadingImages}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    피드백 삭제
-                  </Button>
-                </footer>
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <UserFeedbackModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        editingFeedback={editingFeedback}
+        projectId={projectId}
+        onSave={handleModalSave}
+        onDelete={handleDelete}
+      />
     </div>
   );
 }
