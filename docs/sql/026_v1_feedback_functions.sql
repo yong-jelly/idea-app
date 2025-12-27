@@ -169,9 +169,7 @@ BEGIN
     ORDER BY 
         -- 고정된 피드백을 먼저 표시
         f.is_pinned DESC,
-        -- 투표수 높은 순 (인기순)
-        f.votes_count DESC,
-        -- 최신순 정렬
+        -- 최신순 정렬 (최근 작성된 글 우선)
         p.created_at DESC
     LIMIT p_limit
     OFFSET p_offset;

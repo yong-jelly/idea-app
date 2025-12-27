@@ -347,7 +347,7 @@ const dummyFeedbacks: Feedback[] = [
   },
 ];
 
-// 공식 답변 작성 모달
+// 개발자 답변 작성 모달
 interface DevResponseModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -390,7 +390,7 @@ function DevResponseModal({ isOpen, onClose, initialValue = "", onSubmit }: DevR
         <div className="w-full max-w-lg rounded-xl bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-800 shadow-xl">
           <header className="h-14 flex items-center justify-between px-4 border-b border-surface-100 dark:border-surface-800">
             <h2 className="text-lg font-bold text-surface-900 dark:text-surface-50">
-              공식 답변 작성
+              개발자 답변 작성
             </h2>
             <button onClick={onClose} className="p-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800">
               <X className="h-5 w-5 text-surface-500" />
@@ -1048,6 +1048,8 @@ export function FeedbackDetailPage() {
                     maxDepth={COMMENT_MAX_DEPTH}
                     enableAttachments={COMMENT_ENABLE_ATTACHMENTS}
                     maxImages={COMMENT_MAX_IMAGES}
+                    isAuthenticated={isAuthenticated}
+                    onSignUpPrompt={() => setShowLoginModal(true)}
                     onCreate={handleAddComment}
                     onReply={handleReply}
                     onLike={handleLikeComment}
@@ -1289,7 +1291,7 @@ export function FeedbackDetailPage() {
                       onClick={() => setShowDevResponseModal(true)}
                     >
                       <MessageSquarePlus className="h-4 w-4 mr-2" />
-                      {feedback.developerResponse ? "공식 답변 수정" : "공식 답변 작성"}
+                      {feedback.developerResponse ? "공식 답변 수정" : "개발자 답변 작성"}
                     </Button>
                     <Button
                       variant="ghost"

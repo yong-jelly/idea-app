@@ -122,7 +122,16 @@ export function useDevFeedComments({
         likesCount: raw.likes_count,
         isLiked: raw.is_liked,
         isDeleted: raw.is_deleted,
-        images: raw.images && raw.images.length > 0 ? raw.images : undefined,
+        images: raw.images && raw.images.length > 0 
+          ? raw.images.map((path: string) => {
+              // 이미 URL인 경우 그대로 반환
+              if (path.startsWith("http://") || path.startsWith("https://")) {
+                return path;
+              }
+              // Storage 경로인 경우 URL로 변환
+              return getImageUrl(path);
+            })
+          : undefined,
         createdAt: raw.created_at,
         updatedAt: raw.updated_at || undefined,
         replies: [],

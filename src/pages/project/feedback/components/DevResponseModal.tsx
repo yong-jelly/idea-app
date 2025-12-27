@@ -50,7 +50,7 @@ export function DevResponseModal({
         <div className="w-full max-w-lg rounded-xl bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-800 shadow-xl">
           <header className="h-14 flex items-center justify-between px-4 border-b border-surface-100 dark:border-surface-800">
             <h2 className="text-lg font-bold text-surface-900 dark:text-surface-50">
-              공식 답변 작성
+              개발자 답변 작성
             </h2>
             <button
               onClick={onClose}
