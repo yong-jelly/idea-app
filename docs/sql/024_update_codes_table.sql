@@ -64,3 +64,4 @@ COMMENT ON TABLE odd.tbl_codes IS '모든 코드 타입을 통합 관리하는 �
 
 
 
+

@@ -28,6 +28,7 @@ export {
   updateTask,
   deleteTask,
   toggleTaskStatus,
+  toggleTaskLike,
   type CreateProjectData, 
   type CreateProjectResult,
   type UpdateProjectData,
@@ -67,6 +68,7 @@ export {
   type UpdateTaskResult,
   type DeleteTaskResult,
   type ToggleTaskStatusResult,
+  type ToggleTaskLikeResult,
 } from "./api/project.api";
 export * from "./ui";
 

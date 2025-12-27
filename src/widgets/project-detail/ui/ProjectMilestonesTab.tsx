@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { CheckSquare, ChevronRight, CheckCircle2 } from "lucide-react";
-import { Button, EmptyState, Card, CardContent } from "@/shared/ui";
+import { CheckSquare, ChevronRight, CheckCircle2, Heart } from "lucide-react";
+import { Button, EmptyState, Card, CardContent, Avatar } from "@/shared/ui";
 import { cn, formatDueDate, formatDateShort } from "@/shared/lib/utils";
-import { fetchMilestones, fetchTasks, type Milestone, type MilestoneTask } from "@/entities/project";
+import { getProfileImageUrl } from "@/shared/lib/storage";
+import { fetchMilestones, fetchTasks, toggleTaskLike, type Milestone, type MilestoneTask } from "@/entities/project";
+import { useUserStore } from "@/entities/user";
 
 interface ProjectMilestonesTabProps {
   projectId: string;
@@ -17,9 +19,11 @@ const MAX_DISPLAY_COUNT = 15;
 
 export function ProjectMilestonesTab({ projectId }: ProjectMilestonesTabProps) {
   const navigate = useNavigate();
+  const { user } = useUserStore();
   const [tasks, setTasks] = useState<TaskWithMilestone[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const isAuthenticated = user !== null;
 
   useEffect(() => {
     const loadAllTasks = async () => {
@@ -134,6 +138,112 @@ export function ProjectMilestonesTab({ projectId }: ProjectMilestonesTabProps) {
     navigate(`/project/${projectId}/community/milestones`);
   };
 
+  const handleLikeTask = async (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!isAuthenticated) {
+      alert("로그인이 필요합니다");
+      return;
+    }
+
+    // 현재 태스크 상태 저장 (롤백용)
+    const currentTask = tasks.find((t) => t.id === taskId);
+    if (!currentTask) return;
+
+    const currentIsLiked = currentTask.isLiked ?? false;
+    const currentLikesCount = currentTask.likesCount ?? 0;
+    const currentLikedUsers = currentTask.likedUsers ?? [];
+
+    // 낙관적 업데이트: 즉시 UI 업데이트
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id !== taskId) return task;
+        
+        const newIsLiked = !currentIsLiked;
+        const newLikesCount = currentIsLiked 
+          ? Math.max(0, currentLikesCount - 1) 
+          : currentLikesCount + 1;
+        
+        // 좋아요한 유저 목록 업데이트
+        let newLikedUsers = [...currentLikedUsers];
+        if (currentIsLiked) {
+          // 좋아요 취소: 현재 사용자 제거
+          newLikedUsers = newLikedUsers.filter((u) => u.id !== user.id);
+        } else {
+          // 좋아요 추가: 현재 사용자 추가 (최대 3명)
+          const currentUser = {
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName,
+            avatar: user.avatar,
+          };
+          // 이미 3명이면 마지막 제거하고 추가
+          if (newLikedUsers.length >= 3) {
+            newLikedUsers = [currentUser, ...newLikedUsers.slice(0, 2)];
+          } else {
+            newLikedUsers = [currentUser, ...newLikedUsers];
+          }
+        }
+        
+        return {
+          ...task,
+          isLiked: newIsLiked,
+          likesCount: newLikesCount,
+          likedUsers: newLikedUsers,
+        };
+      })
+    );
+
+    try {
+      const { isLiked: serverIsLiked, likesCount: serverLikesCount, error } = await toggleTaskLike(taskId);
+
+      if (error) {
+        // 롤백: 원래 상태로 복원
+        setTasks((prevTasks) =>
+          prevTasks.map((task) => {
+            if (task.id !== taskId) return task;
+            return {
+              ...task,
+              isLiked: currentIsLiked,
+              likesCount: currentLikesCount,
+              likedUsers: currentLikedUsers,
+            };
+          })
+        );
+        alert(error.message || "좋아요 처리에 실패했습니다");
+        return;
+      }
+
+      // 서버 응답으로 최종 상태 동기화
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => {
+          if (task.id !== taskId) return task;
+          return {
+            ...task,
+            isLiked: serverIsLiked,
+            likesCount: serverLikesCount,
+            // likedUsers는 낙관적 업데이트로 이미 반영됨
+          };
+        })
+      );
+    } catch (err) {
+      console.error("태스크 좋아요 토글 에러:", err);
+      // 롤백: 원래 상태로 복원
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => {
+          if (task.id !== taskId) return task;
+          return {
+            ...task,
+            isLiked: currentIsLiked,
+            likesCount: currentLikesCount,
+            likedUsers: currentLikedUsers,
+          };
+        })
+      );
+      alert("좋아요 처리 중 오류가 발생했습니다");
+    }
+  };
+
   return (
     <div className="space-y-3">
       {displayTasks.map((task) => {
@@ -201,6 +311,76 @@ export function ProjectMilestonesTab({ projectId }: ProjectMilestonesTabProps) {
                         {formatDateShort(task.dueDate)} ({dueDateText})
                       </p>
                     )}
+                  </div>
+
+                  {/* 좋아요 섹션 - 오른쪽 끝에 배치 */}
+                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {/* 좋아요한 유저 아바타들 (최대 3명) */}
+                    {(() => {
+                      const likesCount = task.likesCount ?? 0;
+                      const likedUsers = task.likedUsers ?? [];
+                      const displayUsers = likedUsers.slice(0, 3);
+                      const remainingCount = likedUsers.length > 3 ? likedUsers.length - 3 : 0;
+                      const isLiked = task.isLiked ?? false;
+
+                      if (likesCount === 0 && !isAuthenticated) {
+                        return null;
+                      }
+
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          {/* 좋아요한 유저 아바타들 */}
+                          {displayUsers.length > 0 && (
+                            <div className="flex items-center -space-x-1.5">
+                              {displayUsers.map((user, index) => (
+                                <div
+                                  key={user.id}
+                                  className="relative"
+                                  style={{ zIndex: displayUsers.length - index }}
+                                >
+                                  <Avatar
+                                    src={user.avatar ? getProfileImageUrl(user.avatar, "xs") : undefined}
+                                    alt={user.displayName}
+                                    fallback={user.displayName}
+                                    size="xs"
+                                    className="ring-1 ring-white dark:ring-surface-900"
+                                  />
+                                </div>
+                              ))}
+                              {remainingCount > 0 && (
+                                <div className="relative ml-1">
+                                  <div className="h-5 w-5 rounded-full bg-surface-200 dark:bg-surface-700 ring-1 ring-white dark:ring-surface-900 flex items-center justify-center">
+                                    <span className="text-[9px] font-medium text-surface-600 dark:text-surface-400">
+                                      +{remainingCount}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* 좋아요 버튼 */}
+                          <button
+                            onClick={(e) => handleLikeTask(task.id, e)}
+                            disabled={!isAuthenticated}
+                            className={cn(
+                              "flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-all",
+                              isLiked
+                                ? "text-rose-500 bg-rose-50 dark:bg-rose-950/30"
+                                : isAuthenticated
+                                ? "text-surface-500 hover:text-rose-500 hover:bg-rose-50/60 dark:hover:bg-rose-950/30"
+                                : "text-surface-400 cursor-not-allowed",
+                              !isAuthenticated && "opacity-50"
+                            )}
+                          >
+                            <Heart className={cn("h-3 w-3", isLiked && "fill-current")} />
+                            {likesCount > 0 && (
+                              <span className="tabular-nums">{likesCount}</span>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

@@ -18,6 +18,7 @@ import {
   updateTask,
   deleteTask,
   toggleTaskStatus,
+  toggleTaskLike,
 } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
 import { TaskModal } from "./milestone/components/TaskModal";
@@ -238,24 +239,117 @@ export function MilestoneDetailPage() {
   const handleToggleTask = async (taskId: string) => {
     if (!milestone) return;
 
+    // 현재 태스크 상태 저장 (롤백용)
+    const currentTask = tasks.find((t) => t.id === taskId);
+    if (!currentTask) return;
+
+    const currentStatus = currentTask.status;
+    const newStatus = currentStatus === "todo" ? "done" : "todo";
+    const newCompletedAt = newStatus === "done" ? new Date().toISOString() : undefined;
+
+    // 낙관적 업데이트: 즉시 UI 업데이트
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id !== taskId) return task;
+        return {
+          ...task,
+          status: newStatus,
+          completedAt: newCompletedAt,
+        };
+      })
+    );
+
+    // 마일스톤 카운트도 낙관적으로 업데이트
+    if (milestone) {
+      const todoCount = newStatus === "done" 
+        ? tasks.filter((t) => t.status === "todo" && t.id !== taskId).length
+        : tasks.filter((t) => t.status === "todo").length + 1;
+      const doneCount = newStatus === "done"
+        ? tasks.filter((t) => t.status === "done").length + 1
+        : tasks.filter((t) => t.status === "done" && t.id !== taskId).length;
+      
+      setMilestone((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          openIssuesCount: todoCount,
+          closedIssuesCount: doneCount,
+        };
+      });
+    }
+
     try {
       const { error } = await toggleTaskStatus(taskId);
 
       if (error) {
+        // 롤백: 원래 상태로 복원
+        setTasks((prevTasks) =>
+          prevTasks.map((task) => {
+            if (task.id !== taskId) return task;
+            return {
+              ...task,
+              status: currentStatus,
+              completedAt: currentTask.completedAt,
+            };
+          })
+        );
+        
+        // 마일스톤 카운트도 롤백
+        if (milestone) {
+          const originalTodoCount = tasks.filter((t) => t.status === "todo").length;
+          const originalDoneCount = tasks.filter((t) => t.status === "done").length;
+          setMilestone((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              openIssuesCount: originalTodoCount,
+              closedIssuesCount: originalDoneCount,
+            };
+          });
+        }
+        
         alert(error.message || "태스크 상태 변경에 실패했습니다");
         return;
       }
 
-      // 태스크 목록 새로고침
-      await loadTasks(milestone.id);
-      
-      // 마일스톤 정보도 새로고침 (카운트 업데이트 반영)
-      const { milestone: updatedMilestone, error: milestoneError } = await fetchMilestoneDetail(milestone.id);
-      if (!milestoneError && updatedMilestone) {
-        setMilestone(updatedMilestone);
-      }
+      // 성공 시 서버에서 최신 상태 동기화 (백그라운드)
+      // 사용자 경험을 위해 즉시 반영하지 않고, 백그라운드에서 동기화
+      loadTasks(milestone.id).then(() => {
+        fetchMilestoneDetail(milestone.id).then(({ milestone: updatedMilestone, error: milestoneError }) => {
+          if (!milestoneError && updatedMilestone) {
+            setMilestone(updatedMilestone);
+          }
+        });
+      });
     } catch (err) {
       console.error("태스크 상태 변경 에러:", err);
+      
+      // 롤백: 원래 상태로 복원
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => {
+          if (task.id !== taskId) return task;
+          return {
+            ...task,
+            status: currentStatus,
+            completedAt: currentTask.completedAt,
+          };
+        })
+      );
+      
+      // 마일스톤 카운트도 롤백
+      if (milestone) {
+        const originalTodoCount = tasks.filter((t) => t.status === "todo").length;
+        const originalDoneCount = tasks.filter((t) => t.status === "done").length;
+        setMilestone((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            openIssuesCount: originalTodoCount,
+            closedIssuesCount: originalDoneCount,
+          };
+        });
+      }
+      
       alert("태스크 상태 변경 중 오류가 발생했습니다");
     }
   };
@@ -283,6 +377,112 @@ export function MilestoneDetailPage() {
     } catch (err) {
       console.error("태스크 삭제 에러:", err);
       alert("태스크 삭제 중 오류가 발생했습니다");
+    }
+  };
+
+  const handleLikeTask = async (taskId: string) => {
+    if (!user) {
+      alert("로그인이 필요합니다");
+      return;
+    }
+
+    if (!milestone) return;
+
+    // 현재 태스크 상태 저장 (롤백용)
+    const currentTask = tasks.find((t) => t.id === taskId);
+    if (!currentTask) return;
+
+    const currentIsLiked = currentTask.isLiked ?? false;
+    const currentLikesCount = currentTask.likesCount ?? 0;
+    const currentLikedUsers = currentTask.likedUsers ?? [];
+
+    // 낙관적 업데이트: 즉시 UI 업데이트
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id !== taskId) return task;
+        
+        const newIsLiked = !currentIsLiked;
+        const newLikesCount = currentIsLiked 
+          ? Math.max(0, currentLikesCount - 1) 
+          : currentLikesCount + 1;
+        
+        // 좋아요한 유저 목록 업데이트
+        let newLikedUsers = [...currentLikedUsers];
+        if (currentIsLiked) {
+          // 좋아요 취소: 현재 사용자 제거
+          newLikedUsers = newLikedUsers.filter((u) => u.id !== user.id);
+        } else {
+          // 좋아요 추가: 현재 사용자 추가 (최대 3명)
+          const currentUser = {
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName,
+            avatar: user.avatar,
+          };
+          // 이미 3명이면 마지막 제거하고 추가
+          if (newLikedUsers.length >= 3) {
+            newLikedUsers = [currentUser, ...newLikedUsers.slice(0, 2)];
+          } else {
+            newLikedUsers = [currentUser, ...newLikedUsers];
+          }
+        }
+        
+        return {
+          ...task,
+          isLiked: newIsLiked,
+          likesCount: newLikesCount,
+          likedUsers: newLikedUsers,
+        };
+      })
+    );
+
+    try {
+      const { isLiked: serverIsLiked, likesCount: serverLikesCount, error } = await toggleTaskLike(taskId);
+
+      if (error) {
+        // 롤백: 원래 상태로 복원
+        setTasks((prevTasks) =>
+          prevTasks.map((task) => {
+            if (task.id !== taskId) return task;
+            return {
+              ...task,
+              isLiked: currentIsLiked,
+              likesCount: currentLikesCount,
+              likedUsers: currentLikedUsers,
+            };
+          })
+        );
+        alert(error.message || "좋아요 처리에 실패했습니다");
+        return;
+      }
+
+      // 서버 응답으로 최종 상태 동기화 (좋아요 수만, 유저 목록은 낙관적 업데이트 유지)
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => {
+          if (task.id !== taskId) return task;
+          return {
+            ...task,
+            isLiked: serverIsLiked,
+            likesCount: serverLikesCount,
+            // likedUsers는 낙관적 업데이트로 이미 반영됨
+          };
+        })
+      );
+    } catch (err) {
+      console.error("태스크 좋아요 토글 에러:", err);
+      // 롤백: 원래 상태로 복원
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => {
+          if (task.id !== taskId) return task;
+          return {
+            ...task,
+            isLiked: currentIsLiked,
+            likesCount: currentLikesCount,
+            likedUsers: currentLikedUsers,
+          };
+        })
+      );
+      alert("좋아요 처리 중 오류가 발생했습니다");
     }
   };
 
@@ -408,6 +608,9 @@ export function MilestoneDetailPage() {
           onEditTask={handleOpenTaskModal}
           onDeleteTask={handleDeleteTask}
           getDueLabel={getDueLabel}
+          isProjectOwner={isProjectOwner}
+          isAuthenticated={user !== null}
+          onLikeTask={handleLikeTask}
         />
       </div>
 

@@ -12,6 +12,9 @@ interface TaskListProps {
   onEditTask: (task: MilestoneTask) => void;
   onDeleteTask: (taskId: string) => void;
   getDueLabel: (dueDate?: string) => { label: string; isOverdue: boolean } | null;
+  isProjectOwner?: boolean;
+  isAuthenticated?: boolean;
+  onLikeTask?: (taskId: string) => void;
 }
 
 export function TaskList({
@@ -23,6 +26,9 @@ export function TaskList({
   onEditTask,
   onDeleteTask,
   getDueLabel,
+  isProjectOwner = false,
+  isAuthenticated = false,
+  onLikeTask,
 }: TaskListProps) {
   return (
     <div className="space-y-4">
@@ -30,10 +36,12 @@ export function TaskList({
         <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-50">
           태스크 ({tasks.length})
         </h2>
-        <Button onClick={onAddTask} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          태스크 추가
-        </Button>
+        {isProjectOwner && (
+          <Button onClick={onAddTask} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            태스크 추가
+          </Button>
+        )}
       </div>
 
       {tasks.length === 0 ? (
@@ -43,10 +51,12 @@ export function TaskList({
             <p className="text-surface-500 dark:text-surface-400 mb-4">
               아직 태스크가 없습니다
             </p>
-            <Button onClick={onAddTask} variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              첫 태스크 추가
-            </Button>
+            {isProjectOwner && (
+              <Button onClick={onAddTask} variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                첫 태스크 추가
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -65,6 +75,9 @@ export function TaskList({
                   onEdit={() => onEditTask(task)}
                   onDelete={() => onDeleteTask(task.id)}
                   getDueLabel={getDueLabel}
+                  isProjectOwner={isProjectOwner}
+                  isAuthenticated={isAuthenticated}
+                  onLike={onLikeTask}
                 />
               ))}
             </div>
@@ -84,6 +97,9 @@ export function TaskList({
                   onEdit={() => onEditTask(task)}
                   onDelete={() => onDeleteTask(task.id)}
                   getDueLabel={getDueLabel}
+                  isProjectOwner={isProjectOwner}
+                  isAuthenticated={isAuthenticated}
+                  onLike={onLikeTask}
                 />
               ))}
             </div>

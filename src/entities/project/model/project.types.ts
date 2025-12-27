@@ -46,6 +46,10 @@ export interface MilestoneTask {
   status: TaskStatus;
   createdAt: string;
   completedAt?: string;
+  // 좋아요 관련 필드 (테스트용)
+  likesCount?: number;
+  isLiked?: boolean;
+  likedUsers?: Pick<User, "id" | "username" | "displayName" | "avatar">[];
 }
 
 export interface Milestone {

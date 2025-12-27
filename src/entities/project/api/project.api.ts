@@ -1591,6 +1591,14 @@ export async function fetchTasks(
       status: row.status as MilestoneTask["status"],
       createdAt: row.created_at,
       completedAt: row.completed_at || undefined,
+      likesCount: row.likes_count || 0,
+      isLiked: row.is_liked || false,
+      likedUsers: (row.liked_users || []).map((u: any) => ({
+        id: u.id,
+        username: u.username,
+        displayName: u.displayName,
+        avatar: u.avatar || undefined,
+      })),
     }));
 
     return {
@@ -1837,6 +1845,65 @@ export async function toggleTaskStatus(
     console.error("태스크 상태 토글 에러:", err);
     return {
       success: false,
+      error: err instanceof Error ? err : new Error("알 수 없는 오류"),
+    };
+  }
+}
+
+/**
+ * 태스크 좋아요 토글 결과
+ */
+export interface ToggleTaskLikeResult {
+  isLiked: boolean;
+  likesCount: number;
+  error: Error | null;
+}
+
+/**
+ * 태스크 좋아요 토글
+ * 
+ * @param taskId - 태스크 ID
+ * @returns 좋아요 상태 및 카운트 또는 에러
+ */
+export async function toggleTaskLike(
+  taskId: string
+): Promise<ToggleTaskLikeResult> {
+  try {
+    if (!taskId) {
+      return {
+        isLiked: false,
+        likesCount: 0,
+        error: new Error("태스크 ID가 필요합니다"),
+      };
+    }
+
+    const { data, error } = await supabase
+      .schema("odd")
+      .rpc("v1_toggle_task_like", {
+        p_task_id: taskId,
+      });
+
+    if (error) {
+      console.error("태스크 좋아요 토글 에러:", error);
+      return {
+        isLiked: false,
+        likesCount: 0,
+        error: new Error(error.message || "좋아요 처리에 실패했습니다"),
+      };
+    }
+
+    const result = data as { is_liked: boolean; likes_count: number };
+
+    return {
+      isLiked: result.is_liked,
+      likesCount: result.likes_count,
+      error: null,
+    };
+  } catch (err) {
+    console.error("태스크 좋아요 토글 에러:", err);
+    return {
+      isLiked: false,
+      likesCount: 0,
       error: err instanceof Error ? err : new Error("알 수 없는 오류"),
     };
   }

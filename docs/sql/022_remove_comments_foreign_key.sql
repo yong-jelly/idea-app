@@ -44,3 +44,4 @@ COMMENT ON COLUMN odd.tbl_comments.post_id IS '포스트 ID 또는 프로젝트 
 
 
 
+
