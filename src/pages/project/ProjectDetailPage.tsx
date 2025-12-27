@@ -360,12 +360,12 @@ export function ProjectDetailPage() {
     day: "numeric",
   });
   
-  // 상세 설명 더보기 관련 상수 및 계산
-  const DESCRIPTION_MAX_LENGTH = 150;
+  // 상세 설명 더보기 관련 상수 및 계산 (모바일에서만 적용)
+  const DESCRIPTION_MAX_LENGTH = 250;
+  // 모바일에서만 텍스트 잘림 적용
   const shouldTruncateDescription = project.fullDescription && project.fullDescription.length > DESCRIPTION_MAX_LENGTH;
-  const displayDescription = project.fullDescription && shouldTruncateDescription && !isDescriptionExpanded
-    ? project.fullDescription.slice(0, DESCRIPTION_MAX_LENGTH)
-    : project.fullDescription || "";
+  // 데스크톱에서는 항상 전체 텍스트, 모바일에서는 상태에 따라
+  const displayDescription = project.fullDescription || "";
 
   // 프로젝트 삭제 핸들러
   const handleDelete = async () => {
@@ -582,20 +582,29 @@ export function ProjectDetailPage() {
             {/* Description */}
             {project.fullDescription && (
               <div className="mb-8">
-                <p className="text-surface-700 dark:text-surface-300 leading-relaxed whitespace-pre-wrap">
+                {/* 데스크톱: 전체 텍스트 표시 */}
+                <p className="hidden md:block text-surface-700 dark:text-surface-300 leading-relaxed whitespace-pre-wrap">
                   {displayDescription}
-                  {shouldTruncateDescription && !isDescriptionExpanded && (
-                    <span className="text-surface-400">...</span>
-                  )}
                 </p>
-                {shouldTruncateDescription && (
-                  <button
-                    onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                    className="mt-2 text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium"
-                  >
-                    {isDescriptionExpanded ? "간략히 보기" : "더보기"}
-                  </button>
-                )}
+                {/* 모바일: 더보기 기능 포함 */}
+                <div className="md:hidden">
+                  <p className="text-surface-700 dark:text-surface-300 leading-relaxed whitespace-pre-wrap">
+                    {shouldTruncateDescription && !isDescriptionExpanded
+                      ? displayDescription.slice(0, DESCRIPTION_MAX_LENGTH)
+                      : displayDescription}
+                    {shouldTruncateDescription && !isDescriptionExpanded && (
+                      <span className="text-surface-400">...</span>
+                    )}
+                  </p>
+                  {shouldTruncateDescription && !isDescriptionExpanded && (
+                    <button
+                      onClick={() => setIsDescriptionExpanded(true)}
+                      className="mt-2 text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium"
+                    >
+                      더보기
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
