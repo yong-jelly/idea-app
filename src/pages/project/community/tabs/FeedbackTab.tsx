@@ -361,12 +361,12 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
     }
 
     try {
-      // Soft delete
+      // RPC 함수를 사용하여 소프트 삭제 (RLS 정책 우회)
       const { error } = await supabase
         .schema("odd")
-        .from("tbl_posts")
-        .update({ is_deleted: true })
-        .eq("id", feedbackId);
+        .rpc("v1_delete_community_post", {
+          p_post_id: feedbackId,
+        });
 
       if (error) {
         console.error("피드백 삭제 실패:", error);
@@ -535,7 +535,8 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
                                     e.stopPropagation();
                                     handleOpenModal(feedback);
                                   }}
-                                  className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-surface-200 dark:hover:bg-surface-700 transition-all"
+                                  className="p-1 rounded hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors"
+                                  title="수정"
                                 >
                                   <Edit className="h-3.5 w-3.5 text-surface-500" />
                                 </button>
@@ -544,7 +545,8 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
                                     e.stopPropagation();
                                     handleDelete(feedback.id);
                                   }}
-                                  className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-all"
+                                  className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors"
+                                  title="삭제"
                                 >
                                   <Trash2 className="h-3.5 w-3.5 text-rose-500" />
                                 </button>
