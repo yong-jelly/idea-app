@@ -399,7 +399,7 @@ export function ProjectDetailPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
       {/* Mobile Header - 모바일에서만 표시 */}
-      <div className="md:hidden sticky top-0 z-40 bg-white/95 dark:bg-surface-950/95 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800">
+      <div className="lg:hidden sticky top-0 z-40 bg-white/95 dark:bg-surface-950/95 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800">
         <div className="h-14 flex items-center gap-3 px-4">
           <button
             onClick={() => navigate("/explore")}
@@ -438,7 +438,7 @@ export function ProjectDetailPage() {
             {/* Title & Meta */}
             <div className="mb-8">
               {/* 프로젝트 헤더 - 데스크톱 */}
-              <div className="hidden md:flex items-start gap-4 mb-4">
+              <div className="hidden lg:flex items-start gap-4 mb-4">
                 {project.thumbnail ? (
                   <img
                     src={project.thumbnail}

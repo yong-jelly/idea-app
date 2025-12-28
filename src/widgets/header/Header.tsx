@@ -60,7 +60,7 @@ export function Header() {
   // 모바일에서 커뮤니티 페이지일 때 헤더 숨김
   if (shouldHideOnMobile) {
     return (
-      <header className="hidden md:block sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-surface-100 dark:bg-surface-950/80 dark:border-surface-800/50 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <header className="hidden lg:block sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-surface-100 dark:bg-surface-950/80 dark:border-surface-800/50 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
@@ -478,7 +478,7 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="border-t border-surface-100 py-4 md:hidden dark:border-surface-800 animate-slide-down">
+          <div className="border-t border-surface-100 py-4 lg:hidden dark:border-surface-800 animate-slide-down">
             <nav className="flex flex-col gap-1 px-2">
               {navigation.map((item) => (
                 <Link

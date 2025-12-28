@@ -127,7 +127,7 @@ export function ProjectCommunityPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-surface-950">
       {/* Mobile Header - 모바일에서만 표시 */}
-      <div className="md:hidden sticky top-0 z-40 bg-white/95 dark:bg-surface-950/95 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800">
+      <div className="lg:hidden sticky top-0 z-40 bg-white/95 dark:bg-surface-950/95 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800">
         <div className="h-14 flex items-center gap-3 px-4">
           <button
             onClick={() => navigate(`/project/${id}`)}
@@ -160,7 +160,7 @@ export function ProjectCommunityPage() {
 
       <div className="mx-auto max-w-5xl px-4 md:py-6 pt-4 pb-6">
         {/* Desktop Header */}
-        <div className="mb-6 hidden md:block">
+        <div className="mb-6 hidden lg:block">
           <Link
             to={`/project/${id}`}
             className="inline-flex items-center gap-1 text-sm text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200 transition-colors mb-4"
