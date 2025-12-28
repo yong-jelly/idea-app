@@ -485,43 +485,75 @@ export function ContentArea({ content, images, className, maxLength, collapseNew
             "mt-3 rounded-xl overflow-hidden",
             normalizedImages.length === 1 
               ? "" 
-              : "grid gap-0.5",
+              : normalizedImages.length === 3
+              ? "flex gap-1"
+              : "grid gap-1",
             normalizedImages.length === 2 
-              ? "grid-cols-2" 
-              : normalizedImages.length === 3 
               ? "grid-cols-2" 
               : normalizedImages.length >= 4 
               ? "grid-cols-2" 
               : ""
           )}>
-            {normalizedImages.slice(0, 4).map((img, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleImageClick(idx)}
-                className={cn(
-                  "relative overflow-hidden bg-surface-100 dark:bg-surface-800 cursor-pointer",
-                  normalizedImages.length === 1 
-                    ? "w-full h-64 aspect-[16/9]" 
-                    : normalizedImages.length === 2
-                    ? "h-52"
-                    : normalizedImages.length === 3 && idx === 0
-                    ? "row-span-2 h-52"
-                    : "h-40"
-                )}
-              >
-                <img
-                  src={img}
-                  alt={`Image ${idx + 1}`}
-                  className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
-                />
-                {/* 4개 이상일 때 4번째 이미지에 +N 오버레이 */}
-                {normalizedImages.length > 4 && idx === 3 && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-surface-900/60 dark:bg-black/50 backdrop-blur-sm pointer-events-none">
-                    <span className="text-white text-lg font-semibold">+{normalizedImages.length - 4}</span>
-                  </div>
-                )}
-              </button>
-            ))}
+            {normalizedImages.length === 3 ? (
+              // 3개일 때: 왼쪽에 2개 세로로, 오른쪽에 1개
+              <>
+                {/* 왼쪽 열: 2개 세로로 */}
+                <div className="flex flex-col gap-1 flex-1">
+                  {normalizedImages.slice(0, 2).map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleImageClick(idx)}
+                      className="relative overflow-hidden bg-surface-100 dark:bg-surface-800 cursor-pointer rounded-lg border border-surface-200 dark:border-surface-700 h-[140px] sm:h-[160px]"
+                    >
+                      <img
+                        src={img}
+                        alt={`Image ${idx + 1}`}
+                        className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
+                      />
+                    </button>
+                  ))}
+                </div>
+                {/* 오른쪽 열: 1개 (왼쪽 2개 높이 합과 동일: 140px * 2 + 4px gap = 284px) */}
+                <button
+                  onClick={() => handleImageClick(2)}
+                  className="relative overflow-hidden bg-surface-100 dark:bg-surface-800 cursor-pointer rounded-lg border border-surface-200 dark:border-surface-700 flex-1 h-[284px] sm:h-[324px]"
+                >
+                  <img
+                    src={normalizedImages[2]}
+                    alt="Image 3"
+                    className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
+                  />
+                </button>
+              </>
+            ) : (
+              // 1개, 2개, 4개 이상일 때 기존 레이아웃
+              normalizedImages.slice(0, 4).map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleImageClick(idx)}
+                  className={cn(
+                    "relative overflow-hidden bg-surface-100 dark:bg-surface-800 cursor-pointer rounded-lg border border-surface-200 dark:border-surface-700",
+                    normalizedImages.length === 1 
+                      ? "w-full h-64 aspect-[16/9]" 
+                      : normalizedImages.length === 2
+                      ? "h-52"
+                      : "h-40"
+                  )}
+                >
+                  <img
+                    src={img}
+                    alt={`Image ${idx + 1}`}
+                    className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
+                  />
+                  {/* 4개 이상일 때 4번째 이미지에 +N 오버레이 */}
+                  {normalizedImages.length > 4 && idx === 3 && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-surface-900/60 dark:bg-black/50 backdrop-blur-sm pointer-events-none">
+                      <span className="text-white text-lg font-semibold">+{normalizedImages.length - 4}</span>
+                    </div>
+                  )}
+                </button>
+              ))
+            )}
           </div>
           <ImageViewer
             images={normalizedImages}

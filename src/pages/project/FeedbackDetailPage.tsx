@@ -24,7 +24,7 @@ import {
   Check,
   Trash2,
 } from "lucide-react";
-import { Button, Avatar, Badge, Textarea, Card, CardContent, Separator } from "@/shared/ui";
+import { Button, Avatar, Badge, Textarea, Card, CardContent, Separator, ImageViewer } from "@/shared/ui";
 import { CommentThread } from "@/shared/ui/comment";
 import { cn, formatNumber, formatRelativeTime, ensureMinDelay } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
@@ -263,6 +263,8 @@ export function FeedbackDetailPage() {
   const [projectAuthorId, setProjectAuthorId] = useState<string>("");
   const [project, setProject] = useState<Project | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
 
   // 프로젝트 멤버 여부 (프로젝트 작성자와 현재 사용자 비교)
   const isProjectMember = projectAuthorId && user?.id === projectAuthorId;
@@ -827,7 +829,10 @@ export function FeedbackDetailPage() {
                           <div
                             key={index}
                             className="relative group cursor-pointer"
-                            onClick={() => window.open(img, "_blank")}
+                            onClick={() => {
+                              setImageViewerIndex(index);
+                              setImageViewerOpen(true);
+                            }}
                           >
                             <img
                               src={img}
@@ -1257,6 +1262,16 @@ export function FeedbackDetailPage() {
         open={showLoginModal}
         onOpenChange={setShowLoginModal}
       />
+
+      {/* Image Viewer */}
+      {feedback?.images && feedback.images.length > 0 && (
+        <ImageViewer
+          images={feedback.images}
+          initialIndex={imageViewerIndex}
+          isOpen={imageViewerOpen}
+          onClose={() => setImageViewerOpen(false)}
+        />
+      )}
     </div>
   );
 }

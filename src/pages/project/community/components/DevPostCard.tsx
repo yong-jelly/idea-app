@@ -9,7 +9,7 @@ import {
   ChevronUp,
   CheckCircle2,
 } from "lucide-react";
-import { Avatar, Badge, Card, CardContent } from "@/shared/ui";
+import { Avatar, Badge, Card, CardContent, ImageViewer } from "@/shared/ui";
 import { CommentThread } from "@/shared/ui/comment";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
@@ -34,6 +34,8 @@ export function DevPostCard({ post, projectAuthorId, onEdit, onDelete, onToggleP
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
   const [likesCount, setLikesCount] = useState(post.likesCount);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const { user } = useUserStore();
 
   // 본문 텍스트 길이 확인
@@ -287,7 +289,8 @@ export function DevPostCard({ post, projectAuthorId, onEdit, onDelete, onToggleP
                         className="relative group cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
-                          window.open(img, '_blank');
+                          setImageViewerIndex(idx);
+                          setImageViewerOpen(true);
                         }}
                       >
                         <img
@@ -412,6 +415,14 @@ export function DevPostCard({ post, projectAuthorId, onEdit, onDelete, onToggleP
         <LoginModal
           open={showLoginModal}
           onOpenChange={setShowLoginModal}
+        />
+      )}
+      {post.images && post.images.length > 0 && (
+        <ImageViewer
+          images={post.images}
+          initialIndex={imageViewerIndex}
+          isOpen={imageViewerOpen}
+          onClose={() => setImageViewerOpen(false)}
         />
       )}
     </Card>
