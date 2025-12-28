@@ -65,11 +65,13 @@ export function MobileBottomNav() {
     if (!item.path) return false;
     
     if (item.id === "home") {
-      // 홈: /, /bookmarks, /profile/:username
+      // 홈: /, /user_*/status/*, /profile/:username
       return (
         location.pathname === "/" ||
-        location.pathname === "/bookmarks" ||
-        (location.pathname.startsWith("/profile/") && !location.pathname.includes("/edit"))
+        (location.pathname.startsWith("/user_") && location.pathname.includes("/status/")) 
+        // ||
+        // location.pathname === "/bookmarks" ||
+        // (location.pathname.startsWith("/profile/") && !location.pathname.includes("/edit"))
       );
     } else if (item.id === "projects") {
       // 프로젝트: /explore, /project로 시작하는 경로

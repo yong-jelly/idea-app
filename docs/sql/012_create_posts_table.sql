@@ -193,3 +193,4 @@ COMMENT ON COLUMN odd.tbl_posts.updated_at IS '수정일시';
 
 
 
+
