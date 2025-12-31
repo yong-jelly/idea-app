@@ -208,7 +208,7 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
         .rpc("v1_update_user_profile", {
           p_display_name: formData.displayName.trim(),
           p_bio: bioValue,
-          p_avatar_url: avatarPath !== null ? avatarPath : undefined,
+          p_avatar_url: avatarPath, // null이면 null로 명시적 전달
           p_links: Object.keys(linksData).length > 0 ? linksData : null,
         });
 

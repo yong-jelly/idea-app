@@ -59,10 +59,7 @@ export function Providers({ children }: ProvidersProps) {
           }
 
           if (event === "SIGNED_IN") {
-            // SIGNED_IN: 항상 동기화 진행 (이전 플래그 리셋 후 시작)
-            if (store.isSyncing) {
-              store.setUser(null); // 플래그 리셋을 위해 임시로 null 설정
-            }
+            // SIGNED_IN: 항상 동기화 진행
             store.syncUserFromSession();
           } else if (event === "SIGNED_OUT") {
             // SIGNED_OUT: 상태 초기화 및 플래그 리셋

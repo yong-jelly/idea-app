@@ -25,8 +25,9 @@ ADD COLUMN IF NOT EXISTS links jsonb DEFAULT '{}'::jsonb;
 -- GIN 인덱스로 JSON 검색 최적화
 CREATE INDEX IF NOT EXISTS idx_tbl_users_links ON odd.tbl_users USING gin(links);
 
--- 기존 함수 삭제 (반환 타입 변경을 위해)
+-- 기존 함수 삭제 (반환 타입 변경 및 오버로딩 방지를 위해)
 DROP FUNCTION IF EXISTS odd.v1_update_user_profile(text, text, text, jsonb);
+DROP FUNCTION IF EXISTS odd.v1_update_user_profile(text, text, jsonb);
 
 -- 프로필 업데이트 함수
 CREATE OR REPLACE FUNCTION odd.v1_update_user_profile(
