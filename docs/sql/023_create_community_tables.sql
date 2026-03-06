@@ -252,6 +252,60 @@ CREATE TRIGGER trigger_decrement_post_vote_option_count
     FOR EACH ROW
     EXECUTE FUNCTION odd.decrement_post_vote_option_count();
 
+-- 투표 응답 옵션 변경 시 이전/새 옵션의 votes_count 보정
+CREATE OR REPLACE FUNCTION odd.sync_post_vote_option_count_on_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.vote_option_id IS NOT DISTINCT FROM OLD.vote_option_id THEN
+        RETURN NEW;
+    END IF;
+
+    UPDATE odd.tbl_post_votes
+    SET votes_count = GREATEST(votes_count - 1, 0)
+    WHERE id = OLD.vote_option_id;
+
+    UPDATE odd.tbl_post_votes
+    SET votes_count = votes_count + 1
+    WHERE id = NEW.vote_option_id;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_sync_post_vote_option_count_on_update ON odd.tbl_post_vote_responses;
+CREATE TRIGGER trigger_sync_post_vote_option_count_on_update
+    AFTER UPDATE OF vote_option_id ON odd.tbl_post_vote_responses
+    FOR EACH ROW
+    EXECUTE FUNCTION odd.sync_post_vote_option_count_on_update();
+
+-- 비정규화된 투표 수를 응답 테이블 기준으로 재계산
+CREATE OR REPLACE FUNCTION odd.recalculate_post_vote_counts(p_post_id uuid DEFAULT NULL)
+RETURNS integer
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_updated_count integer;
+BEGIN
+    UPDATE odd.tbl_post_votes pv
+    SET votes_count = COALESCE(src.votes_count, 0)
+    FROM (
+        SELECT
+            pv_inner.id AS vote_option_id,
+            COUNT(pvr.id)::integer AS votes_count
+        FROM odd.tbl_post_votes pv_inner
+        LEFT JOIN odd.tbl_post_vote_responses pvr
+            ON pvr.vote_option_id = pv_inner.id
+        WHERE p_post_id IS NULL OR pv_inner.post_id = p_post_id
+        GROUP BY pv_inner.id
+    ) src
+    WHERE pv.id = src.vote_option_id
+      AND (p_post_id IS NULL OR pv.post_id = p_post_id);
+
+    GET DIAGNOSTICS v_updated_count = ROW_COUNT;
+    RETURN v_updated_count;
+END;
+$$;
+
 -- 피드백 투표 추가 시 피드백의 votes_count 증가
 CREATE OR REPLACE FUNCTION odd.increment_feedback_votes_count()
 RETURNS TRIGGER AS $$
@@ -473,6 +527,9 @@ COMMENT ON TABLE odd.tbl_feedback_votes IS '피드백 투표를 저장하는 테
 COMMENT ON COLUMN odd.tbl_feedback_votes.id IS '고유 ID';
 COMMENT ON COLUMN odd.tbl_feedback_votes.feedback_id IS '피드백 ID (tbl_feedbacks.id 참조)';
 COMMENT ON COLUMN odd.tbl_feedback_votes.user_id IS '투표한 사용자 ID (tbl_users.id 참조)';
+
+COMMENT ON FUNCTION odd.recalculate_post_vote_counts(uuid) IS '투표 응답 테이블을 기준으로 tbl_post_votes.votes_count를 재계산합니다.';
+
 
 
 

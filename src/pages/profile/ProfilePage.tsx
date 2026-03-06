@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router";
 import { Link as LinkIcon, Github, Twitter, FileText, Folder, Heart, Award, Loader2 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSaveScroll } from "@/shared/hooks/useSaveScroll";
 import { Avatar, Badge } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
 import { useUserStore, BadgeGrid, fetchUserProfile } from "@/entities/user";
@@ -55,6 +56,7 @@ function FeedSkeleton() {
 export function ProfilePage() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
+  const saveScroll = useSaveScroll();
   const { user: currentUser, isAuthenticated } = useUserStore();
   const { toggleProjectLike } = useProjectStore();
   const [activeTab, setActiveTab] = useState<ProfileTabType>("posts");
@@ -328,6 +330,7 @@ export function ProfilePage() {
   }, [showSignUpModal]);
 
   const handlePostClick = (post: UnifiedFeedPost) => {
+    saveScroll();
     navigate(`/${post.author.username}/status/${post.id}`);
   };
 
@@ -517,7 +520,7 @@ export function ProfilePage() {
     const handlers = {
       onLike: () => handleLike(post.id),
       onBookmark: () => handleBookmark(post.id),
-      onComment: () => navigate(`/${post.author.username}/status/${post.id}`),
+      onComment: () => { saveScroll(); navigate(`/${post.author.username}/status/${post.id}`); },
       onClick: () => handlePostClick(post),
       isAuthenticated,
       onSignUpPrompt: () => setShowSignUpModal(true),

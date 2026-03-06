@@ -10,7 +10,7 @@
 -- =====================================================
 -- 1. 커뮤니티 포스트 조회 함수
 -- =====================================================
-DROP FUNCTION IF EXISTS odd.v1_update_community_post CASCADE;
+DROP FUNCTION IF EXISTS odd.v1_update_community_post(uuid, text, text, jsonb, boolean, text[]) CASCADE;
 CREATE OR REPLACE FUNCTION odd.v1_fetch_community_posts(
     p_project_id uuid,
     p_post_type text DEFAULT NULL,
@@ -408,6 +408,7 @@ DECLARE
     v_post_type text;
     v_option_text text;
     v_sort_order integer;
+    v_vote_response_count integer := 0;
 BEGIN
     -- 현재 로그인한 사용자 확인
     v_auth_id := auth.uid();
@@ -446,6 +447,42 @@ BEGIN
     -- 포스트 타입 유효성 검사 (제공된 경우)
     IF p_post_type IS NOT NULL AND p_post_type NOT IN ('announcement', 'update', 'vote') THEN
         RAISE EXCEPTION '유효하지 않은 포스트 타입입니다: %', p_post_type;
+    END IF;
+
+    -- 투표 타입으로 변경할 때는 옵션이 함께 제공되어야 함
+    IF v_post_type != 'vote' AND p_post_type = 'vote' AND p_vote_options IS NULL THEN
+        RAISE EXCEPTION '투표 타입으로 변경할 때는 투표 옵션이 필요합니다';
+    END IF;
+
+    -- 투표 옵션이 제공된 경우 개수 검사
+    IF p_vote_options IS NOT NULL THEN
+        IF array_length(p_vote_options, 1) < 2 THEN
+            RAISE EXCEPTION '투표 옵션은 최소 2개 이상 필요합니다';
+        END IF;
+
+        IF array_length(p_vote_options, 1) > 5 THEN
+            RAISE EXCEPTION '투표 옵션은 최대 5개까지 가능합니다';
+        END IF;
+    END IF;
+
+    -- 이미 응답이 있는 투표는 옵션/타입 변경을 허용하지 않음
+    IF v_post_type = 'vote' AND (
+        (p_post_type IS NOT NULL AND p_post_type != 'vote')
+        OR p_vote_options IS NOT NULL
+    ) THEN
+        SELECT COUNT(*)::integer INTO v_vote_response_count
+        FROM odd.tbl_post_vote_responses
+        WHERE post_id = p_post_id;
+
+        IF v_vote_response_count > 0 THEN
+            IF p_post_type IS NOT NULL AND p_post_type != 'vote' THEN
+                RAISE EXCEPTION '응답이 있는 투표는 다른 타입으로 변경할 수 없습니다';
+            END IF;
+
+            IF p_vote_options IS NOT NULL THEN
+                RAISE EXCEPTION '응답이 있는 투표는 옵션을 수정할 수 없습니다';
+            END IF;
+        END IF;
     END IF;
     
     -- 포스트 타입 변경 시 투표 타입에서 다른 타입으로 변경하면 투표 옵션 삭제

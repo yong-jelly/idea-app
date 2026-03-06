@@ -402,3 +402,4 @@ COMMENT ON COLUMN odd.tbl_mentions.created_at IS '생성일시';
 
 
 
+

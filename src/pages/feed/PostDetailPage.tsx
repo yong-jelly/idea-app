@@ -9,6 +9,7 @@ import { SignUpModal } from "@/pages/auth";
 import { useState, useEffect } from "react";
 import { fetchPostDetail, togglePostLike, togglePostBookmark } from "@/entities/post/api/post.api";
 import { convertToUnifiedFeedPost } from "@/widgets/feed-timeline/FeedTimeline";
+import { useFeedTimelineStore } from "@/widgets/feed-timeline/feed-timeline.store";
 import type { UnifiedFeedPost } from "@/entities/feed";
 import { FEEDBACK_TYPE_INFO, FEEDBACK_STATUS_INFO, DEV_POST_TYPE_INFO } from "@/entities/feed";
 import { getProjectImageUrl, normalizeImageUrls } from "@/shared/lib/storage";
@@ -32,6 +33,7 @@ export function PostDetailPage() {
   const [bookmarksCount, setBookmarksCount] = useState(0);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
+  const updateFeedPost = useFeedTimelineStore((state) => state.updatePost);
 
   // 댓글 관련 로직은 커스텀 훅으로 분리
   const {
@@ -87,6 +89,10 @@ export function PostDetailPage() {
           setIsBookmarked(convertedPost.interactions.isBookmarked);
           setLikesCount(convertedPost.interactions.likesCount);
           setBookmarksCount(convertedPost.interactions.bookmarksCount);
+          updateFeedPost(convertedPost.id, (currentPost) => ({
+            ...currentPost,
+            ...convertedPost,
+          }));
         }
       } catch (err) {
         console.error("포스트 로드 예외:", err);
@@ -122,6 +128,14 @@ export function PostDetailPage() {
       if (data) {
         setIsLiked(data.is_liked);
         setLikesCount(data.likes_count);
+        updateFeedPost(post.id, (currentPost) => ({
+          ...currentPost,
+          interactions: {
+            ...currentPost.interactions,
+            isLiked: data.is_liked,
+            likesCount: data.likes_count,
+          },
+        }));
       }
     } catch (err) {
       console.error("좋아요 토글 예외:", err);
@@ -155,6 +169,14 @@ export function PostDetailPage() {
       if (data) {
         setIsBookmarked(data.is_bookmarked);
         setBookmarksCount(data.bookmarks_count);
+        updateFeedPost(post.id, (currentPost) => ({
+          ...currentPost,
+          interactions: {
+            ...currentPost.interactions,
+            isBookmarked: data.is_bookmarked,
+            bookmarksCount: data.bookmarks_count,
+          },
+        }));
       }
     } catch (err) {
       console.error("북마크 토글 예외:", err);

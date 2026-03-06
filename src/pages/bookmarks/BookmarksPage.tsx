@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Bookmark } from "lucide-react";
 import { useNavigate } from "react-router";
+import { useSaveScroll } from "@/shared/hooks/useSaveScroll";
 import { LeftSidebar } from "@/widgets";
 import { useUserStore } from "@/entities/user";
 import { SignUpModal } from "@/pages/auth";
@@ -51,6 +52,7 @@ function FeedSkeleton() {
 
 export function BookmarksPage() {
   const navigate = useNavigate();
+  const saveScroll = useSaveScroll();
   const { isAuthenticated } = useUserStore();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [posts, setPosts] = useState<UnifiedFeedPost[]>([]);
@@ -159,6 +161,7 @@ export function BookmarksPage() {
   }, [handleLoadMore]);
 
   const handlePostClick = (post: UnifiedFeedPost) => {
+    saveScroll();
     navigate(`/${post.author.username}/status/${post.id}`);
   };
 

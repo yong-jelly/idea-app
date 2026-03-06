@@ -1,13 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import {
   createBrowserRouter,
   RouterProvider,
   Outlet,
   useLocation,
+  useNavigationType,
 } from "react-router";
 import { Header, MobileBottomNav } from "@/widgets";
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import { trackPageView } from "@/shared/lib/gtm";
+import { useScrollRestoreStore } from "@/shared/lib/scroll-restore.store";
 import {
   FeedPage,
   PostDetailPage,
@@ -30,10 +32,38 @@ import { AuthCallbackPage } from "@/pages/auth/AuthCallbackPage";
 
 function ScrollToTop() {
   const location = useLocation();
+  const navigationType = useNavigationType();
+  const scrollMap = useScrollRestoreStore((s) => s.scrollMap);
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [location.pathname, location.search]);
+  useLayoutEffect(() => {
+    if (navigationType === "POP") {
+      const saved = scrollMap[location.pathname];
+      if (saved != null && saved > 0) {
+        let cancelled = false;
+        let retries = 0;
+        const maxRetries = 40; // 약 2초(50ms * 40) 동안 복원 재시도
+
+        const restoreWithRetry = () => {
+          if (cancelled) return;
+
+          window.scrollTo(0, saved);
+
+          const reached = Math.abs(window.scrollY - saved) < 2;
+          if (reached || retries >= maxRetries) return;
+
+          retries += 1;
+          setTimeout(restoreWithRetry, 50);
+        };
+
+        restoreWithRetry();
+        return () => {
+          cancelled = true;
+        };
+      }
+    }
+
+    window.scrollTo(0, 0);
+  }, [location.pathname, location.search, navigationType, scrollMap]);
 
   return null;
 }

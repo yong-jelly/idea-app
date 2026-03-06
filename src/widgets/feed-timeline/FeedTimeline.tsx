@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Loader2, MessageSquare } from "lucide-react";
 import { useUserStore } from "@/entities/user";
@@ -27,6 +27,8 @@ import type {
 } from "@/entities/feed";
 import type { BaseAuthor } from "@/entities/feed";
 import { getProfileImageUrl } from "@/shared/lib/storage";
+import { useFeedTimelineStore } from "./feed-timeline.store";
+import { useSaveScroll } from "@/shared/hooks/useSaveScroll";
 
 interface FeedTimelineProps {
   onSignUpPrompt?: () => void;
@@ -149,19 +151,22 @@ export function convertToUnifiedFeedPost(response: UnifiedFeedResponse): Unified
 export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
   const navigate = useNavigate();
   const { isAuthenticated } = useUserStore();
-  const [posts, setPosts] = useState<UnifiedFeedPost[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
+  const {
+    posts,
+    isLoading,
+    hasMore,
+    offset,
+    hasLoaded,
+    setInitialFeed,
+    appendPosts,
+    setIsLoading,
+    updatePost,
+  } = useFeedTimelineStore();
+  const saveScroll = useSaveScroll();
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const [isIntersecting, setIsIntersecting] = useState(false);
+  const isIntersectingRef = useRef(false);
 
-  // 초기 피드 로드
-  useEffect(() => {
-    loadPosts();
-  }, []);
-
-  const loadPosts = async () => {
+  const loadPosts = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await fetchUnifiedFeed({ limit: 50, offset: 0 });
     
@@ -173,15 +178,13 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
 
     if (data) {
       const convertedPosts = (data as unknown as UnifiedFeedResponse[]).map(convertToUnifiedFeedPost);
-      setPosts(convertedPosts);
-      setOffset(50);
-      setHasMore(data.length === 50);
+      setInitialFeed(convertedPosts, data.length === 50, data.length);
     }
     
     setIsLoading(false);
-  };
+  }, [setInitialFeed, setIsLoading]);
 
-  const loadMore = async () => {
+  const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
     
     setIsLoading(true);
@@ -195,15 +198,20 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
 
     if (data && data.length > 0) {
       const convertedPosts = (data as unknown as UnifiedFeedResponse[]).map(convertToUnifiedFeedPost);
-      setPosts((prev) => [...prev, ...convertedPosts]);
-      setOffset((prev) => prev + data.length);
-      setHasMore(data.length === 50);
+      appendPosts(convertedPosts, data.length === 50, data.length);
     } else {
-      setHasMore(false);
+      appendPosts([], false, 0);
     }
     
     setIsLoading(false);
-  };
+  }, [appendPosts, hasMore, isLoading, offset, setIsLoading]);
+
+  // 초기 피드 로드
+  useEffect(() => {
+    if (!hasLoaded) {
+      void loadPosts();
+    }
+  }, [hasLoaded, loadPosts]);
 
   // 간단한 IntersectionObserver 구현
   useEffect(() => {
@@ -211,7 +219,9 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
     if (!element) return;
 
     const observer = new IntersectionObserver(
-      ([entry]) => setIsIntersecting(entry.isIntersecting),
+      ([entry]) => {
+        isIntersectingRef.current = entry.isIntersecting;
+      },
       { threshold: 0.1 }
     );
 
@@ -220,14 +230,19 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
   }, []);
 
   const handleLoadMore = useCallback(() => {
-    if (isIntersecting && hasMore && !isLoading) {
-      loadMore();
+    if (isIntersectingRef.current && hasMore && !isLoading) {
+      void loadMore();
     }
-  }, [isIntersecting, hasMore, isLoading, loadMore]);
+  }, [hasMore, isLoading, loadMore]);
 
   useEffect(() => {
     handleLoadMore();
   }, [handleLoadMore]);
+
+  const goToPostDetail = useCallback((post: UnifiedFeedPost) => {
+    saveScroll();
+    navigate(`/${post.author.username}/status/${post.id}`);
+  }, [navigate, saveScroll]);
 
   if (posts.length === 0 && isLoading) {
     return <FeedSkeleton />;
@@ -245,7 +260,7 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
   }
 
   const handlePostClick = (post: UnifiedFeedPost) => {
-    navigate(`/${post.author.username}/status/${post.id}`);
+    goToPostDetail(post);
   };
 
   const handleLike = async (postId: string) => {
@@ -261,22 +276,16 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
     const previousIsLiked = post.interactions.isLiked;
     const previousLikesCount = post.interactions.likesCount;
 
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              interactions: {
-                ...p.interactions,
-                isLiked: !previousIsLiked,
-                likesCount: previousIsLiked
-                  ? previousLikesCount - 1
-                  : previousLikesCount + 1,
-              },
-            }
-          : p
-      )
-    );
+    updatePost(postId, (currentPost) => ({
+      ...currentPost,
+      interactions: {
+        ...currentPost.interactions,
+        isLiked: !previousIsLiked,
+        likesCount: previousIsLiked
+          ? previousLikesCount - 1
+          : previousLikesCount + 1,
+      },
+    }));
 
     try {
       const { data, error } = await togglePostLike(postId);
@@ -284,57 +293,39 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
       if (error) {
         console.error("좋아요 토글 실패:", error);
         // 에러 발생 시 이전 상태로 롤백
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  interactions: {
-                    ...p.interactions,
-                    isLiked: previousIsLiked,
-                    likesCount: previousLikesCount,
-                  },
-                }
-              : p
-          )
-        );
+        updatePost(postId, (currentPost) => ({
+          ...currentPost,
+          interactions: {
+            ...currentPost.interactions,
+            isLiked: previousIsLiked,
+            likesCount: previousLikesCount,
+          },
+        }));
         return;
       }
 
       // API 응답으로 상태 업데이트
       if (data) {
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  interactions: {
-                    ...p.interactions,
-                    isLiked: data.is_liked,
-                    likesCount: data.likes_count,
-                  },
-                }
-              : p
-          )
-        );
+        updatePost(postId, (currentPost) => ({
+          ...currentPost,
+          interactions: {
+            ...currentPost.interactions,
+            isLiked: data.is_liked,
+            likesCount: data.likes_count,
+          },
+        }));
       }
     } catch (err) {
       console.error("좋아요 토글 예외:", err);
       // 에러 발생 시 이전 상태로 롤백
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                interactions: {
-                  ...p.interactions,
-                  isLiked: previousIsLiked,
-                  likesCount: previousLikesCount,
-                },
-              }
-            : p
-        )
-      );
+      updatePost(postId, (currentPost) => ({
+        ...currentPost,
+        interactions: {
+          ...currentPost.interactions,
+          isLiked: previousIsLiked,
+          likesCount: previousLikesCount,
+        },
+      }));
     }
   };
 
@@ -351,22 +342,16 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
     const previousIsBookmarked = post.interactions.isBookmarked;
     const previousBookmarksCount = post.interactions.bookmarksCount;
 
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              interactions: {
-                ...p.interactions,
-                isBookmarked: !previousIsBookmarked,
-                bookmarksCount: previousIsBookmarked
-                  ? previousBookmarksCount - 1
-                  : previousBookmarksCount + 1,
-              },
-            }
-          : p
-      )
-    );
+    updatePost(postId, (currentPost) => ({
+      ...currentPost,
+      interactions: {
+        ...currentPost.interactions,
+        isBookmarked: !previousIsBookmarked,
+        bookmarksCount: previousIsBookmarked
+          ? previousBookmarksCount - 1
+          : previousBookmarksCount + 1,
+      },
+    }));
 
     try {
       const { data, error } = await togglePostBookmark(postId);
@@ -374,57 +359,39 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
       if (error) {
         console.error("북마크 토글 실패:", error);
         // 에러 발생 시 이전 상태로 롤백
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  interactions: {
-                    ...p.interactions,
-                    isBookmarked: previousIsBookmarked,
-                    bookmarksCount: previousBookmarksCount,
-                  },
-                }
-              : p
-          )
-        );
+        updatePost(postId, (currentPost) => ({
+          ...currentPost,
+          interactions: {
+            ...currentPost.interactions,
+            isBookmarked: previousIsBookmarked,
+            bookmarksCount: previousBookmarksCount,
+          },
+        }));
         return;
       }
 
       // API 응답으로 상태 업데이트
       if (data) {
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  interactions: {
-                    ...p.interactions,
-                    isBookmarked: data.is_bookmarked,
-                    bookmarksCount: data.bookmarks_count,
-                  },
-                }
-              : p
-          )
-        );
+        updatePost(postId, (currentPost) => ({
+          ...currentPost,
+          interactions: {
+            ...currentPost.interactions,
+            isBookmarked: data.is_bookmarked,
+            bookmarksCount: data.bookmarks_count,
+          },
+        }));
       }
     } catch (err) {
       console.error("북마크 토글 예외:", err);
       // 에러 발생 시 이전 상태로 롤백
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                interactions: {
-                  ...p.interactions,
-                  isBookmarked: previousIsBookmarked,
-                  bookmarksCount: previousBookmarksCount,
-                },
-              }
-            : p
-        )
-      );
+      updatePost(postId, (currentPost) => ({
+        ...currentPost,
+        interactions: {
+          ...currentPost.interactions,
+          isBookmarked: previousIsBookmarked,
+          bookmarksCount: previousBookmarksCount,
+        },
+      }));
     }
   };
 
@@ -432,7 +399,7 @@ export function FeedTimeline({ onSignUpPrompt }: FeedTimelineProps = {}) {
     const handlers = {
       onLike: () => handleLike(post.id),
       onBookmark: () => handleBookmark(post.id),
-      onComment: () => navigate(`/${post.author.username}/status/${post.id}`),
+      onComment: () => goToPostDetail(post),
       onClick: () => handlePostClick(post),
       isAuthenticated,
       onSignUpPrompt: onSignUpPrompt,
