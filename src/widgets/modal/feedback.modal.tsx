@@ -14,7 +14,7 @@ import {
 import { Button, Textarea, Input } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
 import { supabase } from "@/shared/lib/supabase";
-import { uploadPostImages } from "@/shared/lib/storage";
+import { uploadPostImages, extractStoragePath } from "@/shared/lib/storage";
 import type { UserFeedback } from "@/pages/project/community/types";
 import { FEEDBACK_TYPE_INFO } from "@/pages/project/community/constants";
 
@@ -41,7 +41,7 @@ export function UserFeedbackModal({
     type: "feature" as "bug" | "feature" | "improvement" | "question",
     title: "",
     content: "",
-    images: [] as File[], // File 객체
+    images: [] as Array<{ file: File | null; preview: string }>, // 기존 이미지는 file이 null, preview는 URL
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
@@ -50,11 +50,16 @@ export function UserFeedbackModal({
   useEffect(() => {
     if (isOpen) {
       if (editingFeedback) {
+        // 기존 이미지를 preview로 설정 (file은 null)
+        const existingImages = (editingFeedback.images || []).map((url) => ({
+          file: null as File | null,
+          preview: url,
+        }));
         setFormData({
           type: editingFeedback.type,
           title: editingFeedback.title,
           content: editingFeedback.content,
-          images: [], // 기존 이미지는 URL이므로 File로 변환하지 않음
+          images: existingImages,
         });
       } else {
         setFormData({ type: "feature", title: "", content: "", images: [] });
@@ -89,13 +94,30 @@ export function UserFeedbackModal({
     const files = e.target.files;
     if (!files) return;
     
-    const remainingSlots = 3 - formData.images.length;
+    const MAX_IMAGES = 3;
+    const remainingSlots = MAX_IMAGES - formData.images.length;
+    
+    if (remainingSlots <= 0) {
+      alert(`최대 ${MAX_IMAGES}개까지 추가할 수 있습니다.`);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+    
     const filesToProcess = Array.from(files).slice(0, remainingSlots);
     
-    setFormData((prev) => ({
-      ...prev,
-      images: [...prev.images, ...filesToProcess].slice(0, 3),
-    }));
+    // 새 파일들을 preview와 함께 추가
+    filesToProcess.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setFormData((prev) => ({
+          ...prev,
+          images: [...prev.images, { file, preview: reader.result as string }].slice(0, MAX_IMAGES),
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
     
     // Reset input
     if (fileInputRef.current) {
@@ -121,48 +143,62 @@ export function UserFeedbackModal({
     if (!formData.title.trim() || !formData.content.trim()) return;
 
     setIsSubmitting(true);
-    setIsUploadingImages(formData.images.length > 0);
+    const hasNewImages = formData.images.some(img => img.file !== null);
 
     try {
-      // 이미지 업로드
-      let imagePaths: string[] = [];
-      if (formData.images.length > 0) {
-        // Supabase Auth에서 현재 사용자의 auth_id 가져오기
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-        if (authError || !authUser) {
-          alert("로그인이 필요합니다.");
-          setIsSubmitting(false);
-          setIsUploadingImages(false);
-          return;
-        }
-
-        // 임시 포스트 ID 생성 (실제 피드백 생성 후 업데이트)
-        const tempPostId = `temp-${Date.now()}`;
-        const { paths, error: uploadError } = await uploadPostImages(
-          formData.images,
-          authUser.id,
-          tempPostId
-        );
-
-        if (uploadError) {
-          alert(`이미지 업로드 실패: ${uploadError.message}`);
-          setIsSubmitting(false);
-          setIsUploadingImages(false);
-          return;
-        }
-
-        imagePaths = paths;
+      // Supabase Auth에서 현재 사용자의 auth_id 가져오기
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser) {
+        alert("로그인이 필요합니다.");
+        setIsSubmitting(false);
+        return;
       }
 
       if (editingFeedback) {
         // 피드백 수정
+        // 기존 이미지 유지: file이 null이고 preview가 있는 경우 (Storage URL에서 경로 추출)
+        const existingImagePaths = formData.images
+          .filter((img) => img.file === null && img.preview)
+          .map((img) => {
+            // preview가 Storage URL이면 경로 추출, 이미 경로면 그대로 사용
+            return extractStoragePath(img.preview);
+          });
+        
+        // 새로 업로드할 이미지 파일만 필터링
+        const newImageFiles = formData.images
+          .filter((img) => img.file !== null)
+          .map((img) => img.file as File);
+        
+        let allImagePaths: string[] = [...existingImagePaths];
+        
+        // 새 이미지가 있으면 업로드
+        if (newImageFiles.length > 0) {
+          setIsUploadingImages(true);
+          const { paths, error: uploadError } = await uploadPostImages(
+            newImageFiles,
+            authUser.id,
+            editingFeedback.id
+          );
+
+          if (uploadError) {
+            alert(`이미지 업로드 실패: ${uploadError.message}`);
+            setIsSubmitting(false);
+            setIsUploadingImages(false);
+            return;
+          }
+
+          allImagePaths = [...existingImagePaths, ...paths];
+        }
+
+        const finalImages = allImagePaths.length > 0 ? allImagePaths : [];
+
         const { error } = await supabase
           .schema("odd")
           .rpc("v1_update_feedback", {
             p_post_id: editingFeedback.id,
             p_title: formData.title.trim(),
             p_content: formData.content.trim(),
-            p_images: imagePaths.length > 0 ? imagePaths : null,
+            p_images: finalImages,
             p_feedback_type: formData.type,
           });
 
@@ -174,23 +210,53 @@ export function UserFeedbackModal({
           return;
         }
       } else {
-        // 새 피드백 생성
-        const { error } = await supabase
+        // 새 피드백 생성: 먼저 피드백을 생성하고, 실제 포스트 ID로 이미지를 업로드
+        const { data: postId, error: createError } = await supabase
           .schema("odd")
           .rpc("v1_create_feedback", {
             p_project_id: projectId,
             p_feedback_type: formData.type,
             p_title: formData.title.trim(),
             p_content: formData.content.trim(),
-            p_images: imagePaths.length > 0 ? imagePaths : [],
+            p_images: [], // 먼저 빈 배열로 생성
           });
 
-        if (error) {
-          console.error("피드백 생성 실패:", error);
-          alert(`피드백 생성 실패: ${error.message}`);
+        if (createError) {
+          console.error("피드백 생성 실패:", createError);
+          alert(`피드백 생성 실패: ${createError.message}`);
           setIsSubmitting(false);
-          setIsUploadingImages(false);
           return;
+        }
+
+        // 피드백 생성 후 실제 포스트 ID로 이미지 업로드
+        const newImageFiles = formData.images
+          .filter((img) => img.file !== null)
+          .map((img) => img.file as File);
+        
+        if (newImageFiles.length > 0 && postId) {
+          setIsUploadingImages(true);
+          const { paths, error: uploadError } = await uploadPostImages(
+            newImageFiles,
+            authUser.id,
+            postId
+          );
+
+          if (uploadError) {
+            console.error("이미지 업로드 실패:", uploadError);
+            alert(`이미지 업로드 실패: ${uploadError.message}`);
+            // 피드백은 이미 생성되었으므로 계속 진행 (이미지 없이 생성됨)
+          } else if (paths.length > 0) {
+            // 이미지 경로를 피드백(포스트)에 업데이트
+            const { error: updateError } = await supabase
+              .schema("odd")
+              .from("tbl_posts")
+              .update({ images: paths })
+              .eq("id", postId);
+
+            if (updateError) {
+              console.error("이미지 경로 업데이트 실패:", updateError);
+            }
+          }
         }
       }
 
@@ -339,21 +405,17 @@ export function UserFeedbackModal({
                 {/* 이미지 미리보기 */}
                 {formData.images.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
-                    {formData.images.map((file, index) => {
-                      const imageUrl = URL.createObjectURL(file);
+                    {formData.images.map((image, index) => {
                       return (
                         <div key={index} className="relative">
                           <img
-                            src={imageUrl}
+                            src={image.preview}
                             alt={`첨부 이미지 ${index + 1}`}
                             className="h-24 w-24 rounded-lg object-cover border border-surface-200 dark:border-surface-700"
                           />
                           <button
                             type="button"
-                            onClick={() => {
-                              URL.revokeObjectURL(imageUrl);
-                              removeImage(index);
-                            }}
+                            onClick={() => removeImage(index)}
                             className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-surface-900 text-white flex items-center justify-center hover:bg-rose-500 transition-colors"
                             disabled={isSubmitting || isUploadingImages}
                           >

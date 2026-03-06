@@ -25,7 +25,7 @@ export function CreateProjectHeader() {
       </div>
 
       {/* 다른 페이지 연결 */}
-      <div className="mb-6 grid gap-3 md:grid-cols-3">
+      {/* <div className="mb-6 grid gap-3 md:grid-cols-3">
         {[
           {
             to: "/explore",
@@ -63,7 +63,7 @@ export function CreateProjectHeader() {
             <ChevronDown className="h-4 w-4 -rotate-90 text-surface-400" />
           </Link>
         ))}
-      </div>
+      </div> */}
     </>
   );
 }

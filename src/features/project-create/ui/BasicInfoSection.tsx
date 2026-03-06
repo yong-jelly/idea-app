@@ -30,9 +30,9 @@ export function BasicInfoSection({
         <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">
           기본 정보
         </h2>
-        <p className="text-sm text-surface-500 dark:text-surface-400">
+        {/* <p className="text-sm text-surface-500 dark:text-surface-400">
           프로젝트의 핵심 정보를 입력하세요
-        </p>
+        </p> */}
       </div>
 
       <div className="divide-y divide-surface-100 dark:divide-surface-800">

@@ -2419,71 +2419,14 @@ export async function fetchMyProjects(
   options: FetchMyProjectsOptions = {}
 ): Promise<FetchMyProjectsResult> {
   try {
-    // 현재 로그인한 사용자의 auth_id 확인
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-    if (authError || !authUser) {
-      return {
-        projects: [],
-        error: new Error("로그인이 필요합니다"),
-      };
-    }
-
-    // auth_id로 사용자 정보 조회
-    const { data: dbUser, error: userError } = await supabase
-      .schema("odd")
-      .from("tbl_users")
-      .select("id")
-      .eq("auth_id", authUser.id)
-      .single();
-
-    if (userError || !dbUser) {
-      return {
-        projects: [],
-        error: new Error("사용자 정보를 찾을 수 없습니다"),
-      };
-    }
-
     const { limit = 50, offset = 0 } = options;
 
-    // 사용자가 생성한 프로젝트 조회
     const { data, error } = await supabase
       .schema("odd")
-      .from("projects")
-      .select(`
-        id,
-        title,
-        short_description,
-        full_description,
-        category,
-        tech_stack,
-        thumbnail,
-        gallery_images,
-        repository_url,
-        demo_url,
-        android_store_url,
-        ios_store_url,
-        mac_store_url,
-        author_id,
-        likes_count,
-        comments_count,
-        backers_count,
-        current_funding,
-        target_funding,
-        days_left,
-        status,
-        featured,
-        created_at,
-        updated_at,
-        author:author_id (
-          id,
-          username,
-          display_name,
-          avatar_url
-        )
-      `)
-      .eq("author_id", dbUser.id)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .rpc("v1_fetch_my_projects", {
+        p_limit: limit,
+        p_offset: offset,
+      });
 
     if (error) {
       console.error("내 프로젝트 조회 에러:", error);
@@ -2500,30 +2443,8 @@ export async function fetchMyProjects(
       };
     }
 
-    // 프로젝트 ID 목록 추출
-    const projectIds = data.map((row: any) => row.id);
-
-    // 각 프로젝트의 실제 댓글 카운트 조회
-    const { data: commentsData, error: commentsError } = await supabase
-      .schema("odd")
-      .from("tbl_comments")
-      .select("post_id")
-      .in("post_id", projectIds)
-      .eq("is_deleted", false);
-
-    // 프로젝트별 댓글 카운트 맵 생성
-    const commentsCountMap = new Map<string, number>();
-    if (!commentsError && commentsData) {
-      commentsData.forEach((comment: any) => {
-        const projectId = comment.post_id;
-        commentsCountMap.set(projectId, (commentsCountMap.get(projectId) || 0) + 1);
-      });
-    }
-
     // 데이터 변환
     const projects: Project[] = data.map((row: any) => {
-      const author = row.author || {};
-      
       // 썸네일 URL 변환
       let thumbnailUrl: string | undefined = undefined;
       if (row.thumbnail) {
@@ -2561,10 +2482,10 @@ export async function fetchMyProjects(
         categoryId: row.category_id || undefined,
         techStack,
         author: {
-          id: String(author.id || ""),
-          username: author.username || "",
-          displayName: author.display_name || "",
-          avatar: author.avatar_url ? getProfileImageUrl(author.avatar_url, "sm") : undefined,
+          id: String(row.author_id || ""),
+          username: row.author_username || "",
+          displayName: row.author_display_name || "",
+          avatar: row.author_avatar_url ? getProfileImageUrl(row.author_avatar_url, "sm") : undefined,
         },
         thumbnail: thumbnailUrl,
         galleryImages: galleryImages.length > 0 ? galleryImages : undefined,
@@ -2577,10 +2498,13 @@ export async function fetchMyProjects(
         targetFunding: row.target_funding || 0,
         backersCount: row.backers_count || 0,
         likesCount: row.likes_count || 0,
-        commentsCount: commentsCountMap.get(row.id) || 0,
+        commentsCount: row.comments_count || 0,
         daysLeft: row.days_left || 0,
         status: row.status as Project["status"],
         featured: row.featured || false,
+        isLiked: row.is_liked || false,
+        isBookmarked: row.is_bookmarked || false,
+        isMyProject: true,
         createdAt: row.created_at,
       };
     });
@@ -2704,6 +2628,8 @@ export async function fetchUserProjects(
         daysLeft: row.days_left || 0,
         status: row.status as Project["status"],
         featured: row.featured || false,
+        isLiked: row.is_liked || false,
+        isBookmarked: row.is_bookmarked || false,
         createdAt: row.created_at,
       };
     });

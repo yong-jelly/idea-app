@@ -94,13 +94,13 @@ BEGIN
     WHERE tbl_users.auth_id = v_auth_id;
 
     IF FOUND THEN
-        -- 기존 사용자 업데이트 (email과 avatar_url만 업데이트, display_name은 유지)
-        -- display_name은 사용자가 프로필에서 수정한 값이므로 OAuth 세션의 이름으로 덮어쓰지 않음
+        -- 기존 사용자 업데이트 (email만 업데이트, avatar_url은 기존 것이 없을 때만 OAuth 정보 사용)
+        -- display_name과 avatar_url은 사용자가 프로필에서 수정한 값이 있을 수 있으므로 덮어쓰지 않음
         UPDATE odd.tbl_users
         SET 
             email = COALESCE(p_email, tbl_users.email),
-            -- display_name은 기존 값 유지 (OAuth 세션의 이름으로 덮어쓰지 않음)
-            avatar_url = COALESCE(p_avatar_url, tbl_users.avatar_url),
+            -- 기존 avatar_url이 없을 때만 OAuth의 avatar_url 사용
+            avatar_url = COALESCE(tbl_users.avatar_url, p_avatar_url),
             updated_at = now()
         WHERE tbl_users.auth_id = v_auth_id
         RETURNING * INTO v_user;
