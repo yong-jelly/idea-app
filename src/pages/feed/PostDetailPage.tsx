@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from "react-router";
-import { ArrowLeft, MessageCircle, Bookmark, ExternalLink, CheckCircle2, Plus, Heart } from "lucide-react";
+import { ArrowLeft, MessageCircle, Bookmark, ExternalLink, CheckCircle2, Plus, Heart, Link2 } from "lucide-react";
 import { Button, Avatar, BotBadge, ImageViewer } from "@/shared/ui";
 import { cn, formatNumber } from "@/shared/lib/utils";
 import { CommentThread } from "@/shared/ui/comment";
@@ -19,6 +19,14 @@ import { AuthorHeader } from "@/entities/feed/ui/FeedRowBase";
 import { usePostComments } from "./post-detail/usePostComments";
 import { POST_TYPE_CONFIG, MAX_COMMENT_DEPTH } from "./post-detail/constants";
 import { getRelativeTime, formatDateTime } from "./post-detail/lib";
+
+function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace("www.", "");
+  } catch {
+    return url;
+  }
+}
 
 export function PostDetailPage() {
   const { postId } = useParams();
@@ -415,6 +423,24 @@ export function PostDetailPage() {
           <div className="text-surface-800 dark:text-surface-200 whitespace-pre-wrap break-words mb-3 leading-relaxed text-[15px]">
             {post.content}
           </div>
+
+          {"linkPreviews" in post && post.linkPreviews && post.linkPreviews.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {post.linkPreviews.map((link) => (
+                <a
+                  key={link.url}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-surface-200 px-3 py-1.5 text-xs text-surface-500 transition-colors hover:border-primary-300 hover:text-primary-500 dark:border-surface-700 dark:text-surface-400 dark:hover:border-primary-700 dark:hover:text-primary-400"
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  <span>{extractDomain(link.url)}</span>
+                  <ExternalLink className="h-3 w-3 opacity-60" />
+                </a>
+              ))}
+            </div>
+          )}
 
           {/* Images */}
           {'images' in post && post.images && post.images.length > 0 && (() => {

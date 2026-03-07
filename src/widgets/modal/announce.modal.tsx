@@ -12,6 +12,7 @@ import {
   X,
   Bookmark,
   Image as ImageIcon,
+  Link2,
 } from "lucide-react";
 import { Button, Textarea, Input } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
@@ -29,6 +30,29 @@ interface AnnounceModalProps {
   onDelete?: (postId: string) => void; // 삭제 핸들러
 }
 
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function buildLinkPreviewPayload(values: string[]) {
+  const validLinks = values
+    .map((value) => value.trim())
+    .filter((value) => value && isValidHttpUrl(value))
+    .slice(0, 3)
+    .map((url) => ({ url }));
+
+  if (validLinks.length === 0) {
+    return {};
+  }
+
+  return validLinks;
+}
+
 export function AnnounceModal({
   isOpen,
   onClose,
@@ -43,6 +67,7 @@ export function AnnounceModal({
     type: "announcement" as "announcement" | "update" | "vote",
     title: "",
     content: "",
+    relatedLinks: [""] as string[],
     isPinned: false,
     images: [] as Array<{ file: File | null; preview: string }>, // 기존 이미지는 file이 null, preview는 URL
     voteOptions: ["", ""] as string[],
@@ -63,6 +88,10 @@ export function AnnounceModal({
           type: editingPost.type as "announcement" | "update" | "vote",
           title: editingPost.title,
           content: editingPost.content,
+          relatedLinks:
+            editingPost.linkPreviews && editingPost.linkPreviews.length > 0
+              ? editingPost.linkPreviews.slice(0, 3).map((link) => link.url)
+              : [""],
           isPinned: editingPost.isPinned || false,
           images: existingImages,
           voteOptions: editingPost.voteOptions?.map(opt => opt.text) || ["", ""],
@@ -72,6 +101,7 @@ export function AnnounceModal({
           type: "announcement", 
           title: "", 
           content: "", 
+          relatedLinks: [""],
           isPinned: false, 
           images: [], 
           voteOptions: ["", ""] 
@@ -164,6 +194,8 @@ export function AnnounceModal({
       }
     }
 
+    const linkPreviewPayload = buildLinkPreviewPayload(formData.relatedLinks);
+
     setIsSubmitting(true);
     setIsUploadingImages(formData.images.length > 0);
 
@@ -226,6 +258,7 @@ export function AnnounceModal({
             p_title: formData.title.trim(),
             p_content: formData.content.trim(),
             p_images: finalImages,
+            p_link_preview: linkPreviewPayload,
             p_is_pinned: formData.isPinned,
             p_post_type: formData.type,
             p_vote_options: formData.type === "vote" ? formData.voteOptions.filter(opt => opt.trim()) : null,
@@ -248,6 +281,7 @@ export function AnnounceModal({
             p_title: formData.title.trim(),
             p_content: formData.content.trim(),
             p_images: [], // 먼저 빈 배열로 생성
+            p_link_preview: linkPreviewPayload,
             p_is_pinned: formData.isPinned,
             p_vote_options: formData.type === "vote" ? formData.voteOptions.filter(opt => opt.trim()) : null,
           });
@@ -451,6 +485,48 @@ export function AnnounceModal({
                 <p className="text-xs text-surface-500 text-right">
                   {formData.content.length}/3000
                 </p>
+              </div>
+
+              {/* 관련 링크 */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                  관련 링크 <span className="text-surface-400 font-normal">(선택)</span>
+                </label>
+                <div className="space-y-2">
+                  {formData.relatedLinks.map((link, index) => (
+                    <div key={index} className="relative">
+                      <Link2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                      <Input
+                        type="url"
+                        value={link}
+                        onChange={(e) => {
+                          const nextLinks = [...formData.relatedLinks];
+                          nextLinks[index] = e.target.value;
+                          setFormData((prev) => ({ ...prev, relatedLinks: nextLinks }));
+                        }}
+                        placeholder={`https://example.com/link-${index + 1}`}
+                        className="pl-9"
+                        disabled={isSubmitting || isUploadingImages}
+                      />
+                    </div>
+                  ))}
+                </div>
+                {formData.relatedLinks.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        relatedLinks: [...prev.relatedLinks, ""].slice(0, 3),
+                      }))
+                    }
+                    className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-600 transition-colors"
+                    disabled={isSubmitting || isUploadingImages}
+                  >
+                    <Plus className="h-4 w-4" />
+                    링크 추가
+                  </button>
+                )}
               </div>
 
               {/* 투표 옵션 (투표 타입일 때만) */}

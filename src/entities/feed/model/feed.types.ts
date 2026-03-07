@@ -139,6 +139,13 @@ export interface AnnouncementPost {
   type: "announcement" | "update" | "vote";
   title: string;
   content: string;
+  linkPreviews?: Array<{
+    url: string;
+    title?: string;
+    description?: string;
+    image?: string;
+    domain?: string;
+  }>;
   author: BaseAuthor;
   projectId?: string;
   projectTitle?: string;

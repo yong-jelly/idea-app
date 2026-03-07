@@ -39,6 +39,13 @@ const POSTS_PER_PAGE = 30;
  */
 function convertPostToDevPost(row: any, projectAuthorId: string): DevPost {
   const isProjectAuthor = String(row.author_id) === projectAuthorId;
+  const linkPreviews = Array.isArray(row.link_preview)
+    ? row.link_preview.filter(
+        (item: any) => item && typeof item === "object" && typeof item.url === "string"
+      )
+    : row.link_preview && typeof row.link_preview === "object" && typeof row.link_preview.url === "string"
+      ? [row.link_preview]
+      : undefined;
   
   // 투표 옵션 파싱 (SQL에서 votesCount로 반환하지만, camelCase/snake_case 모두 지원)
   const voteOptions: VoteOption[] | undefined = row.vote_options 
@@ -99,6 +106,7 @@ function convertPostToDevPost(row: any, projectAuthorId: string): DevPost {
     title: row.title || "",
     content: row.content,
     images: imageUrls,
+    linkPreviews,
     author: {
       id: String(row.author_id),
       username: row.author_username || "",
@@ -666,7 +674,7 @@ export function DevFeedTab({ projectId }: DevFeedTabProps) {
         {isProjectAuthor && (
           <Button size="sm" onClick={() => handleOpenModal()} className="lg:px-3 px-2">
             <Plus className="h-4 w-4 lg:mr-1" />
-            <span className="hidden lg:inline">공지 작성</span>
+            <span className="hidden lg:inline">작성</span>
           </Button>
         )}
       </div>

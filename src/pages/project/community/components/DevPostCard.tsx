@@ -8,6 +8,8 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
+  ExternalLink,
+  Link2,
 } from "lucide-react";
 import { Avatar, Badge, Card, CardContent, ImageViewer } from "@/shared/ui";
 import { CommentThread } from "@/shared/ui/comment";
@@ -18,6 +20,7 @@ import { getProfileImageUrl } from "@/shared/lib/storage";
 import type { DevPost } from "../types";
 import { useDevFeedComments } from "../tabs/hooks/useDevFeedComments";
 import { LoginModal } from "@/pages/auth";
+import { extractDomain } from "../constants";
 
 interface DevPostCardProps {
   post: DevPost;
@@ -193,6 +196,25 @@ export function DevPostCard({ post, projectAuthorId, onEdit, onDelete, onToggleP
                   </button>
                 )}
               </div>
+
+              {post.linkPreviews && post.linkPreviews.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {post.linkPreviews.map((link) => (
+                    <a
+                      key={link.url}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-surface-200 px-3 py-1.5 text-xs text-surface-500 transition-colors hover:border-primary-300 hover:text-primary-500 dark:border-surface-700 dark:text-surface-400 dark:hover:border-primary-700 dark:hover:text-primary-400"
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                      <span>{extractDomain(link.url)}</span>
+                      <ExternalLink className="h-3 w-3 opacity-60" />
+                    </a>
+                  ))}
+                </div>
+              )}
               
               {/* 투표 UI (투표 타입일 때만) */}
               {post.type === "vote" && voteOptions.length > 0 && (

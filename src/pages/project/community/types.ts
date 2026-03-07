@@ -26,12 +26,21 @@ export interface VoteOption {
   votesCount: number;
 }
 
+export interface CommunityLinkPreview {
+  url: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  domain?: string;
+}
+
 export interface DevPost {
   id: string;
   type: "announcement" | "update" | "discussion" | "vote";
   title: string;
   content: string;
   images?: string[]; // 이미지 URL 배열
+  linkPreviews?: CommunityLinkPreview[];
   author: {
     id: string;
     username: string;

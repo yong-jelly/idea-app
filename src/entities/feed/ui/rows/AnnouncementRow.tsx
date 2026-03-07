@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ExternalLink, Link2 } from "lucide-react";
 import { UserAvatar } from "@/entities/user";
 import { Badge } from "@/shared/ui";
 import { cn } from "@/shared/lib/utils";
@@ -11,6 +12,14 @@ import {
   FeedSourceFooter,
 } from "../FeedRowBase";
 import { DEV_POST_TYPE_INFO } from "../../model/feed.types";
+
+function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace("www.", "");
+  } catch {
+    return url;
+  }
+}
 
 export interface AnnouncementRowProps {
   post: AnnouncementPost;
@@ -92,6 +101,25 @@ export function AnnouncementRow({
         maxLength={300}
         collapseNewlines={false}
       />
+
+      {post.linkPreviews && post.linkPreviews.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {post.linkPreviews.map((link) => (
+            <a
+              key={link.url}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 rounded-full border border-surface-200 px-3 py-1.5 text-xs text-surface-500 transition-colors hover:border-primary-300 hover:text-primary-500 dark:border-surface-700 dark:text-surface-400 dark:hover:border-primary-700 dark:hover:text-primary-400"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              <span>{extractDomain(link.url)}</span>
+              <ExternalLink className="h-3 w-3 opacity-60" />
+            </a>
+          ))}
+        </div>
+      )}
       
       <InteractionButtons
         interactions={post.interactions}

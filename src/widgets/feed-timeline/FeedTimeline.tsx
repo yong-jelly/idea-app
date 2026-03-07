@@ -36,6 +36,16 @@ interface FeedTimelineProps {
 
 // API 응답을 UnifiedFeedPost로 변환하는 헬퍼
 export function convertToUnifiedFeedPost(response: UnifiedFeedResponse): UnifiedFeedPost {
+  const linkPreviews = Array.isArray(response.link_preview)
+    ? response.link_preview.filter(
+        (item: any) => item && typeof item === "object" && typeof item.url === "string"
+      )
+    : response.link_preview &&
+        typeof response.link_preview === "object" &&
+        typeof response.link_preview.url === "string"
+      ? [response.link_preview]
+      : undefined;
+
   const author: BaseAuthor = {
     id: response.author_id.toString(),
     username: response.author_username,
@@ -90,6 +100,7 @@ export function convertToUnifiedFeedPost(response: UnifiedFeedResponse): Unified
       ...base,
       type: response.post_type as "announcement" | "update" | "vote",
       title: response.title,
+      linkPreviews,
       projectId: response.project_id || undefined,
       projectTitle: response.source_name || undefined,
       isPinned: response.is_pinned,
