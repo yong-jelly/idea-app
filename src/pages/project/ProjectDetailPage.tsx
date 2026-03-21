@@ -462,6 +462,13 @@ export function ProjectDetailPage() {
                         >
                           수정하기
                         </Link>
+                        <span>·</span>
+                        <Link
+                          to={`/project/${project.id}/settings/access`}
+                          className="text-primary-600 dark:text-primary-400 hover:underline"
+                        >
+                          설정
+                        </Link>
                       </>
                     )}
                     {canDelete && (

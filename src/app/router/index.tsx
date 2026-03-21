@@ -5,6 +5,7 @@ import {
   Outlet,
   useLocation,
   useNavigationType,
+  Navigate,
 } from "react-router";
 import { Header, MobileBottomNav } from "@/widgets";
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
@@ -27,6 +28,12 @@ import {
   MyProjectsPage,
   BookmarksPage,
   BookmarkProjectsPage,
+  ProjectSettingsLayout,
+  ProjectSettingsGeneralPage,
+  ProjectSettingsAccessPage,
+  ProjectSettingsManualPlaceholderPage,
+  ProjectSettingsEchoPlaceholderPage,
+  ProjectPublicLlmManualPage,
 } from "@/pages";
 import { AuthCallbackPage } from "@/pages/auth/AuthCallbackPage";
 
@@ -143,6 +150,25 @@ const router = createBrowserRouter([
             <EditProjectPage />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: "project/:id/settings",
+        element: (
+          <ProtectedRoute>
+            <ProjectSettingsLayout />
+          </ProtectedRoute>
+        ),
+        children: [
+          { index: true, element: <Navigate to="access" replace /> },
+          { path: "general", element: <ProjectSettingsGeneralPage /> },
+          { path: "access", element: <ProjectSettingsAccessPage /> },
+          { path: "manual", element: <ProjectSettingsManualPlaceholderPage /> },
+          { path: "echo", element: <ProjectSettingsEchoPlaceholderPage /> },
+        ],
+      },
+      {
+        path: "project/:id/llm-manual",
+        element: <ProjectPublicLlmManualPage />,
       },
       {
         path: "project/:id",

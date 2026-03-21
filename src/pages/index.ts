@@ -1,6 +1,22 @@
 export { FeedPage, PostDetailPage } from "./feed";
 export { ExplorePage } from "./explore";
-export { CreateProjectPage, EditProjectPage, SupportPage, FeatureRequestsPage, ProjectDetailPage, ProjectCommunityPage, MilestoneDetailPage, FeedbackDetailPage, RewardManagePage } from "./project";
+export {
+  CreateProjectPage,
+  EditProjectPage,
+  SupportPage,
+  FeatureRequestsPage,
+  ProjectDetailPage,
+  ProjectCommunityPage,
+  MilestoneDetailPage,
+  FeedbackDetailPage,
+  RewardManagePage,
+  ProjectSettingsLayout,
+  ProjectSettingsGeneralPage,
+  ProjectSettingsAccessPage,
+  ProjectSettingsManualPlaceholderPage,
+  ProjectSettingsEchoPlaceholderPage,
+  ProjectPublicLlmManualPage,
+} from "./project";
 export { ProfilePage } from "./profile";
 export { MyProjectsPage } from "./my-projects";
 export { BookmarksPage, BookmarkProjectsPage } from "./bookmarks";

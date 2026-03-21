@@ -25,3 +25,12 @@ export { FeedbackDetailPage } from "./FeedbackDetailPage";
 // 리워드 관리 페이지 - 프로젝트의 리워드, 포인트, 멤버, 배지 관리를 제공하는 페이지
 export { RewardManagePage } from "./RewardManagePage";
 
+// 프로젝트 설정 (LLM/API 등) — GitHub·Supabase 스타일 설정 셸
+export {
+  ProjectSettingsLayout,
+  ProjectSettingsGeneralPage,
+  ProjectSettingsAccessPage,
+  ProjectSettingsManualPlaceholderPage,
+  ProjectSettingsEchoPlaceholderPage,
+} from "./settings";
+export { ProjectPublicLlmManualPage } from "./llm-manual/ProjectPublicLlmManualPage";
