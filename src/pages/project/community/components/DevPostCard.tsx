@@ -11,7 +11,7 @@ import {
   ExternalLink,
   Link2,
 } from "lucide-react";
-import { Avatar, Badge, Card, CardContent, ImageViewer } from "@/shared/ui";
+import { Avatar, Badge, Card, CardContent, ImageViewer, LinkText } from "@/shared/ui";
 import { CommentThread } from "@/shared/ui/comment";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
@@ -182,7 +182,7 @@ export function DevPostCard({ post, projectAuthorId, onEdit, onDelete, onToggleP
               </h3>
               <div className="mb-3">
                 <p className="text-surface-600 dark:text-surface-400 whitespace-pre-wrap">
-                  {displayContent}
+                  <LinkText stopPropagationOnLinkClick>{displayContent}</LinkText>
                 </p>
                 {isContentLong && (
                   <button

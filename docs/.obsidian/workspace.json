@@ -178,6 +178,11 @@
   },
   "active": "c4fd1c83773f550a",
   "lastOpenFiles": [
+    "todo/apply-plain-announcement-update.py",
+    "sql/069_v1_llm_announcement_api.sql",
+    "sql/068_v1_llm_project_api.sql",
+    "todo/1dd-llm-연동.md",
+    "todo/1dd-lmm-연동.md",
     "sql/067_v1_llm_public_api.sql",
     "sql/066_drop_project_access_tokens_for_recreate.sql",
     "todo/mcp/001d-프로젝트설정-설계.md",

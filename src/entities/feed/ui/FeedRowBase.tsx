@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Badge, BotBadge, ImageViewer } from "@/shared/ui";
+import { Badge, BotBadge, ImageViewer, LinkText } from "@/shared/ui";
 import { cn, formatRelativeTime, formatNumber } from "@/shared/lib/utils";
 import { isBot } from "@/entities/user";
 import { normalizeImageUrls } from "@/shared/lib/storage";
@@ -476,7 +476,7 @@ export function ContentArea({ content, images, className, maxLength, collapseNew
           "leading-relaxed text-[15px] tracking-[-0.01em]",
           className
         )}>
-          {displayContent}
+          <LinkText stopPropagationOnLinkClick>{displayContent}</LinkText>
         </div>
       )}
       {normalizedImages && normalizedImages.length > 0 && (

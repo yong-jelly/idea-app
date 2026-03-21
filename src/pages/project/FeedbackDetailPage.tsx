@@ -24,7 +24,7 @@ import {
   Check,
   Trash2,
 } from "lucide-react";
-import { Button, Avatar, Badge, Textarea, Card, CardContent, Separator, ImageViewer } from "@/shared/ui";
+import { Button, Avatar, Badge, Textarea, Card, CardContent, Separator, ImageViewer, LinkText } from "@/shared/ui";
 import { CommentThread } from "@/shared/ui/comment";
 import { cn, formatNumber, formatRelativeTime, ensureMinDelay } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
@@ -814,7 +814,7 @@ export function FeedbackDetailPage() {
                 <div className="p-6">
                   <div className="prose prose-surface dark:prose-invert max-w-none">
                     <p className="whitespace-pre-wrap text-surface-700 dark:text-surface-300 leading-relaxed">
-                      {feedback.content}
+                      <LinkText stopPropagationOnLinkClick>{feedback.content}</LinkText>
                     </p>
                   </div>
                 </div>

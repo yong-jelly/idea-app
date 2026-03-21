@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent, Avatar, Badge } from "@/shared/ui";
+import { Card, CardContent, Avatar, Badge, LinkText } from "@/shared/ui";
 import { cn, formatRelativeTime, formatNumber } from "@/shared/lib/utils";
 import type { DevPost } from "../../model/feed.types";
 import { SimpleInteractionButtons } from "../FeedRowBase";
@@ -113,7 +113,7 @@ export function DiscussionRow({
                 "text-surface-600 dark:text-surface-400 whitespace-pre-wrap",
                 !isExpanded && "line-clamp-3"
               )}>
-                {post.content}
+                <LinkText stopPropagationOnLinkClick>{post.content}</LinkText>
               </p>
 
               {/* Interactions */}

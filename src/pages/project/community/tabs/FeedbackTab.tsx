@@ -20,7 +20,7 @@ import {
   ChevronRight,
   Image as ImageIcon,
 } from "lucide-react";
-import { Button, Badge, Card, CardContent } from "@/shared/ui";
+import { Button, Badge, Card, CardContent, LinkText } from "@/shared/ui";
 import { cn, formatNumber, formatRelativeTime, ensureMinDelay } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
 import { supabase } from "@/shared/lib/supabase";
@@ -403,7 +403,7 @@ export function FeedbackTab({ projectId }: FeedbackTabProps) {
                           {feedback.title}
                         </h3>
                         <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-2">
-                          {feedback.content}
+                          <LinkText stopPropagationOnLinkClick>{feedback.content}</LinkText>
                         </p>
                         <div className="mt-2 flex items-center gap-3 text-xs text-surface-500">
                           <span>@{feedback.author.username}</span>

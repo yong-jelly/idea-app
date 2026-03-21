@@ -12,7 +12,7 @@ import {
   ChevronRight,
   Image as ImageIcon,
 } from "lucide-react";
-import { Card, CardContent, Badge, Avatar } from "@/shared/ui";
+import { Card, CardContent, Badge, Avatar, LinkText } from "@/shared/ui";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
 
 // ========== 타입 ==========
@@ -198,7 +198,7 @@ export function FeedbackRow({
 
             {/* Content Preview */}
             <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-2 mb-2">
-              {feedback.content}
+              <LinkText stopPropagationOnLinkClick>{feedback.content}</LinkText>
             </p>
 
             {/* Meta */}

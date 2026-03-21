@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { Heart, MessageCircle, Bookmark, Share, MoreHorizontal, Milestone, Sparkles, CheckCircle2 } from "lucide-react";
-import { Card, Badge, Button } from "@/shared/ui";
+import { Card, Badge, Button, LinkText } from "@/shared/ui";
 import { cn, formatRelativeTime, formatNumber } from "@/shared/lib/utils";
 import { UserAvatar } from "@/entities/user";
 import type { Post } from "../model/post.types";
@@ -102,7 +102,7 @@ export function PostCard({ post, onLike, onBookmark, onComment, onShare }: PostC
 
           {/* Content */}
           <div className="text-surface-800 dark:text-surface-200 whitespace-pre-wrap break-words mb-3 leading-relaxed">
-            {post.content}
+            <LinkText stopPropagationOnLinkClick>{post.content}</LinkText>
           </div>
 
           {/* Images */}

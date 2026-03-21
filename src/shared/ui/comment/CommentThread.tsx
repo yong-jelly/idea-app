@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Reply, ThumbsUp, Edit, Trash2, ChevronDown, ChevronUp, ImageIcon, Send, X } from "lucide-react";
 
-import { Avatar, Badge, Button, Separator, Textarea } from "@/shared/ui";
+import { Avatar, Badge, Button, LinkText, Separator, Textarea } from "@/shared/ui";
 import { CommentsLoading } from "@/shared/ui/CommentsLoading";
 import { cn, formatNumber, formatRelativeTime } from "@/shared/lib/utils";
 
@@ -467,7 +467,7 @@ function CommentItem({
                       : "text-surface-700 dark:text-surface-300"
                   )}
                 >
-                  {isDeleted ? "삭제된 댓글입니다." : displayContent}
+                  {isDeleted ? "삭제된 댓글입니다." : <LinkText stopPropagationOnLinkClick>{displayContent}</LinkText>}
                 </p>
                 {!isDeleted && comment.content.length > COLLAPSE_CHAR_LIMIT && (
                   <button

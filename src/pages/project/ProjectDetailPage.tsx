@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
 import { MessageSquare, ChevronUp, MessageCircle, ArrowRight, ChevronLeft, ChevronRight, X, Bookmark, Link2, Check, Heart, Trash2 } from "lucide-react";
-import { Button, Avatar } from "@/shared/ui";
+import { Button, Avatar, LinkText } from "@/shared/ui";
 import { cn, formatLikesCount, formatNumber } from "@/shared/lib/utils";
 import { fetchProjectDetail, toggleProjectLike, toggleProjectBookmark, checkProjectBookmark, deleteProject, type Project, CATEGORY_INFO } from "@/entities/project";
 import { useUserStore } from "@/entities/user";
@@ -591,16 +591,18 @@ export function ProjectDetailPage() {
               <div className="mb-8">
                 {/* 데스크톱: 전체 텍스트 표시 */}
                 <p className="hidden md:block text-surface-700 dark:text-surface-300 leading-relaxed whitespace-pre-wrap">
-                  {displayDescription}
+                  <LinkText>{displayDescription}</LinkText>
                 </p>
                 {/* 모바일: 더보기 기능 포함 */}
                 <div className="md:hidden">
                   <p className="text-surface-700 dark:text-surface-300 leading-relaxed whitespace-pre-wrap">
-                    {shouldTruncateDescription && !isDescriptionExpanded
-                      ? displayDescription.slice(0, DESCRIPTION_MAX_LENGTH)
-                      : displayDescription}
-                    {shouldTruncateDescription && !isDescriptionExpanded && (
-                      <span className="text-surface-400">...</span>
+                    {shouldTruncateDescription && !isDescriptionExpanded ? (
+                      <>
+                        <LinkText>{displayDescription.slice(0, DESCRIPTION_MAX_LENGTH)}</LinkText>
+                        <span className="text-surface-400">...</span>
+                      </>
+                    ) : (
+                      <LinkText>{displayDescription}</LinkText>
                     )}
                   </p>
                   {shouldTruncateDescription && !isDescriptionExpanded && (

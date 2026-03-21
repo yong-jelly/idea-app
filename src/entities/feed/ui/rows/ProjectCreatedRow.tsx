@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { UserAvatar } from "@/entities/user";
 import type { ProjectCreatedPost } from "../../model/feed.types";
+import { LinkText } from "@/shared/ui";
 import {
   FeedRowWrapper,
   AuthorHeader,
@@ -89,7 +90,7 @@ export function ProjectCreatedRow({
               </h3>
             </div>
             <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-2">
-              {post.content}
+              <LinkText stopPropagationOnLinkClick>{post.content}</LinkText>
             </p>
             <div className="mt-2 text-xs text-surface-500 dark:text-surface-500">
               프로젝트 보기 →

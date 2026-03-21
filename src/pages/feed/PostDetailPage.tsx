@@ -1,6 +1,6 @@
 import { useParams, useNavigate, Link } from "react-router";
 import { ArrowLeft, MessageCircle, Bookmark, ExternalLink, CheckCircle2, Plus, Heart, Link2 } from "lucide-react";
-import { Button, Avatar, BotBadge, ImageViewer } from "@/shared/ui";
+import { Button, Avatar, BotBadge, ImageViewer, LinkText } from "@/shared/ui";
 import { cn, formatNumber } from "@/shared/lib/utils";
 import { CommentThread } from "@/shared/ui/comment";
 import { useUserStore, isBot } from "@/entities/user";
@@ -409,7 +409,7 @@ export function PostDetailPage() {
                     )}
                   </div>
                   <p className="text-sm text-surface-600 dark:text-surface-400 line-clamp-2">
-                    {post.content}
+                    <LinkText stopPropagationOnLinkClick>{post.content}</LinkText>
                   </p>
                   <div className="mt-2 text-xs text-surface-500 dark:text-surface-500">
                     프로젝트 보기 →
@@ -421,7 +421,7 @@ export function PostDetailPage() {
 
           {/* Content */}
           <div className="text-surface-800 dark:text-surface-200 whitespace-pre-wrap break-words mb-3 leading-relaxed text-[15px]">
-            {post.content}
+            <LinkText stopPropagationOnLinkClick>{post.content}</LinkText>
           </div>
 
           {"linkPreviews" in post && post.linkPreviews && post.linkPreviews.length > 0 && (

@@ -82,8 +82,12 @@ export {
   type RevokeProjectAccessTokenResult,
 } from "./api/project-access-token.api";
 export {
+  callLlmPublicRpc,
   llmPublicEcho,
   llmPublicProjectRead,
+  type LlmPublicRpcName,
+  type LlmPublicRpcResult,
+  type LlmPublicSuccessBase,
   type LlmPublicEchoSuccess,
   type LlmPublicProjectReadSuccess,
   type LlmPublicErrorBody,
