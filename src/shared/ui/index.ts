@@ -17,4 +17,5 @@ export { BotBadge, BotBadgeIcon, type BotBadgeProps } from "./BotBadge";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { ImageViewer, type ImageViewerProps } from "./ImageViewer";
 export { LinkText, linkifyPlainTextToNodes, type LinkTextProps, type LinkifyOptions } from "./LinkText";
+export { MarkdownRenderer, markdownClassMap, markdownBlogClassMap } from "./markdown/MarkdownRenderer";
 

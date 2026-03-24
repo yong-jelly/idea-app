@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Home, Bookmark, Rss } from "lucide-react";
+import { Bookmark, Rss, BookOpen } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { PostComposerModal } from "@/features/feed";
 import { useUserStore } from "@/entities/user";
@@ -8,6 +8,7 @@ import { ProjectSection } from "./ProjectSection";
 
 const navigation = [
   { name: "피드", href: "/", icon: Rss },
+  { name: "블로그", href: "/blog", icon: BookOpen },
   { name: "북마크", href: "/bookmarks", icon: Bookmark },
 ];
 
@@ -23,7 +24,10 @@ export function LeftSidebar() {
         <nav className="flex flex-col gap-1">
           {navigation.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.href;
+            const isActive =
+              item.href === "/blog"
+                ? location.pathname === "/blog" || location.pathname.startsWith("/blog/")
+                : location.pathname === item.href;
 
             return (
               <Link

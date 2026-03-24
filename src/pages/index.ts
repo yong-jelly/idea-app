@@ -20,4 +20,5 @@ export {
 export { ProfilePage } from "./profile";
 export { MyProjectsPage } from "./my-projects";
 export { BookmarksPage, BookmarkProjectsPage } from "./bookmarks";
+export { BlogListPage, BlogDetailPage, BlogWritePage } from "./blog";
 

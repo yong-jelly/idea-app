@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router";
-import { Home, FolderOpen, Bookmark, User } from "lucide-react";
+import { Home, FolderOpen, BookOpen, Bookmark, User } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { useUserStore } from "@/entities/user";
 import { LoginModal } from "@/pages/auth";
@@ -26,6 +26,13 @@ export function MobileBottomNav() {
       label: "프로젝트",
       icon: FolderOpen,
       path: "/explore",
+      requiresAuth: false,
+    },
+    {
+      id: "blog",
+      label: "블로그",
+      icon: BookOpen,
+      path: "/blog",
       requiresAuth: false,
     },
     {
@@ -78,6 +85,11 @@ export function MobileBottomNav() {
       return (
         location.pathname === "/explore" ||
         location.pathname.startsWith("/project")
+      );
+    } else if (item.id === "blog") {
+      // 블로그: 목록·상세·작성 등 /blog 하위
+      return (
+        location.pathname === "/blog" || location.pathname.startsWith("/blog/")
       );
     } else if (item.id === "bookmarks") {
       // 북마크: /bookmarks만

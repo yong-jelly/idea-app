@@ -59,6 +59,24 @@ psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:ZNDqDunnaydr0aFQ@aws-0-ap-north
 
 ---
 
+## 블로그 (Markdown 게시글)
+
+`tbl_users` 이후에 실행합니다.
+
+**신규 설치(처음부터 적용)** — `070`에 `link_url` 컬럼이 포함되어 있습니다.
+
+```
+070_create_blog_tables.sql
+071_v1_blog_functions.sql
+```
+
+**이미 `070`·`071`만 적용한 기존 DB** — 게시글에 외부 링크(`link_url`)와 `v1_upsert_blog_post` 7번째 인자를 쓰려면 아래 순서로 보강합니다.
+
+1. `072_add_blog_posts_link_url.sql` — `odd.blog_posts.link_url` 컬럼 추가  
+2. `071_v1_blog_functions.sql` — 목록/상세 JSON에 `link_url` 포함, `v1_upsert_blog_post`에 `p_link_url` 반영 (컬럼이 있어야 RPC가 정상 동작)
+
+> `071`만 다시 실행하면 `link_url` 컬럼이 없으면 RPC 실행 시 오류가 날 수 있으므로, **반드시 `072`를 먼저** 적용합니다.
+
 ## 의존성 관계
 
 ```

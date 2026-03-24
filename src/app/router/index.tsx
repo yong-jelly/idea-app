@@ -34,6 +34,9 @@ import {
   ProjectSettingsManualPlaceholderPage,
   ProjectSettingsEchoPlaceholderPage,
   ProjectPublicLlmManualPage,
+  BlogListPage,
+  BlogDetailPage,
+  BlogWritePage,
 } from "@/pages";
 import { AuthCallbackPage } from "@/pages/auth/AuthCallbackPage";
 
@@ -124,6 +127,30 @@ const router = createBrowserRouter([
       {
         path: "bookmarks",
         element: <BookmarksPage />,
+      },
+      {
+        path: "blog",
+        element: <BlogListPage />,
+      },
+      {
+        path: "blog/write",
+        element: (
+          <ProtectedRoute>
+            <BlogWritePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "blog/:slug/edit",
+        element: (
+          <ProtectedRoute>
+            <BlogWritePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "blog/:slug",
+        element: <BlogDetailPage />,
       },
       {
         path: "bookmark/project",

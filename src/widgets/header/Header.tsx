@@ -13,6 +13,7 @@ import { getProfileImageUrl } from "@/shared/lib/storage";
 const navigation = [
   { name: "홈", href: "/" },
   { name: "프로젝트", href: "/explore" },
+  { name: "블로그", href: "/blog" },
 ];
 
 export function Header() {
@@ -81,6 +82,9 @@ export function Header() {
                     location.pathname === "/" ||
                     location.pathname === "/bookmarks" ||
                     (location.pathname.startsWith("/profile/") && !location.pathname.includes("/edit"));
+                } else if (item.href === "/blog") {
+                  isActive =
+                    location.pathname === "/blog" || location.pathname.startsWith("/blog/");
                 } else if (item.href === "/explore") {
                   // 프로젝트: /explore, /project로 시작하는 경로
                   isActive = 
@@ -299,13 +303,18 @@ export function Header() {
 
           {/* Desktop Navigation - 중앙 배치 */}
           <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
-            {navigation.map((item) => (
+            {navigation.map((item) => {
+              const navActive =
+                item.href === "/blog"
+                  ? location.pathname === "/blog" || location.pathname.startsWith("/blog/")
+                  : location.pathname === item.href;
+              return (
               <Link
                 key={item.name}
                 to={item.href}
                 className={cn(
                   "relative px-5 py-2 text-sm font-medium transition-all duration-200",
-                  location.pathname === item.href
+                  navActive
                     ? "text-surface-900 dark:text-white"
                     : "text-surface-500 hover:text-surface-800 dark:text-surface-400 dark:hover:text-surface-200"
                 )}
@@ -315,11 +324,12 @@ export function Header() {
                 <span
                   className={cn(
                     "absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 rounded-full bg-primary-500 transition-all duration-200",
-                    location.pathname === item.href ? "w-5 opacity-100" : "w-0 opacity-0"
+                    navActive ? "w-5 opacity-100" : "w-0 opacity-0"
                   )}
                 />
               </Link>
-            ))}
+            );
+            })}
           </nav>
 
           {/* Right Actions */}
@@ -480,13 +490,18 @@ export function Header() {
         {mobileMenuOpen && (
           <div className="border-t border-surface-100 py-4 lg:hidden dark:border-surface-800 animate-slide-down">
             <nav className="flex flex-col gap-1 px-2">
-              {navigation.map((item) => (
+              {navigation.map((item) => {
+                const mobileActive =
+                  item.href === "/blog"
+                    ? location.pathname === "/blog" || location.pathname.startsWith("/blog/")
+                    : location.pathname === item.href;
+                return (
                 <Link
                   key={item.name}
                   to={item.href}
                   className={cn(
                     "px-4 py-3 text-sm font-medium rounded-xl transition-all",
-                    location.pathname === item.href
+                    mobileActive
                       ? "bg-surface-100 text-surface-900 dark:bg-surface-800 dark:text-white"
                       : "text-surface-600 hover:text-surface-900 hover:bg-surface-50 dark:text-surface-400 dark:hover:text-white dark:hover:bg-surface-800/50"
                   )}
@@ -494,7 +509,8 @@ export function Header() {
                 >
                   {item.name}
                 </Link>
-              ))}
+              );
+              })}
             </nav>
           </div>
         )}
