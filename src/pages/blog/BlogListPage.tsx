@@ -124,6 +124,12 @@ export function BlogListPage() {
                   <Link to={`/blog/${post.slug}`} className="hover:underline">
                     댓글 {post.comments_count}개
                   </Link>
+                  {post.view_count != null ? (
+                    <>
+                      <span className="opacity-40">|</span>
+                      <span>조회 {post.view_count}</span>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </div>

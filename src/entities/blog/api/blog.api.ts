@@ -39,10 +39,33 @@ function blogPostgrestErrorToError(error: PostgrestError | null): Error {
     msg.includes("schema cache")
   ) {
     return new Error(
-      "블로그용 DB가 아직 적용되지 않았습니다. Supabase에서 docs/sql/070_create_blog_tables.sql, 071_v1_blog_functions.sql(기존 DB는 072 후 071)을 순서대로 실행한 뒤 다시 시도해 주세요.",
+      "블로그용 DB가 아직 적용되지 않았습니다. Supabase에서 docs/sql/070_create_blog_tables.sql, 071_v1_blog_functions.sql, 072·073 보강 스크립트를 순서대로 실행한 뒤 다시 시도해 주세요.",
     );
   }
   return new Error(msg || "요청에 실패했습니다");
+}
+
+/**
+ * 발행 글 상세가 열릴 때 조회수 +1(비로그인 포함).
+ * 초안·삭제 글은 서버에서 증가하지 않음. `v1_increment_blog_post_view`
+ */
+export async function incrementBlogPostView(slug: string) {
+  try {
+    if (!slug.trim()) {
+      return { error: null as Error | null };
+    }
+    const { error } = await supabase.schema("odd").rpc("v1_increment_blog_post_view", {
+      p_slug: slug.trim(),
+    });
+    if (error) {
+      return { error: blogPostgrestErrorToError(error) };
+    }
+    return { error: null as Error | null };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e : new Error("조회수 반영에 실패했습니다"),
+    };
+  }
 }
 
 /** 발행 글 목록(페이지네이션). `v1_list_blog_posts` */

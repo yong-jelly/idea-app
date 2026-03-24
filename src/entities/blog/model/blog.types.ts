@@ -23,9 +23,16 @@ export interface BlogPostListItem {
   status: BlogPostStatus;
   /** 비정규화 댓글 수. 댓글 CRUD 시 동기화 */
   comments_count: number;
+  /**
+   * 조회수. RPC가 작성자 본인에게만 채움(그 외 null).
+   * 비로그인·타인에게는 null.
+   */
+  view_count: number | null;
   created_at: string;
   /** 발행 시각. draft면 null */
   published_at: string | null;
+  /** tbl_users.id. 목록에서 작성자 판별 등에 사용 */
+  author_id: number;
   author_username: string;
   author_display_name: string;
   author_avatar_url: string | null;
@@ -63,6 +70,10 @@ export interface BlogPostDetail {
   content_md: string;
   status: BlogPostStatus;
   comments_count: number;
+  /**
+   * 조회수. RPC가 작성자 본인에게만 채움(그 외 null).
+   */
+  view_count: number | null;
   /** tbl_users.id 기준 bigint를 number로 둔 값 */
   author_id: number;
   created_at: string;

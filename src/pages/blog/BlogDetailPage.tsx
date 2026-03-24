@@ -9,7 +9,7 @@ import Copy from "lucide-react/dist/esm/icons/copy";
 import { LeftSidebar } from "@/widgets";
 import { MarkdownRenderer } from "@/shared/ui/markdown/MarkdownRenderer";
 import { CommentThread } from "@/shared/ui/comment";
-import { fetchBlogPostBySlug, deleteBlogPost, type BlogPostDetail } from "@/entities/blog";
+import { fetchBlogPostBySlug, deleteBlogPost, incrementBlogPostView, type BlogPostDetail } from "@/entities/blog";
 import { useUserStore } from "@/entities/user";
 import { SignUpModal } from "@/pages/auth";
 import { formatRelativeTime } from "@/shared/lib/utils";
@@ -63,6 +63,16 @@ export function BlogDetailPage() {
         return;
       }
       setPost(data);
+      /* 발행 글만 조회수 반영. 증가 직전 응답이므로 작성자에게는 로컬에서 +1 */
+      if (data && data.status === "published") {
+        const { error: incErr } = await incrementBlogPostView(slug);
+        const prevViews = data.view_count;
+        if (!incErr && prevViews != null) {
+          setPost((prev) =>
+            prev && prev.slug === data.slug ? { ...prev, view_count: prevViews + 1 } : prev,
+          );
+        }
+      }
     })();
     return () => {
       cancelled = true;
@@ -172,6 +182,12 @@ export function BlogDetailPage() {
                     ? formatRelativeTime(post.published_at)
                     : formatRelativeTime(post.created_at)}
                 </span>
+                {post.view_count != null ? (
+                  <>
+                    <span className="opacity-40 shrink-0">|</span>
+                    <span className="shrink-0">조회 {post.view_count}</span>
+                  </>
+                ) : null}
               </div>
               <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                 <button
